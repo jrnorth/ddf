@@ -6,6 +6,7 @@ import { connect } from 'react-redux'
 import CircularProgress from 'material-ui/CircularProgress'
 import ContentAdd from 'material-ui/svg-icons/content/add'
 import DeleteIcon from 'material-ui/svg-icons/action/delete'
+import Checkbox from 'material-ui/Checkbox'
 import Dialog from 'material-ui/Dialog'
 import FlatButton from 'material-ui/FlatButton'
 import Flexbox from 'flexbox-react'
@@ -121,6 +122,16 @@ const ProviderEditor = ({ provider, onUpdate, buffer, onEdit, error = Map() }) =
         value={provider.get('url') || ''}
         id='provider-url'
         floatingLabelText='Provider URL' />
+    </div>
+    <div style={{ padding: '0 16px' }}>
+      <Flexbox flex='1'>
+        <Checkbox
+          checked={typeof provider.get('proxyEnabled') === 'boolean' ? provider.get('proxyEnabled') : ''}
+          label='Proxy Imagery Provider URL'
+          onCheck={(e, value) => {
+            onUpdate(value, 'proxyEnabled')
+          }} />
+      </Flexbox>
     </div>
     <Flexbox flex='1' style={{ padding: '0 16px' }}>
       <Flexbox flex='3' style={{ marginRight: 20 }}>
@@ -318,7 +329,7 @@ const MapLayers = (props) => {
           lower alpha providers on the map.
         </Description>
         <Description>
-          Some provider types are currently only support by the 2D <Link target='_blank'
+          Some provider types are currently only supported by the 2D <Link target='_blank'
             href='https://openlayers.org'>Openlayers</Link> map and some only
           by the 3D <Link target='_blank' href='https://cesiumjs.org'>Cesium</Link> map.
         </Description>

@@ -40,12 +40,32 @@ include::${project.build.directory}/doc-contents/_contents/config.adoc[]
 
 <#include "sources.ftl">
 
+== Security Services
+
+<#include "security-services.ftl">
+
 :sectnums!:
 == Developing
 :sectnums:
+
+<#include "developing.ftl">
 
 == Transformers
 
 <#include "transformers.ftl">
 
+== Catalog Plugins
+<#include "plugins.ftl">
+
 <#include "developing-components.ftl">
+
+:sectnums!:
+== Appendices
+:sectnums:
+
+[appendix]
+== Application References
+
+<#include "application-reference.ftl">
+
+<#include "appendices.ftl">

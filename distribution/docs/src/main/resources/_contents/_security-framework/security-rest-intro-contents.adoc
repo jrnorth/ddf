@@ -7,7 +7,7 @@
 |                                                                                                                                                            |
 |                       /----------\          /----------------\                                               /-------------------------------------------\ |
 | /-------=--\          |          |          |          cDEF  |                                               |                 STS Server                | |
-| | External | Request  |Delegating| Request  |    Web SSO     |                                   /-------\   |  /----------\  /----------\  /----------\ | |
+| | External | Request  | Delegate | Request  |    Web SSO     |                                   /-------\   |  /----------\  /----------\  /----------\ | |
 | |   DDF    |--------->| Servlet  |--------->|     Filter     |                             /---->|       |-->|->|Validators|->|  Claims  |->|  Token   | | |
 | |  Client  |          | Filter   |          |                |                             |     |  STS  |   |  |          |  | Handlers |  | Issuers  | | |
 | \----------/          |     cEEE |          | /------------\ |                             |     | Realm |   |  \----------/  \----------/  \----------/ | |
@@ -52,19 +52,21 @@
 +------------------------------------------------------------------------------------------------------------------------------------------------------------+
 ....
 
-The delegating servlet filter is topmost filter for all web contexts.
-It loads in all security filters.
-The first filter used is the Web SSO filter.
-It reads from the web context policy manager and functions as the first decision point.
+The Delegate Servlet Filter is the topmost filter for all web contexts.
+It initializes all Security Filters and runs them in order according to service ranking:
+
+. The *Web SSO Filter* reads from the web context policy manager and functions as the first decision point.
 If the request is from a whitelisted context, no further authentication is needed and the request goes directly to the desired endpoint.
 If the context is not on the whitelist, the filter will attempt to get a handler for the context.
 The filter loops through all configured context handlers until one signals that it has found authentication information that it can use to build a token.
 This configuration can be changed by modifying the web context policy manager configuration.
 If unable to resolve the context, the filter will return an authentication error and the process stops.
 If a handler is successfully found, an auth token is assigned and the request continues to the login filter.
-The Login Filter receives a token and return a subject.
+
+. The *Login Filter* receives a token and returns a subject.
 To retrieve the subject, the token is sent through Shiro to the STS Realm where the token will be exchanged for a SAML assertion through a SOAP call to an STS server.
-If the Subject is returned, the request moves to the Authorization Filter to check permissions on the user.
+
+. If the Subject is returned, the request moves to the *AuthZ Filter* to check permissions on the user.
 If the user has the correct permissions to access that web context, the request is allowed to hit the endpoint.
 
 [NOTE]
@@ -1199,8 +1201,8 @@ hwtE3xo6qQRRWlO3/clC4RnTev1crFVJQVBF3yfpRu8udJ2SOGdqU0vjUSu1h7aMkYJMHIu08Whj
 The Expansion Service and its corresponding expansion-related commands provide an easy way for developers to add expansion capabilities to ${branding} during user attribute and metadata card processing.
 In addition to these two defined uses of the expansion service, developers are free to utilize the service in their own implementations.
 
-Each instance of the expansion service consists of a collection of rule sets.
-Each rule set consists of a key value and its associated set of rules.
+Each instance of the expansion service consists of a collection of rulesets.
+Each ruleset consists of a key value and its associated set of rules.
 Callers of the expansion service provide a key and an original value to be expanded.
 The expansion service then looks up the set of rules for the specified key.
 The expansion service then cumulatively applies each of the rules in the set starting with the original value, with the resulting set of values being returned to the caller.
@@ -1230,7 +1232,7 @@ The expansion service then cumulatively applies each of the rules in the set sta
 
 |===
 
-The examples below use the following collection of rule sets:
+The examples below use the following collection of rulesets:
 
 [cols="1,2m,2m" options="header"]
 |===

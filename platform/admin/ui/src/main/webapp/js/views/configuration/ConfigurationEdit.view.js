@@ -94,7 +94,7 @@ define([
             "change": "updateValues"
         },
         initialize: function(options) {
-            _.bindAll(this);
+            _.bindAll.apply(_, [this].concat(_.functions(this)));
             this.configuration = options.configuration;
             this.collectionArray = new Backbone.Collection();
             this.listenTo(wreqr.vent, 'refresh', this.updateValues);
@@ -111,11 +111,11 @@ define([
             if(csvVal && csvVal !== '') {
                 if(_.isArray(csvVal)) {
                     _.each(csvVal, function (item) {
-                        view.addItem(item);
+                        view.addItem({ value: item, optionLabels: view.model.get('optionLabels'), optionValues: view.model.get('optionValues'), type: view.model.get('type')});
                     });
                 } else {
                     _.each(csvVal.split(/[,]+/), function (item) {
-                        view.addItem(item);
+                        view.addItem({ value: item, optionLabels: view.model.get('optionLabels'), optionValues: view.model.get('optionValues'), type: view.model.get('type')});
                     });
                 }
             }
@@ -135,13 +135,13 @@ define([
             this.updateValues();
         },
         addItem: function(value) {
-            this.collectionArray.add(new Backbone.Model({value: value}));
+            this.collectionArray.add(new Backbone.Model(value));
         },
         /**
          * Creates a new text field for the properties collection.
          */
         plusButton: function() {
-            this.addItem('');
+            this.addItem({ value: '', optionLabels: this.model.get('optionLabels'), optionValues: this.model.get('optionValues'), type: this.model.get('type')});
         }
     });
 
@@ -205,7 +205,7 @@ define([
          * @param options
          */
         initialize: function(options) {
-            _.bindAll(this);
+            _.bindAll.apply(_, [this].concat(_.functions(this)));
             this.modelBinder = new Backbone.ModelBinder();
             this.service = options.service;
             this.listenTo(wreqr.vent, 'sync', this.bind);

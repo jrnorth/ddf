@@ -31,6 +31,11 @@ public class XstreamPathConverter implements Converter {
 
     public static final String PATH_KEY = "PATHS";
 
+    private static final char TAG_BEGIN = '[';
+    private static final char TAG_END = ']';
+    private static final char ATTR_TAG = '@';
+    private static final char PATH_SEPARATOR = '/';
+
     @Override
     public void marshal(Object o, HierarchicalStreamWriter hierarchicalStreamWriter,
             MarshallingContext marshallingContext) {
@@ -76,6 +81,7 @@ public class XstreamPathConverter implements Converter {
      * </a>
      * <d></d>
      * {code}
+     *
      * @param reader
      * @param tracker
      * @param pathValueTracker
@@ -110,22 +116,82 @@ public class XstreamPathConverter implements Converter {
         }
     }
 
-    protected boolean doBasicPathsMatch(final Path path1, final Path path2) {
-        if (path1.equals(path2)) {
+    /**
+     * This method uses a streaming-like approach to compare 2 paths with a single iteration.
+     * The comparison excludes count indexes in the path as well as the value of attributes in
+     * determining equivalence.
+     * For the purposes of this method, "/a/b/c" matches "/a/b[2]/c/@attr"
+     *
+     * @param pathObj1 The first path
+     * @param pathObj2 The second path
+     * @return If the paths match
+     */
+    protected boolean doBasicPathsMatch(final Path pathObj1, final Path pathObj2) {
+        if (pathObj1.equals(pathObj2)) {
             return true;
         }
-        // ignore count designators and attribute specifications whenc omparing paths
-        // ie, /a/b[3]/c/@foo for our purposes is equivalent to /a/b/c
 
-        String path1Relpaced = StringUtils.chomp(path1.toString()
-                .replaceAll("\\[.*\\]", "")
-                .replaceAll("/@.*$", ""), "/");
-        String path2Replaced = StringUtils.chomp(path2.toString()
-                .replaceAll("\\[.*\\]", "")
-                .replaceAll("/@.*$", ""), "/");
+        char[] path1 = pathObj1.toString().toCharArray();
+        char[] path2 = pathObj2.toString().toCharArray();
+        int i, j;
 
-        return path1Relpaced.equals(path2Replaced);
+        for (i=0, j=0; i < path1.length && j < path2.length; i++, j++) {
+            i = countPastTag(path1, i);
+            j = countPastTag(path2, j);
+            if (i < path1.length && j < path2.length) {
+                if (path1[i] == ATTR_TAG && path2[j] == ATTR_TAG) {
+                    return true;
+                } else if (path1[i] != path2[j]) {
+                    return false;
+                }
+            } else {
+                break;
+            }
+        }
+        i = countPastTag(path1, i);
+        j = countPastTag(path2, j);
+        return (i == path1.length && j == path2.length) || endsMatch(path1, i, path2, j);
+    }
 
+    /**
+     * Checks if 2 paths who have matched up to the provided indices, with 1 index being at or
+     * beyond the end of the path, match by accounting for attribute value presence. This finishes
+     * the comparison of 2 paths once one path has been traversed.
+     *
+     * @param path1 The first path
+     * @param index1 The current index in path1
+     * @param path2 The second path
+     * @param index2 The current index in path2
+     * @return If the path ends match
+     */
+    private boolean endsMatch(char[] path1, int index1, char[] path2, int index2) {
+        if (index1 >= path1.length && index2 < path2.length - 1) {
+            return path2[index2] == PATH_SEPARATOR && path2[index2 + 1] == ATTR_TAG;
+        } else if (index2 >= path2.length && index1 < path1.length -1) {
+            return path1[index1] == PATH_SEPARATOR && path1[index1 + 1] == ATTR_TAG;
+        }
+        return false;
+    }
+
+    /**
+     * If a count tag is present in the path at index, this method will continue beyond the tag in
+     * the path and return the next index to be considered for matching purposes. This method
+     * returns the initial index if the character at that index is not a count tag start.
+     *
+     * @param path The path
+     * @param index The index to check for a tag
+     * @return The index at which to resume comparison
+     */
+    private int countPastTag(char[] path, int index) {
+        if (index < path.length && path[index] == TAG_BEGIN) {
+            while (index < path.length && path[index] != TAG_END) {
+                index++;
+            }
+            if (index < path.length) {
+                index++;
+            }
+        }
+        return index;
     }
 
     @Override

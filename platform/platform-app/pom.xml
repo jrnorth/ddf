@@ -328,9 +328,19 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>ddf.platform.solr</groupId>
+            <artifactId>solr-appender</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.codice.thirdparty</groupId>
             <artifactId>tika-bundle</artifactId>
             <version>${tika.thirdparty.bundle.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codice.ddf.platform.crypto</groupId>
+            <artifactId>platform-crypto-provider</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <!--START dependencies for enterprise features in platform-app features-->
         <dependency>
@@ -535,6 +545,16 @@
                                     </file>
                                     <type>config</type>
                                     <classifier>xml</classifier>
+                                </artifact>
+                                <artifact>
+                                    <file>src/main/resources/org.apache.karaf.decanter.scheduler.simple.cfg</file>
+                                    <type>config</type>
+                                    <classifier>scheduler</classifier>
+                                </artifact>
+                                <artifact>
+                                    <file>src/main/resources/org.apache.karaf.decanter.sla.checker.cfg</file>
+                                    <type>config</type>
+                                    <classifier>sla</classifier>
                                 </artifact>
                             </artifacts>
                         </configuration>

@@ -13,6 +13,8 @@
  */
 package org.codice.ddf.catalog.ui.metacard.associations;
 
+import static ddf.catalog.util.impl.ResultIterable.resultIterable;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,13 +47,13 @@ import ddf.catalog.data.Metacard;
 import ddf.catalog.data.Result;
 import ddf.catalog.data.impl.AttributeImpl;
 import ddf.catalog.federation.FederationException;
-import ddf.catalog.operation.QueryResponse;
 import ddf.catalog.operation.impl.QueryImpl;
 import ddf.catalog.operation.impl.QueryRequestImpl;
 import ddf.catalog.operation.impl.UpdateRequestImpl;
 import ddf.catalog.source.IngestException;
 import ddf.catalog.source.SourceUnavailableException;
 import ddf.catalog.source.UnsupportedQueryException;
+import ddf.catalog.util.impl.ResultIterable;
 
 public class Associated {
 
@@ -61,6 +63,8 @@ public class Associated {
     private final EndpointUtil util;
 
     private final CatalogFramework catalogFramework;
+
+    private static int pageSize = 250;
 
     public Associated(EndpointUtil util, CatalogFramework catalogFramework) {
         this.util = util;
@@ -268,15 +272,13 @@ public class Associated {
             return Collections.emptyMap();
         }
 
-        QueryResponse query = catalogFramework.query(new QueryRequestImpl(new QueryImpl(filter,
+        ResultIterable resultIterable = resultIterable(catalogFramework, new QueryRequestImpl(new QueryImpl(filter,
                 1,
-                0,
+                pageSize,
                 SortBy.NATURAL_ORDER,
                 false,
                 TimeUnit.SECONDS.toMillis(30)), false));
-
-        return query.getResults()
-                .stream()
+        return resultIterable.stream()
                 .map(Result::getMetacard)
                 .collect(Collectors.toMap(Metacard::getId, Function.identity()));
     }

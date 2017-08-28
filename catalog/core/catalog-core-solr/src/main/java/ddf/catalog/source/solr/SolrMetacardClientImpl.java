@@ -13,15 +13,21 @@
  */
 package ddf.catalog.source.solr;
 
+import static ddf.catalog.Constants.EXPERIMENTAL_FACET_PROPERTIES_KEY;
+import static ddf.catalog.Constants.EXPERIMENTAL_FACET_RESULTS_KEY;
+import static ddf.catalog.source.solr.DynamicSchemaResolver.FIRST_CHAR_OF_SUFFIX;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Transformer;
@@ -57,6 +63,8 @@ import ddf.catalog.data.impl.ResultImpl;
 import ddf.catalog.filter.FilterAdapter;
 import ddf.catalog.operation.QueryRequest;
 import ddf.catalog.operation.SourceResponse;
+import ddf.catalog.operation.faceting.FacetProperties;
+import ddf.catalog.operation.faceting.FacetedAttributeResult;
 import ddf.catalog.operation.impl.QueryResponseImpl;
 import ddf.catalog.operation.impl.SourceResponseImpl;
 import ddf.catalog.source.UnsupportedQueryException;
@@ -72,6 +80,8 @@ public class SolrMetacardClientImpl implements SolrMetacardClient {
 
     private static final String GEOMETRY_SORT_FIELD =
             Metacard.GEOGRAPHY + SchemaFields.GEO_SUFFIX + SchemaFields.SORT_KEY_SUFFIX;
+
+    private static final String EXT_SORT_BY = "additional.sort.bys";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SolrMetacardClientImpl.class);
 
@@ -110,13 +120,45 @@ public class SolrMetacardClientImpl implements SolrMetacardClient {
 
         SolrQuery query = getSolrQuery(request, filterDelegateFactory.newInstance(resolver));
 
+        boolean isFacetedQuery = false;
+        Serializable textFacetPropRaw = request.getPropertyValue(EXPERIMENTAL_FACET_PROPERTIES_KEY);
+
+        if (textFacetPropRaw != null && textFacetPropRaw instanceof FacetProperties) {
+            FacetProperties textFacetProp = (FacetProperties) textFacetPropRaw;
+            isFacetedQuery = true;
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Enabling faceted query for request [{}] on field {}", request, textFacetProp);
+            }
+
+            textFacetProp.getFacetAttributes()
+                    .stream()
+                    .map(this::addAttributeTypeSuffix)
+                    .filter(attr -> attr.contains(String.valueOf(FIRST_CHAR_OF_SUFFIX)))
+                    .forEach(query::addFacetField);
+
+            query.setFacetSort(textFacetProp.getSortKey().name());
+            query.setFacetLimit(textFacetProp.getFacetLimit());
+            query.setFacetMinCount(textFacetProp.getMinFacetCount());
+        }
+
         long totalHits;
         List<Result> results = new ArrayList<>();
+        Map<String, Serializable> responseProps = new HashMap<>();
         try {
             QueryResponse solrResponse = client.query(query, SolrRequest.METHOD.POST);
             totalHits = solrResponse.getResults()
                     .getNumFound();
             SolrDocumentList docs = solrResponse.getResults();
+
+            if (isFacetedQuery) {
+                List<FacetedAttributeResult> facetedAttributeResults = solrResponse.getFacetFields()
+                        .stream()
+                        .map(this::convertFacetField)
+                        .collect(Collectors.toList());
+
+                responseProps.put(EXPERIMENTAL_FACET_RESULTS_KEY,
+                        (Serializable) facetedAttributeResults);
+            }
 
             for (SolrDocument doc : docs) {
                 if (LOGGER.isDebugEnabled()) {
@@ -137,9 +179,27 @@ public class SolrMetacardClientImpl implements SolrMetacardClient {
             throw new UnsupportedQueryException("Could not complete solr query.", e);
         }
 
-        SourceResponse sourceResponse = new SourceResponseImpl(request, results, totalHits);
+        return new SourceResponseImpl(request, responseProps, results, totalHits);
+    }
 
-        return sourceResponse;
+    private String addAttributeTypeSuffix(String attribute) {
+        return resolver.getAnonymousField(attribute)
+                .stream()
+                .findFirst()
+                .orElse(attribute);
+    }
+
+    private FacetedAttributeResult convertFacetField(FacetField facetField) {
+        List<String> values = new ArrayList<>();
+        List<Long> counts = new ArrayList<>();
+
+        facetField.getValues()
+                .forEach(val -> {
+                    values.add(val.getName());
+                    counts.add(val.getCount());
+                });
+
+        return new FacetedAttributeResult(resolver.resolveFieldName(facetField.getName()), values, counts);
     }
 
     @Override
@@ -208,8 +268,8 @@ public class SolrMetacardClientImpl implements SolrMetacardClient {
                         for (FacetField.Count currContentType : facetFields.get(0)
                                 .getValues()) {
                             // unknown version, so setting it to null
-                            ContentType contentType =
-                                    new ContentTypeImpl(currContentType.getName(), null);
+                            ContentType contentType = new ContentTypeImpl(currContentType.getName(),
+                                    null);
 
                             finalSet.add(contentType);
                         }
@@ -228,8 +288,7 @@ public class SolrMetacardClientImpl implements SolrMetacardClient {
                             LOGGER.debug(
                                     "Content type does not have associated contentTypeVersion: {}",
                                     contentTypeName);
-                            ContentType contentType = new ContentTypeImpl(contentTypeName,
-                                    null);
+                            ContentType contentType = new ContentTypeImpl(contentTypeName, null);
 
                             finalSet.add(contentType);
 
@@ -260,8 +319,25 @@ public class SolrMetacardClientImpl implements SolrMetacardClient {
 
     protected SolrQuery getSolrQuery(QueryRequest request, SolrFilterDelegate solrFilterDelegate)
             throws UnsupportedQueryException {
-        solrFilterDelegate.setSortPolicy(request.getQuery()
-                .getSortBy());
+        List<SortBy> sortBys = new ArrayList<>();
+
+        if (request.getQuery() != null) {
+            SortBy sortBy = request.getQuery()
+                    .getSortBy();
+            if (sortBy != null) {
+                sortBys.add(sortBy);
+            }
+        }
+
+        Serializable sortBySer = request.getPropertyValue(EXT_SORT_BY);
+        if (sortBySer instanceof SortBy[]) {
+            SortBy[] extSortBys = (SortBy[]) sortBySer;
+            sortBys.addAll(Arrays.asList(extSortBys));
+        }
+
+        if (CollectionUtils.isNotEmpty(sortBys)) {
+            solrFilterDelegate.setSortPolicy(sortBys.toArray(new SortBy[0]));
+        }
 
         SolrQuery query = filterAdapter.adapt(request.getQuery(), solrFilterDelegate);
 
@@ -291,7 +367,8 @@ public class SolrMetacardClientImpl implements SolrMetacardClient {
             try {
                 query.setRows(queryForNumberOfRows(query));
             } catch (SolrServerException | IOException | SolrException | ArithmeticException exception) {
-                throw new UnsupportedQueryException("Could not retrieve number of records.", exception);
+                throw new UnsupportedQueryException("Could not retrieve number of records.",
+                        exception);
             }
         } else {
             query.setRows(request.getQuery()
@@ -331,11 +408,26 @@ public class SolrMetacardClientImpl implements SolrMetacardClient {
 
     protected String setSortProperty(QueryRequest request, SolrQuery query,
             SolrFilterDelegate solrFilterDelegate) {
-        SortBy sortBy = request.getQuery()
-                .getSortBy();
-        String sortProperty = "";
 
-        if (sortBy != null && sortBy.getPropertyName() != null) {
+        List<SortBy> sortBys = new ArrayList<>();
+        String sortProperty = "";
+        if (request.getQuery() != null) {
+            SortBy querySortBy = request.getQuery()
+                    .getSortBy();
+            if (querySortBy != null && querySortBy.getPropertyName() != null) {
+                sortBys.add(querySortBy);
+            }
+        }
+
+        Serializable sortBySer = request.getPropertyValue(EXT_SORT_BY);
+        if (sortBySer instanceof SortBy[]) {
+            SortBy[] extSortBys = (SortBy[]) sortBySer;
+            if (extSortBys.length > 0) {
+                sortBys.addAll(Arrays.asList(extSortBys));
+            }
+        }
+
+        for (SortBy sortBy : sortBys) {
             sortProperty = sortBy.getPropertyName()
                     .getPropertyName();
             SolrQuery.ORDER order = SolrQuery.ORDER.desc;

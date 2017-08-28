@@ -458,6 +458,14 @@ public class TestCatalog extends AbstractIntegrationTest {
                 .post(CSW_PATH.getUrl());
     }
 
+    private Response ingestXmlWithHeaderMetacard() {
+        return given().header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML)
+                .body(getCswInsertRequest("xml",
+                        getFileContent(XML_RECORD_RESOURCE_PATH + "/SimpleXmlMetacard",
+                                ImmutableMap.of("uri", "http://example.com"))))
+                .post(CSW_PATH.getUrl());
+    }
+
     @Test
     public void testCswIngest() {
         Response response = ingestCswRecord();
@@ -574,6 +582,25 @@ public class TestCatalog extends AbstractIntegrationTest {
             fail("Could not retrieve the ingested record's ID from the response.");
         }
 
+    }
+
+    @Test
+    public void testCswXmlWithHeaderIngest() {
+        Response response = ingestXmlWithHeaderMetacard();
+
+        response.then()
+                .body(hasXPath("//TransactionResponse/TransactionSummary/totalInserted", is("1")),
+                        hasXPath("//TransactionResponse/TransactionSummary/totalUpdated", is("0")),
+                        hasXPath("//TransactionResponse/TransactionSummary/totalDeleted", is("0")),
+                        hasXPath("//TransactionResponse/InsertResult/BriefRecord/title",
+                                is("myXmlTitle")),
+                        hasXPath("//TransactionResponse/InsertResult/BriefRecord/BoundingBox"));
+
+        try {
+            CatalogTestCommons.deleteMetacardUsingCswResponseId(response);
+        } catch (IOException | XPathExpressionException e) {
+            fail("Could not retrieve the ingested record's ID from the response.");
+        }
     }
 
     @Test
@@ -1588,6 +1615,67 @@ public class TestCatalog extends AbstractIntegrationTest {
     }
 
     @Test
+    public void testAttributeOverridesOnUpdate() throws Exception {
+        final String TMP_PREFIX = "tcdm_";
+        final String attribute = "title";
+        final String value = "someTitleIMadeUp";
+
+        Path tmpDir = Files.createTempDirectory(TMP_PREFIX);
+        tmpDir.toFile()
+                .deleteOnExit();
+        Path tmpFile = Files.createTempFile(tmpDir, TMP_PREFIX, "_tmp.xml");
+        tmpFile.toFile()
+                .deleteOnExit();
+        Files.copy(getFileContentAsStream("metacard5.xml"),
+                tmpFile,
+                StandardCopyOption.REPLACE_EXISTING);
+
+        Map<String, Object> cdmProperties = new HashMap<>();
+        cdmProperties.putAll(getServiceManager().getMetatypeDefaults("content-core-directorymonitor",
+                "org.codice.ddf.catalog.content.monitor.ContentDirectoryMonitor"));
+        cdmProperties.put("monitoredDirectoryPath", tmpDir.toString() + "/");
+        cdmProperties.put("processingMechanism", ContentDirectoryMonitor.IN_PLACE);
+        cdmProperties.put("attributeOverrides", format("%s=%s", attribute, value));
+        Configuration managedService = getServiceManager().createManagedService(
+                "org.codice.ddf.catalog.content.monitor.ContentDirectoryMonitor",
+                cdmProperties);
+
+        //assert that the file was ingested
+        ValidatableResponse response = assertIngestedDirectoryMonitor("SysAdmin", 1);
+
+        //assert that the metacard contains the overridden attribute
+        assertStringMetacardAttribute(response, attribute, value);
+
+        //edit the file
+        Files.copy(getFileContentAsStream("metacard4.xml"),
+                tmpFile,
+                StandardCopyOption.REPLACE_EXISTING);
+
+        //assert updated
+        response = assertIngestedDirectoryMonitor("Space", 1);
+
+        //assert that the metacard still contains the overridden attribute
+        assertStringMetacardAttribute(response, attribute, value);
+
+        //delete the file
+        tmpFile.toFile()
+                .delete();
+
+        //assert deleted
+        assertIngestedDirectoryMonitor("SysAdmin", 0);
+
+        getServiceManager().stopManagedService(managedService.getPid());
+    }
+
+    private ValidatableResponse assertStringMetacardAttribute(ValidatableResponse response,
+            String attribute, String value) {
+        String attributeValueXpath = format("/metacards/metacard/string[@name='%s']/value",
+                attribute);
+        response.body(hasXPath(attributeValueXpath, is(value)));
+        return response;
+    }
+
+    @Test
     public void testInPlaceDirectoryMonitor() throws Exception {
         final String TMP_PREFIX = "tcdm_";
         Path tmpDir = Files.createTempDirectory(TMP_PREFIX);
@@ -2261,6 +2349,115 @@ public class TestCatalog extends AbstractIntegrationTest {
                 .put(REST_PATH.getUrl() + id);
 
         deleteMetacard(id);
+    }
+
+    @Test
+    public void testCswMultiSortAsc() throws IOException {
+        final String sortCardId1 = ingestXmlFromResource("/sorttestcard1.xml");
+        final String sortCardId2 = ingestXmlFromResource("/sorttestcard2.xml");
+
+        String query = getFileContent("/csw-multi-sort-asc.xml");
+
+        ValidatableResponse validatableResponse = given().header(HttpHeaders.CONTENT_TYPE,
+                MediaType.APPLICATION_XML)
+                .body(query)
+                .post(CSW_PATH.getUrl())
+                .then();
+
+        validatableResponse.body(containsString(sortCardId1));
+        validatableResponse.body(not(containsString(sortCardId2)));
+    }
+
+    @Test
+    public void testCswMultiSortDesc() throws IOException {
+        final String sortCardId1 = ingestXmlFromResource("/sorttestcard1.xml");
+        final String sortCardId2 = ingestXmlFromResource("/sorttestcard2.xml");
+
+        String query = getFileContent("/csw-multi-sort-desc.xml");
+
+        ValidatableResponse validatableResponse = given().header(HttpHeaders.CONTENT_TYPE,
+                MediaType.APPLICATION_XML)
+                .body(query)
+                .post(CSW_PATH.getUrl())
+                .then();
+
+        validatableResponse.body(not(containsString(sortCardId1)));
+        validatableResponse.body(containsString(sortCardId2));
+    }
+
+    @Test
+    public void testIngestSanitizationBadFile() throws Exception {
+        // DDF-3172 bad.files and bad.file.extensions in system.properties is not being respected
+
+        // setup
+        String fileName = "robots.txt";    // filename in bad.files
+        File tmpFile = createTemporaryFile(fileName, IOUtils.toInputStream("Test"));
+
+        // ingest
+        String id = given().multiPart(tmpFile)
+                .expect()
+                .log()
+                .headers()
+                .statusCode(HttpStatus.SC_CREATED)
+                .when()
+                .post(REST_PATH.getUrl())
+                .getHeader("id");
+
+        // query - check if sanitized properly
+        getOpenSearch("xml", null, null, "q=*").log()
+                .all()
+                .assertThat()
+                .body(hasXPath(format(METACARD_X_PATH, id) + "/string[@name='title']/value",
+                        is("file.bin")));
+
+        // clean up
+        deleteMetacard(id);
+    }
+
+    @Test
+    public void testIngestSanitizationBadExtension() throws Exception {
+        // DDF-3172 bad.files and bad.file.extensions in system.properties is not being respected
+
+        // setup
+        String fileName = "bad_file.cgi";      // file extension in bad.file.extensions
+        File tmpFile = createTemporaryFile(fileName, IOUtils.toInputStream("Test"));
+
+        // ingest
+        String id = given().multiPart(tmpFile)
+                .expect()
+                .log()
+                .headers()
+                .statusCode(HttpStatus.SC_CREATED)
+                .when()
+                .post(REST_PATH.getUrl())
+                .getHeader("id");
+
+        // query - check if sanitized properly
+        getOpenSearch("xml", null, null, "q=*").log()
+                .all()
+                .assertThat()
+                .body(hasXPath(format(METACARD_X_PATH, id) + "/string[@name='title']/value",
+                        is("bad_file.bin")));
+
+        // clean up
+        deleteMetacard(id);
+    }
+
+    @Test
+    public void testIngestIgnore() throws Exception {
+        // DDF-3172 bad.files and bad.file.extensions in system.properties is not being respected
+        String fileName = "thumbs.db";          // filename in ignore.files
+
+        File tmpFile = createTemporaryFile(fileName, IOUtils.toInputStream("Test"));
+
+        // ingest
+        given().multiPart(tmpFile)
+                .expect()
+                .log()
+                .headers()
+                .statusCode(HttpStatus.SC_BAD_REQUEST)
+                .when()
+                .post(REST_PATH.getUrl());
     }
 
     protected String ingestXmlFromResource(String resourceName) throws IOException {

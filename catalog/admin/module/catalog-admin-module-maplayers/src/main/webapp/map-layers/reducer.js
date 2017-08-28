@@ -48,6 +48,9 @@ export const fetch = () => (dispatch) => {
     .then((json) => {
       const config = fromJS(json).getIn(configPath)
         .update('imageryProviders', (providers) => {
+          if (providers === undefined || providers === '') {
+            return fromJS([])
+          }
           try {
             const parsed = JSON.parse(providers)
             const err = validateStructure(parsed)
@@ -158,6 +161,12 @@ export const validate = (providers) => {
       errors = errors.setIn([i, 'alpha'], 'Alpha too large')
     }
 
+    const proxyEnabled = layer.get('proxyEnabled')
+
+    if (typeof proxyEnabled !== 'boolean') {
+      errors = errors.setIn([i, 'proxyEnabled'], 'Proxy enabled settings needs to be true or false')
+    }
+
     const type = layer.get('type')
 
     if (type === '') {
@@ -196,6 +205,7 @@ const emptyProvider = () => {
     url: '',
     type: '',
     alpha: '',
+    proxyEnabled: true,
     parameters: {}
   }
   const buffer = JSON.stringify(layer, null, 2)

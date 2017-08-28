@@ -15,6 +15,7 @@ package org.codice.ddf.security.filter.login;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -30,7 +31,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 
-import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
@@ -59,6 +59,7 @@ import org.apache.wss4j.dom.validate.Validator;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
 import org.codice.ddf.configuration.SystemBaseUrl;
+import org.codice.ddf.platform.filter.SecurityFilter;
 import org.codice.ddf.platform.util.XMLUtils;
 import org.codice.ddf.security.handler.api.BaseAuthenticationToken;
 import org.codice.ddf.security.handler.api.HandlerResult;
@@ -82,6 +83,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+import com.google.common.hash.Hashing;
+
 import ddf.security.PropertiesLoader;
 import ddf.security.SecurityConstants;
 import ddf.security.Subject;
@@ -97,7 +100,7 @@ import ddf.security.service.SecurityServiceException;
  * Servlet filter that exchanges all incoming tokens for a SAML assertion via an
  * STS.
  */
-public class LoginFilter implements Filter {
+public class LoginFilter implements SecurityFilter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LoginFilter.class);
 
@@ -724,7 +727,9 @@ public class LoginFilter implements Filter {
         SecurityLogger.audit("Added SAML for user [{}] to session [{}]",
                 securityAssertion.getPrincipal()
                         .getName(),
-                session.getId());
+                Hashing.sha256()
+                        .hashString(session.getId(), StandardCharsets.UTF_8)
+                        .toString());
         int minutes = getExpirationTime();
         //we just want to set this to some non-zero value if the configuration is messed up
         int seconds = 60;
@@ -747,11 +752,18 @@ public class LoginFilter implements Filter {
                 LOGGER.trace("Cannot load signature properties using: {}", signaturePropertiesFile);
                 return null;
             }
+            ClassLoader contextClassLoader = Thread.currentThread()
+                    .getContextClassLoader();
+            Thread.currentThread()
+                    .setContextClassLoader(LoginFilter.class.getClassLoader());
             try {
                 signatureCrypto = CryptoFactory.getInstance(sigProperties);
             } catch (WSSecurityException ex) {
                 LOGGER.trace("Error in loading the signature Crypto object.", ex);
                 return null;
+            } finally {
+                Thread.currentThread()
+                        .setContextClassLoader(contextClassLoader);
             }
         }
         return signatureCrypto;

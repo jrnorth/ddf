@@ -170,12 +170,20 @@
         <argument>
             <reference-list interface="ddf.catalog.data.MetacardType"/>
         </argument>
+        <argument>
+            <reference-list interface="ddf.catalog.data.AttributeInjector"
+                            availability="optional"/>
+        </argument>
     </bean>
 
     <bean id="associated" class="org.codice.ddf.catalog.ui.metacard.associations.Associated">
         <argument ref="endpointUtil"/>
         <argument ref="catalogFramework"/>
     </bean>
+
+    <reference id="csvQueryResponseTransformer" interface="ddf.catalog.transform.QueryResponseTransformer" filter="(id=csv)"/>
+
+    <reference id="attributeRegistry" interface="ddf.catalog.data.AttributeRegistry" />
 
     <bean id="metacardApplication" class="org.codice.ddf.catalog.ui.metacard.MetacardApplication">
         <argument ref="catalogFramework"/>
@@ -189,6 +197,9 @@
             <reference-list interface="ddf.catalog.data.MetacardType"/>
         </argument>
         <argument ref="associated"/>
+        <argument ref="csvQueryResponseTransformer" />
+        <argument ref="attributeRegistry" />
+        <argument ref="configurationApplication" />
     </bean>
 
     <bean id="queryApplication" class="org.codice.ddf.catalog.ui.query.QueryApplication">
@@ -328,7 +339,11 @@
     <service ref="workspaceQueryService"
              interface="org.codice.ddf.catalog.ui.query.monitor.api.WorkspaceQueryService"/>
 
-    <bean id="featureService" class="org.codice.ddf.catalog.ui.query.geofeature.StubFeatureService"/>
+    <reference id="geoEntryQueryable" interface="org.codice.ddf.spatial.geocoding.GeoEntryQueryable"/>
+
+    <bean id="featureService" class="org.codice.ddf.catalog.ui.query.geofeature.GazetteerFeatureService">
+        <property name="geoEntryQueryable" ref="geoEntryQueryable"/>
+    </bean>
 
     <service ref="featureService" interface="org.codice.ddf.catalog.ui.query.geofeature.FeatureService"/>
 

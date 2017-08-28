@@ -30,6 +30,12 @@
             <artifactId>jasypt</artifactId>
         </dependency>
         <dependency>
+            <!--DDF-3217 Temporarily adding deprecated GzipFilter functionality until GzipHandler supported by PaxWeb-->
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlets</artifactId>
+            <version>9.2.19.v20160908</version>
+        </dependency>
+        <dependency>
             <groupId>ddf.security.handler</groupId>
             <artifactId>security-handler-api</artifactId>
             <version>${project.version}</version>
@@ -107,12 +113,12 @@
         <dependency>
             <groupId>org.webjars.bower</groupId>
             <artifactId>bootstrap</artifactId>
-            <version>3.2.0</version>
+            <version>3.3.7</version>
         </dependency>
         <dependency>
             <groupId>org.webjars.bower</groupId>
             <artifactId>font-awesome</artifactId>
-            <version>4.6.3</version>
+            <version>4.7.0</version>
         </dependency>
         <dependency>
             <groupId>org.webjars.bower</groupId>
@@ -127,12 +133,12 @@
         <dependency>
             <groupId>org.webjars.bower</groupId>
             <artifactId>jquery</artifactId>
-            <version>1.12.4</version>
+            <version>3.2.1</version>
         </dependency>
         <dependency>
             <groupId>org.webjars.bower</groupId>
             <artifactId>jquery-ui</artifactId>
-            <version>1.10.4</version>
+            <version>1.12.1</version>
         </dependency>
         <dependency>
             <groupId>org.webjars.bower</groupId>
@@ -141,8 +147,8 @@
         </dependency>
         <dependency>
             <groupId>org.webjars.bower</groupId>
-            <artifactId>lodash</artifactId>
-            <version>2.4.1</version>
+            <artifactId>underscore</artifactId>
+            <version>1.8.3</version>
         </dependency>
         <dependency>
             <groupId>org.codice.webjars</groupId>
@@ -150,24 +156,24 @@
             <version>1.8.8</version>
         </dependency>
         <dependency>
-            <groupId>org.webjars.bower</groupId>
+            <groupId>org.webjars.npm</groupId>
             <artifactId>q</artifactId>
-            <version>1.0.1</version>
+            <version>1.4.1</version>
         </dependency>
         <dependency>
             <groupId>org.webjars.bower</groupId>
             <artifactId>requirejs</artifactId>
-            <version>2.1.14</version>
+            <version>2.3.3</version>
         </dependency>
         <dependency>
             <groupId>org.webjars.bower</groupId>
             <artifactId>requirejs-plugins</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.3</version>
         </dependency>
         <dependency>
             <groupId>org.webjars.bower</groupId>
             <artifactId>bootswatch</artifactId>
-            <version>3.2.0</version>
+            <version>3.3.7</version>
         </dependency>
     </dependencies>
     <build>
@@ -232,7 +238,11 @@
                 <artifactId>maven-bundle-plugin</artifactId>
                 <configuration>
                     <instructions>
-                        <Embed-Dependency>json-smart,asm</Embed-Dependency>
+                        <Embed-Dependency>
+                            json-smart,
+                            asm,
+                            jetty-servlets
+                        </Embed-Dependency>
                         <Web-ContextPath>/login</Web-ContextPath>
                         <_wab>src/main/webapp,${project.build.directory}/webapp,${project.build.directory}/META-INF/resources/webjars</_wab>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>

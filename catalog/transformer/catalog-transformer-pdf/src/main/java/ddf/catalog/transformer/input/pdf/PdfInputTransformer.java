@@ -17,6 +17,7 @@ import static org.apache.commons.lang3.Validate.notNull;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -43,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.ContentHandler;
 
+import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
 
 import ddf.catalog.content.operation.ContentMetadataExtractor;
@@ -167,23 +169,24 @@ public class PdfInputTransformer implements InputTransformer {
                         e);
             }
 
-            String plainText = null;
-            try (InputStream isCopy = fbos.asByteSource()
-                    .openStream()) {
+            ByteSource docByteSource = fbos.asByteSource();
+
+            try (InputStream isCopy = docByteSource.openStream(); //
+                    PDDocument pdfDocument = pdDocumentGenerator.apply(isCopy)) {
+
                 Parser parser = new AutoDetectParser();
-                ContentHandler contentHandler = new ToTextContentHandler();
-                TikaMetadataExtractor tikaMetadataExtractor = new TikaMetadataExtractor(parser,
-                        contentHandler);
-                tikaMetadataExtractor.parseMetadata(isCopy, new ParseContext());
-                plainText = contentHandler.toString();
-            } catch (CatalogTransformerException e) {
-                LOGGER.warn("Cannot extract metadata from pdf", e);
-            }
+                try (InputStream metaIs = docByteSource.openStream(); //
+                        TemporaryFileBackedOutputStream contentHandlerStream = new TemporaryFileBackedOutputStream()) {
+                    ContentHandler contentHandler = new ToTextContentHandler(contentHandlerStream,
+                            StandardCharsets.UTF_8.toString());
+                    TikaMetadataExtractor tikaMetadataExtractor = new TikaMetadataExtractor(parser,
+                            contentHandler);
+                    ByteSource plainTextByteSource = extractPlainText(metaIs,
+                            contentHandlerStream,
+                            tikaMetadataExtractor);
 
-            try (InputStream isCopy = fbos.asByteSource()
-                    .openStream(); PDDocument pdfDocument = pdDocumentGenerator.apply(isCopy)) {
-
-                return transformPdf(id, pdfDocument, plainText);
+                    return transformPdf(id, pdfDocument, plainTextByteSource);
+                }
             } catch (InvalidPasswordException e) {
                 LOGGER.debug("Cannot transform encrypted pdf", e);
                 return initializeMetacard(id);
@@ -191,14 +194,27 @@ public class PdfInputTransformer implements InputTransformer {
         }
     }
 
+    private ByteSource extractPlainText(InputStream metaIs,
+            TemporaryFileBackedOutputStream contentHandlerStream,
+            TikaMetadataExtractor tikaMetadataExtractor) throws IOException {
+        ByteSource plainTextByteSource = null;
+        try {
+            tikaMetadataExtractor.parseMetadata(metaIs, new ParseContext());
+            plainTextByteSource = contentHandlerStream.asByteSource();
+        } catch (CatalogTransformerException e) {
+            LOGGER.warn("Cannot extract metadata from pdf", e);
+        }
+        return plainTextByteSource;
+    }
+
     private MetacardImpl initializeMetacard(String id) {
         return initializeMetacard(id, null);
     }
 
-    private MetacardImpl initializeMetacard(String id, String contentInput) {
+    private MetacardImpl initializeMetacard(String id, ByteSource contentByteSource) {
         MetacardImpl metacard;
 
-        if (StringUtils.isNotBlank(contentInput)) {
+        if (contentByteSource != null && !contentMetadataExtractors.isEmpty()) {
             Set<AttributeDescriptor> attributes = contentMetadataExtractors.values()
                     .stream()
                     .map(ContentMetadataExtractor::getMetacardAttributes)
@@ -210,7 +226,11 @@ public class PdfInputTransformer implements InputTransformer {
                     attributes));
 
             for (ContentMetadataExtractor contentMetadataExtractor : contentMetadataExtractors.values()) {
-                contentMetadataExtractor.process(contentInput, metacard);
+                try (InputStream content = contentByteSource.openStream()) {
+                    contentMetadataExtractor.process(content, metacard);
+                } catch (IOException e) {
+                    LOGGER.debug("Problem opening ByteSource for content metadata extraction", e);
+                }
             }
         } else {
             metacard = new MetacardImpl(metacardType);
@@ -228,9 +248,9 @@ public class PdfInputTransformer implements InputTransformer {
         return transformPdf(id, pdfDocument, null);
     }
 
-    private Metacard transformPdf(String id, PDDocument pdfDocument, String contentInput)
+    private Metacard transformPdf(String id, PDDocument pdfDocument, ByteSource contentByteSource)
             throws IOException {
-        MetacardImpl metacard = initializeMetacard(id, contentInput);
+        MetacardImpl metacard = initializeMetacard(id, contentByteSource);
 
         if (pdfDocument.isEncrypted()) {
             LOGGER.debug("Cannot transform encrypted pdf");

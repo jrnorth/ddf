@@ -511,21 +511,21 @@ define([
                     eventToDrawShape = 'search:circledisplay';                    
                     break;
                 }
+                default: {
+                    Announcement.announce({
+                        title: 'Invalid feature',
+                        message: 'Unrecognized feature type: ' + data.type,
+                        type: 'error'
+                    });
+                    return;
+                }
             }
 
-            if (attrsToSet && eventToDrawShape) {
-                _.extend(attrsToSet, { locationType: "latlon", hasKeyword: true });
-                this.clearLocation();                 
-                this.model.set(attrsToSet);
-                this.render(); // redraw template so appropriate fields appear
-                wreqr.vent.trigger(eventToDrawShape, this.model);      
-            } else {
-                Announcement.announce({
-                    title: 'Invalid feature',
-                    message: 'Unrecognized feature type: ' + data.type,
-                    type: 'error'
-                });
-            }
+            _.extend(attrsToSet, { locationType: "latlon", hasKeyword: true });
+            this.clearLocation();                 
+            this.model.set(attrsToSet);
+            this.render(); // redraw template so appropriate fields appear
+            wreqr.vent.trigger(eventToDrawShape, this.model);      
         },
         blockMultiselectEvents: function () {
             $('.ui-multiselect-menu').on('mousedown', function (e) {
@@ -533,29 +533,39 @@ define([
             });
         },
         drawLine: function () {
-            this.clearLocation();
-            wreqr.vent.trigger('search:drawline', this.model);
-            this.changeMode("line");
+            if (this.propertyModel.get('property').get('isEditing')) {
+                this.clearLocation();
+                wreqr.vent.trigger('search:drawline', this.model);
+                this.changeMode("line");
+            }
         },
         drawCircle: function () {
-            this.clearLocation();
-            wreqr.vent.trigger('search:drawcircle', this.model);
-            this.changeMode("circle");
+            if (this.propertyModel.get('property').get('isEditing')) {
+                this.clearLocation();
+                wreqr.vent.trigger('search:drawcircle', this.model);
+                this.changeMode("circle");
+            }
         },
         drawPolygon: function () {
-            this.clearLocation();
-            wreqr.vent.trigger('search:drawpoly', this.model);
-            this.changeMode("polygon");
+            if (this.propertyModel.get('property').get('isEditing')) {
+                this.clearLocation();
+                wreqr.vent.trigger('search:drawpoly', this.model);
+                this.changeMode("polygon");
+            }
         },
         drawBbox: function () {
-            this.clearLocation();
-            wreqr.vent.trigger('search:drawbbox', this.model);
-            this.changeMode("bbox");
+            if (this.propertyModel.get('property').get('isEditing')) {
+                this.clearLocation();
+                wreqr.vent.trigger('search:drawbbox', this.model);
+                this.changeMode("bbox");
+            }
         },
         searchByKeyword: function () {
-            this.clearLocation();
-            this.model.set({hasKeyword: true});            
-            this.changeMode("keyword");
+            if (this.propertyModel.get('property').get('isEditing')) {
+                this.clearLocation();
+                this.model.set({hasKeyword: true});
+                this.changeMode("keyword");
+            }
         },
         onLineUnitsChanged: function () {
             this.$('#lineWidthValue').val(this.getDistanceFromMeters(this.model.get('lineWidth'), this.$('#lineUnits').val()));

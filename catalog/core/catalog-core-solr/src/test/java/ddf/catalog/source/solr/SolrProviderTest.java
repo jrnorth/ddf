@@ -15,6 +15,7 @@ package ddf.catalog.source.solr;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -31,6 +32,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static ddf.catalog.Constants.EXPERIMENTAL_FACET_RESULTS_KEY;
 
 import java.beans.XMLEncoder;
 import java.io.BufferedOutputStream;
@@ -41,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -80,6 +83,9 @@ import org.opengis.filter.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+
 import ddf.catalog.data.AttributeDescriptor;
 import ddf.catalog.data.ContentType;
 import ddf.catalog.data.Metacard;
@@ -99,10 +105,14 @@ import ddf.catalog.operation.DeleteRequest;
 import ddf.catalog.operation.DeleteResponse;
 import ddf.catalog.operation.Query;
 import ddf.catalog.operation.QueryRequest;
+import ddf.catalog.operation.Response;
 import ddf.catalog.operation.SourceResponse;
 import ddf.catalog.operation.Update;
 import ddf.catalog.operation.UpdateRequest;
 import ddf.catalog.operation.UpdateResponse;
+import ddf.catalog.operation.faceting.FacetValueCount;
+import ddf.catalog.operation.faceting.FacetedAttributeResult;
+import ddf.catalog.operation.faceting.FacetedQueryRequest;
 import ddf.catalog.operation.impl.DeleteRequestImpl;
 import ddf.catalog.operation.impl.QueryImpl;
 import ddf.catalog.operation.impl.QueryRequestImpl;
@@ -233,6 +243,8 @@ public class SolrProviderTest extends SolrProviderTestCase {
     protected static final double METERS_PER_KM = 1000.0;
 
     protected static final int ONE_HIT = 1;
+
+    private static final String EXT_SORT_BY = "additional.sort.bys";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SolrProviderTest.class);
 
@@ -4818,6 +4830,114 @@ public class SolrProviderTest extends SolrProviderTestCase {
     }
 
     @Test
+    public void testSortingMultipleAttributes() throws Exception {
+        deleteAllIn(provider);
+        List<Metacard> list = new ArrayList<>();
+        DateTime now = new DateTime();
+
+        for (int i = 0; i < 5; i++) {
+            MockMetacard m = new MockMetacard(Library.getFlagstaffRecord());
+            m.setEffectiveDate(now.minus(5L * i)
+                    .toDate());
+            m.setTitle("Record " + i);
+            m.setLocation("POINT(0 0)");
+            list.add(m);
+        }
+
+        create(list);
+
+        Filter filter = null;
+        QueryImpl query = null;
+        SourceResponse sourceResponse = null;
+
+        filter = filterBuilder.allOf(filterBuilder.attribute(Metacard.ANY_GEO)
+                        .nearestTo()
+                        .wkt("POINT(1 1)"),
+                filterBuilder.attribute(Metacard.TITLE)
+                        .like()
+                        .text("Record"));
+
+        query = new QueryImpl(filter);
+
+        query.setSortBy(new ddf.catalog.filter.impl.SortByImpl(Result.DISTANCE,
+                SortOrder.DESCENDING.name()));
+        Map<String, Serializable> properties = new HashMap<>();
+        SortBy relevanceSort = new ddf.catalog.filter.impl.SortByImpl(Result.RELEVANCE,
+                SortOrder.DESCENDING.name());
+        SortBy titleSort = new ddf.catalog.filter.impl.SortByImpl(Metacard.TITLE,
+                SortOrder.ASCENDING.name());
+        SortBy[] additionalSorts = new SortBy[] {relevanceSort, titleSort};
+        properties.put(EXT_SORT_BY, additionalSorts);
+        sourceResponse = provider.query(new QueryRequestImpl(query, properties));
+
+        assertEquals(list.size(),
+                sourceResponse.getResults()
+                        .size());
+
+        int i = 0;
+        for (Result r : sourceResponse.getResults()) {
+            assertThat(r.getMetacard()
+                    .getTitle(), is("Record " + i));
+            i++;
+        }
+    }
+
+    @Test
+    public void testSortingMultipleAttributesGeoAndRelevance() throws Exception {
+        deleteAllIn(provider);
+        List<Metacard> list = new ArrayList<>();
+        DateTime now = new DateTime();
+
+        for (int i = 0; i < 5; i++) {
+            MockMetacard m = new MockMetacard(Library.getFlagstaffRecord());
+            m.setEffectiveDate(now.minus(5L * i)
+                    .toDate());
+            m.setTitle("Record " + i);
+            m.setLocation("POINT(" + (6 - i) * -1 + " " + (6 - i) * -1 + ")");
+            list.add(m);
+        }
+
+        create(list);
+
+        Filter filter;
+        QueryImpl query;
+        SourceResponse sourceResponse;
+
+        filter = filterBuilder.allOf(filterBuilder.attribute(Metacard.TITLE)
+                        .like()
+                        .text("Record"),
+                filterBuilder.attribute(Metacard.ANY_GEO)
+                        .nearestTo()
+                        .wkt("POINT(1 1)"));
+
+        query = new QueryImpl(filter);
+
+        query.setSortBy(new ddf.catalog.filter.impl.SortByImpl(Result.RELEVANCE,
+                SortOrder.DESCENDING.name()));
+        Map<String, Serializable> properties = new HashMap<>();
+        SortBy distanceSort = new ddf.catalog.filter.impl.SortByImpl(Result.DISTANCE,
+                SortOrder.ASCENDING.name());
+        SortBy[] additionalSorts = new SortBy[] {distanceSort};
+        properties.put(EXT_SORT_BY, additionalSorts);
+        sourceResponse = provider.query(new QueryRequestImpl(query, properties));
+
+        assertEquals(list.size(),
+                sourceResponse.getResults()
+                        .size());
+
+        int index = 0;
+        for (int i = (list.size() - 1); i >= 0; i--) {
+            Result r = sourceResponse.getResults()
+                    .get(index);
+            assertThat(r.getDistanceInMeters(), not(closeTo(r.getRelevanceScore(), .000001)));
+            assertEquals("Record " + i,
+                    r.getMetacard()
+                            .getTitle());
+            index++;
+        }
+    }
+
+    @Test
     public void testStartIndexWithSorting() throws Exception {
         deleteAllIn(provider);
 
@@ -6225,6 +6345,61 @@ public class SolrProviderTest extends SolrProviderTestCase {
                 .is()
                 .like()
                 .fuzzyText("Hurry, my lawn is going wild!"));
+    }
+
+    @Test
+    public void testFacetedResponse() throws Exception {
+
+        deleteAllIn(provider);
+
+        List<Metacard> metacards = new ArrayList<>();
+
+        for (int i = 0; i < 9; i++) {
+            Metacard metacard = new MetacardImpl();
+            metacard.setAttribute(new AttributeImpl(Metacard.DESCRIPTION, "Description " + i/2));
+            metacards.add(metacard);
+        }
+
+        create(metacards);
+
+        Filter filter = filterBuilder.attribute(Metacard.DESCRIPTION)
+                .is()
+                .like()
+                .fuzzyText("Description");
+
+        Response response = provider.query(new FacetedQueryRequest(new QueryImpl(filter),
+                ImmutableSet.of(Metacard.DESCRIPTION)));
+
+        Serializable rawFacetResult = response.getPropertyValue(EXPERIMENTAL_FACET_RESULTS_KEY);
+
+        assertThat(rawFacetResult, notNullValue());
+        assertThat(rawFacetResult, instanceOf(List.class));
+
+        List<FacetedAttributeResult> facetResult = (List<FacetedAttributeResult>) rawFacetResult;
+
+        assertThat(facetResult.size(), is(1));
+
+        FacetedAttributeResult descriptionResult = facetResult.get(0);
+
+        assertThat(descriptionResult.getAttributeName(), is(Metacard.DESCRIPTION));
+        assertThat(descriptionResult.getFacetValues().size(), is(5));
+
+        List<FacetValueCount> facetValueCounts = descriptionResult.getFacetValues();
+
+        Map<String, Long> expectedResults = ImmutableMap.of(
+                "Description 0", 2L,
+                "Description 1", 2L,
+                "Description 2", 2L,
+                "Description 3", 2L,
+                "Description 4", 1L
+        );
+
+        facetValueCounts.forEach(fvc -> {
+            Long count = expectedResults.get(fvc.getValue());
+            assertThat(count, notNullValue());
+            assertThat(fvc.getCount(), is(count));
+        });
+
     }
 
     private void prepareXPath(boolean isXpathDisabled)

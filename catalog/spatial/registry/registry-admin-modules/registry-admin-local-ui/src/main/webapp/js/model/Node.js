@@ -272,6 +272,8 @@ define([
             FieldDescriptors.customFields = raw.value.customSlots;
             FieldDescriptors.autoPopulateValues = raw.value.autoPopulateValues;
             this.hasData = true;
+            this.filterInverted = raw.value.filterInverted;
+            this.clientMode = raw.value.clientMode;
             return raw.value.nodes;
         },
         getSecondaryNodes: function() {
@@ -311,7 +313,7 @@ define([
                 contentType: 'application/json',
                 data: data,
                 url: this.deleteUrl
-            }).success(function () {
+            }).done(function () {
                 wreqr.vent.trigger('nodeDeleted');
             });
         }

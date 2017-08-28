@@ -1,5 +1,5 @@
 
-==== Managing Keystores and Certificates
+=== Managing Keystores and Certificates
 
 * *{hardening-step}*
 
@@ -8,19 +8,19 @@ ${branding} uses certificates in two ways:
 . Ensuring the privacy and integrity of messages sent or received over a network.
 . Authenticating an incoming user request.
 
-===== Managing Keystores
+==== Managing Keystores
 
 Certificates, and sometimes their associated private keys, are stored in keystore files.
 ${branding} includes two default keystore files, the server key store and the server trust store.
 The server keystore holds the certificates and private keys that ${branding} uses to identify itself to other nodes on the network.
 The truststore holds the certificates of nodes or other entities that ${branding} needs to trust.
 
-Certificates (and certificates with keys) can be managed in the ${admin-console}. Navigate to the ${ddf-security}application and select it.
+Certificates (and certificates with keys) can be managed in the ${admin-console}. Navigate to the ${ddf-security} application and select it.
 After it opens, select the notebook tab labeled "Certificates".
 This view shows the alias (name) of every certificate in the trust store and the key store.
 It also displays if the entry includes a private key ("Is Key") and the encryption scheme (typically "RSA" or "EC").
 
-This view allows administrators remove certificates from ${branding}'s key and trust stores.
+This view allows administrators to remove certificates from ${branding}'s key and trust stores.
 It also allows administrators to import certificates and private keys into the keystores with the "+" button.
 The import function has two options: import from a file or import over HTTPS.
 The file option accepts a Java Keystore file or a PKCS12 keystore file.
@@ -49,7 +49,7 @@ javax.net.ssl.keyStoreType=jks
 javax.net.ssl.trustStoreType=jks
 ----
 
-====== Default Certificates
+===== Default Certificates
 
 ${branding} comes with a default keystore that contains certificates.
 This allows the distribution to be unzipped and run immediately.
@@ -59,7 +59,7 @@ If the installer was used to install the ${branding} and a hostname other than "
 If the hostname is `localhost` or, if the hostname was changed _after_ installation, the default certificates will not allow access to the ${branding} instance from another machine over HTTPS (now the default for many services).
 The Demo Certificate Authority will need to be replaced with certificates that use the fully-qualified hostname of the server running the ${branding} instance.
 
-====== Demo Certificate Authority (CA)
+===== Demo Certificate Authority (CA)
 
 ${branding} comes with a populated truststore containing entries for many public certificate authorities, such as Go Daddy and Verisign.
 It also includes an entry for the ${ddf-branding} Demo Root CA.
@@ -68,7 +68,7 @@ It enables ${branding} to run immediately after unzipping the distribution.
 The keys and certificates for the ${ddf-branding} Demo Root CA are included as part of the ${branding} distribution.
 This entry must be removed from the truststore before ${branding} can operate securely.
 
-====== Creating New Server Keystore Entry with the CertNew Scripts
+===== Creating New Server Keystore Entry with the CertNew Scripts
 
 To create a private key and certificate signed by the Demo Certificate Authority, use the provided scripts.
 To use the scripts, run them out of the `<INSTALL_HOME>/etc/certs` directory.
@@ -78,31 +78,53 @@ To use the scripts, run them out of the `<INSTALL_HOME>/etc/certs` directory.
 
 For *NIX, use the `CertNew.sh` script.
 
-`sh CertNew.sh <FQDN>`
+`sh CertNew.sh [-cn <cn>|-dn <dn>] [-san <tag:name,tag:name,...>]`
 
-Alternatively, a distinguished name can be provided to the script with a comma-delimited string.
+where:
 
-`sh CertNew.sh -dn "c=US, st=California, o=Yoyodyne, l=San Narciso, cn=<FQDN>"`
+* `<cn>` represents a fully qualified common name (e.g. "<FQDN>", where <FQDN> could be something like cluster.yoyo.com)
+* `<dn>` represents a distinguished name as a comma-delimited string (e.g. "c=US, st=California, o=Yoyodyne, l=San Narciso, cn=<FQDN>")
+* `<tag:name,tag:name,...>` represents optional subject alternative names to be added to the generated certificate (e.g. "DNS:<FQDN>,DNS:node1.<FQDN>,DNS:node2.<FQDN>"). The format for subject alternative names is similar to the OpenSSL X509 configuration format. Supported tags are:
+** `email` - email subject
+** `URI` - uniformed resource identifier
+** `RID` - registered id
+** `DNS` - hostname
+** `IP` - ip address (V4 or V6)
+** `dirName` - directory name
+
+If no arguments specified on the command line, `hostname -f` is used as the common-name for the certificate.
 ****
 
 .Windows Demo CA Script
 ****
 For Windows, use the `CertNew.cmd` script.
 
-`CertNew -cn <FQDN>`
+`CertNew (-cn <cn>|-dn <dn>) [-san "<tag:name,tag:name,...>"]`
 
-Alternatively, a distinguished name can be provided to the script with a comma-delimited string.
+where:
 
-`CertNew -dn "c=US, st=California, o=Yoyodyne, l=San Narciso, cn=<FQDN>"`
+* `<cn>` represents a fully qualified common name (e.g. "<FQDN>", where <FQDN> could be something like cluster.yoyo.com)
+* `<dn>` represents a distinguished name as a comma-delimited string (e.g. "c=US, st=California, o=Yoyodyne, l=San Narciso, cn=<FQDN>")
+* `<tag:name,tag:name,...>` represents optional subject alternative names to be added to the generated certificate (e.g. "DNS:<FQDN>,DNS:node1.<FQDN>,DNS:node2.<FQDN>"). The format for subject alternative names is similar to the OpenSSL X509 configuration format. Supported tags are:
+** `email` - email subject
+** `URI` - uniformed resource identifier
+** `RID` - registered id
+** `DNS` - hostname
+** `IP` - ip address (V4 or V6)
+** `dirName` - directory name
+
 ****
 
 The `CertNew` scripts:
 
 * Create a new entry in the server keystore.
 * Use the hostname as the fully qualified domain name (FQDN) when creating the certificate.
+* Adds the specified subject alternative names if any.
 * Use the Demo Certificate Authority to sign the certificate so that it will be trusted by the default configuration.
 
 To install a certificate signed by a different Certificate Authority, see <<_managing_keystores,Managing Keystores>>.
+
+Once the certificate has been updated the system user and `org.codice.ddf.system.hostname` property will also need to be updated to match the FQDN. Replace localhost with the FQDN in `<INSTALL_HOME>/etc/users.properties`, `<INSTALL_HOME>/etc/users.attributes` and `<INSTALL_HOME>/etc/system.properties`.
 
 Finally, restart the ${branding} instance.
 Browse the ${admin-console} at \https://<FQDN>:8993/admin to test changes.
@@ -130,14 +152,14 @@ For example:
 [NOTE]
 ====
 This step is not required for a hardened system.
-If testing ${branding} with a
+If testing ${branding} with
 
-* The default password in `config.ldif` for `serverKeystore.jks` is `changeit`. This needs to be modified.
+* The default password in `system.properties` for `serverKeystore.jks` is `changeit`. This needs to be modified.
 ** `ds-cfg-key-store-file: ../../keystores/serverKeystore.jks`
 ** `ds-cfg-key-store-type: JKS`
 ** `ds-cfg-key-store-pin: password`
 ** `cn: JKS`
-* The default password in `config.ldif` for `serverTruststore.jks` is `changeit`.  This needs to be modified.
+* The default password in `system.properties` for `serverTruststore.jks` is `changeit`.  This needs to be modified.
 ** `ds-cfg-trust-store-file: ../../keystores/serverTruststore.jks`
 ** `ds-cfg-trust-store-pin: password`
 ** `cn: JKS`
