@@ -17,7 +17,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,15 +30,16 @@ import java.util.stream.Collectors;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
+import javax.xml.namespace.QName;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.cxf.common.util.CollectionUtils;
 import org.codice.ddf.spatial.ogc.csw.catalog.common.CswConstants;
 import org.codice.ddf.spatial.ogc.csw.catalog.common.CswException;
 import org.codice.ddf.spatial.ogc.csw.catalog.common.PropertyIsFuzzyFunction;
 import org.codice.ddf.spatial.ogc.csw.catalog.common.converter.DefaultCswRecordMap;
-import org.codice.ddf.spatial.ogc.csw.catalog.endpoint.mappings.CswRecordMapperFilterVisitor;
+import org.codice.ddf.spatial.ogc.csw.catalog.endpoint.mappings.SourceIdFilterVisitor;
 import org.geotools.feature.NameImpl;
 import org.geotools.filter.AttributeExpressionImpl;
 import org.geotools.filter.FilterFactoryImpl;
@@ -52,7 +56,6 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import ddf.catalog.data.AttributeRegistry;
-import ddf.catalog.data.MetacardType;
 import ddf.catalog.data.types.Core;
 import ddf.catalog.filter.FilterAdapter;
 import ddf.catalog.filter.FilterBuilder;
@@ -82,26 +85,23 @@ public class CswQueryFactory {
     private static final Configuration PARSER_CONFIG =
             new org.geotools.filter.v1_1.OGCConfiguration();
 
+    private static final String EXT_SORT_BY = "additional.sort.bys";
+
     private static JAXBContext jaxBContext;
 
     private final FilterBuilder builder;
 
     private final FilterAdapter adapter;
 
-    private MetacardType metacardType;
-
     private Map<String, Set<String>> schemaToTagsMapping = new HashMap<>();
-
-    private List<MetacardType> metacardTypes;
 
     private AttributeRegistry attributeRegistry;
 
-    public CswQueryFactory(FilterBuilder filterBuilder, FilterAdapter adapter,
-            MetacardType metacardType, List<MetacardType> metacardTypes) {
+    private QueryFilterTransformerProvider queryFilterTransformerProvider;
+
+    public CswQueryFactory(FilterBuilder filterBuilder, FilterAdapter adapter) {
         this.builder = filterBuilder;
         this.adapter = adapter;
-        this.metacardType = metacardType;
-        this.metacardTypes = metacardTypes;
     }
 
     public static synchronized JAXBContext getJaxBContext() throws JAXBException {
@@ -131,9 +131,14 @@ public class CswQueryFactory {
         QueryType query = (QueryType) request.getAbstractQuery()
                 .getValue();
 
-        CswRecordMapperFilterVisitor filterVisitor = buildFilter(query.getConstraint());
-        QueryImpl frameworkQuery = new QueryImpl(filterVisitor.getVisitedFilter());
-        frameworkQuery.setSortBy(buildSort(query.getSortBy()));
+        Filter filter = buildFilter(query.getConstraint());
+        QueryImpl frameworkQuery = new QueryImpl(filter);
+        SortBy[] sortBys = buildSort(query.getSortBy());
+        SortBy[] extSortBys = null;
+        if (sortBys != null && sortBys.length > 0) {
+            frameworkQuery.setSortBy(sortBys[0]);
+            extSortBys = Arrays.copyOfRange(sortBys, 1, sortBys.length);
+        }
 
         if (ResultType.HITS.equals(request.getResultType()) || request.getMaxRecords()
                 .intValue() < 1) {
@@ -145,34 +150,32 @@ public class CswQueryFactory {
             frameworkQuery.setPageSize(request.getMaxRecords()
                     .intValue());
         }
-        QueryRequest queryRequest;
-        boolean isDistributed = request.getDistributedSearch() != null && (
+        boolean isEnterprise = request.getDistributedSearch() != null && (
                 request.getDistributedSearch()
                         .getHopCount()
                         .longValue() > 1);
 
-        if (isDistributed && CollectionUtils.isEmpty(filterVisitor.getSourceIds())) {
-            queryRequest = new QueryRequestImpl(frameworkQuery, true);
-        } else if (isDistributed && !CollectionUtils.isEmpty(filterVisitor.getSourceIds())) {
-            queryRequest = new QueryRequestImpl(frameworkQuery, filterVisitor.getSourceIds());
-        } else {
-            queryRequest = new QueryRequestImpl(frameworkQuery, false);
+        Map<String, Serializable> properties = new HashMap<>();
+        if (extSortBys != null && extSortBys.length > 0) {
+            properties.put(EXT_SORT_BY, extSortBys);
         }
-        return queryRequest;
+
+        QueryRequest queryRequest = getQueryRequest(frameworkQuery, isEnterprise, properties);
+        return transformQuery(queryRequest, query.getTypeNames());
     }
 
-    public QueryRequest getQuery(QueryConstraintType constraint) throws CswException {
-        Filter filter = buildFilter(constraint).getVisitedFilter();
-        QueryImpl query = new QueryImpl(filter);
-        query.setPageSize(-1);
-
-        return new QueryRequestImpl(query);
-    }
-
-    private CswRecordMapperFilterVisitor buildFilter(QueryConstraintType constraint)
+    public QueryRequest getQuery(QueryConstraintType constraint, String typeName)
             throws CswException {
-        CswRecordMapperFilterVisitor visitor = new CswRecordMapperFilterVisitor(metacardType,
-                metacardTypes);
+        Filter filter = buildFilter(constraint);
+        QueryImpl query = new QueryImpl(filter);
+
+        QueryRequest request = new QueryRequestImpl(query);
+
+        QName namespace = QName.valueOf(typeName);
+        return transformQuery(request, Collections.singletonList(namespace));
+    }
+
+    private Filter buildFilter(QueryConstraintType constraint) throws CswException {
         Filter filter = null;
         if (constraint != null) {
             if (constraint.isSetCqlText()) {
@@ -200,15 +203,7 @@ public class CswQueryFactory {
                     null);
         }
 
-        filter = transformCustomFunctionToFilter(filter);
-
-        try {
-            visitor.setVisitedFilter((Filter) filter.accept(visitor, new FilterFactoryImpl()));
-        } catch (UnsupportedOperationException ose) {
-            throw new CswException(ose.getMessage(), CswConstants.INVALID_PARAMETER_VALUE, null);
-        }
-
-        return visitor;
+        return transformCustomFunctionToFilter(filter);
     }
 
     /**
@@ -237,47 +232,54 @@ public class CswQueryFactory {
         return filter;
     }
 
-    private SortBy buildSort(SortByType sort) throws CswException {
+    private SortBy[] buildSort(SortByType sort) throws CswException {
         if (sort == null || sort.getSortProperty() == null) {
             return null;
         }
 
         SortBy[] sortByArr = parseSortBy(sort);
-
-        if (sortByArr.length > 1) {
-            LOGGER.debug("Query request has multiple sort criteria, only primary will be used");
-        }
-
-        SortBy sortBy = sortByArr[0];
-
-        if (sortBy.getPropertyName() == null) {
-            LOGGER.debug("No property name in primary sort criteria");
+        if (sortByArr == null || sortByArr.length == 0) {
             return null;
         }
 
+        List<SortBy> sortBys = new ArrayList<>(sortByArr.length);
 
-        if (!attributeRegistry.lookup(sortBy.getPropertyName()
-                .getPropertyName())
-                .isPresent()
-                && !DefaultCswRecordMap.hasDefaultMetacardFieldForPrefixedString(sortBy.getPropertyName()
-                        .getPropertyName(),
-                sortBy.getPropertyName()
-                        .getNamespaceContext())) {
-            throw new CswException("Property " + sortBy.getPropertyName()
-                    .getPropertyName() + " is not a valid SortBy Field",
-                    CswConstants.INVALID_PARAMETER_VALUE,
-                    "SortProperty");
+        for (SortBy cswSortBy : sortByArr) {
+            if (cswSortBy.getPropertyName() == null) {
+                LOGGER.debug("No property name in primary sort criteria");
+                return null;
+            }
+
+            if (cswSortBy.getPropertyName() != null
+                    && !attributeRegistry.lookup(cswSortBy.getPropertyName()
+                    .getPropertyName())
+                    .isPresent() && !DefaultCswRecordMap.hasDefaultMetacardFieldForPrefixedString(
+                    cswSortBy.getPropertyName()
+                            .getPropertyName(),
+                    cswSortBy.getPropertyName()
+                            .getNamespaceContext())) {
+                LOGGER.debug("Property {} is not a valid SortBy Field",
+                        cswSortBy.getPropertyName()
+                                .getPropertyName());
+                continue;
+            }
+
+            String name =
+                    DefaultCswRecordMap.getDefaultMetacardFieldForPrefixedString(cswSortBy.getPropertyName()
+                                    .getPropertyName(),
+                            cswSortBy.getPropertyName()
+                                    .getNamespaceContext());
+
+            PropertyName propName = new AttributeExpressionImpl(new NameImpl(name));
+            SortBy sortBy = new SortByImpl(propName, cswSortBy.getSortOrder());
+            sortBys.add(sortBy);
         }
 
-        String name =
-                DefaultCswRecordMap.getDefaultMetacardFieldForPrefixedString(sortBy.getPropertyName()
-                                .getPropertyName(),
-                        sortBy.getPropertyName()
-                                .getNamespaceContext());
+        if (sortBys.isEmpty()) {
+            return null;
+        }
 
-        PropertyName propName = new AttributeExpressionImpl(new NameImpl(name));
-
-        return new SortByImpl(propName, sortBy.getSortOrder());
+        return sortBys.toArray(new SortBy[0]);
     }
 
     private SortBy[] parseSortBy(SortByType sortByType) throws CswException {
@@ -325,6 +327,39 @@ public class CswQueryFactory {
         return (Filter) parseJaxB(filterElement);
     }
 
+    private QueryRequest transformQuery(QueryRequest request, List<QName> typeNames) {
+        QueryRequest result = request;
+        for (QName typeName : typeNames) {
+            final QueryRequest temp = result;
+            result = queryFilterTransformerProvider.getTransformer(typeName)
+                    .map(it -> it.transform(temp, null))
+                    .orElse(result);
+        }
+
+        return result;
+    }
+
+    private QueryRequest getQueryRequest(Query query, boolean isEnterprise,
+            Map<String, Serializable> properties) {
+        QueryRequest request;
+
+        SourceIdFilterVisitor sourceIdFilterVisitor = new SourceIdFilterVisitor();
+        query.accept(sourceIdFilterVisitor, new FilterFactoryImpl());
+
+        if (isEnterprise && CollectionUtils.isEmpty(sourceIdFilterVisitor.getSourceIds())) {
+            request = new QueryRequestImpl(query, true, null, properties);
+        } else if (isEnterprise
+                && CollectionUtils.isNotEmpty(sourceIdFilterVisitor.getSourceIds())) {
+            request = new QueryRequestImpl(query,
+                    false,
+                    sourceIdFilterVisitor.getSourceIds(),
+                    properties);
+        } else {
+            request = new QueryRequestImpl(query, false, null, properties);
+        }
+        return request;
+    }
+
     public QueryRequest updateQueryRequestTags(QueryRequest queryRequest, String schema)
             throws UnsupportedQueryException {
         QueryRequest newRequest = queryRequest;
@@ -365,5 +400,10 @@ public class CswQueryFactory {
 
     public void setAttributeRegistry(AttributeRegistry attributeRegistry) {
         this.attributeRegistry = attributeRegistry;
+    }
+
+    public void setQueryFilterTransformerProvider(
+            QueryFilterTransformerProvider queryFilterTransformerProvider) {
+        this.queryFilterTransformerProvider = queryFilterTransformerProvider;
     }
 }

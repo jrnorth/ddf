@@ -50,6 +50,8 @@ public class ConfigurationApplication implements SparkApplication {
 
     public static final String URL = "url";
 
+    public static final String PROXY_ENABLED = "proxyEnabled";
+
     public static final String ENDPOINT_NAME = "catalog";
 
     public static final Factory NEW_SET_FACTORY = TreeSet::new;
@@ -60,7 +62,7 @@ public class ConfigurationApplication implements SparkApplication {
 
     private List imageryProviders = new ArrayList<>();
 
-    private List<Map> proxiedImageryProviders = new ArrayList<>();
+    private List<Map> imageryProviderUrlMaps = new ArrayList<>();
 
     private List<Map<String, Object>> imageryProviderMaps = new ArrayList<>();
 
@@ -123,6 +125,8 @@ public class ConfigurationApplication implements SparkApplication {
     public List<String> getReadOnly() {
         return readOnly;
     }
+
+    private boolean disableLocalCatalog = false;
 
     private boolean queryFeedbackEnabled = false;
 
@@ -211,7 +215,7 @@ public class ConfigurationApplication implements SparkApplication {
     }
 
     private List<Map> getConfigImageryProviders() {
-        if (proxiedImageryProviders.isEmpty()) {
+        if (imageryProviderUrlMaps.isEmpty()) {
             // @formatter:off
             return Collections.singletonList(ImmutableMap.of(
                     "type", "SI",
@@ -221,7 +225,7 @@ public class ConfigurationApplication implements SparkApplication {
                     "alpha", 1));
             // @formatter:on
         } else {
-            return proxiedImageryProviders;
+            return imageryProviderUrlMaps;
         }
     }
 
@@ -253,6 +257,7 @@ public class ConfigurationApplication implements SparkApplication {
         config.put("scheduleFrequencyList", scheduleFrequencyList);
         config.put("isEditingAllowed", isEditingAllowed);
         config.put("isCacheDisabled", isCacheDisabled);
+        config.put("disableLocalCatalog", disableLocalCatalog);
         config.put("queryFeedbackEnabled", queryFeedbackEnabled);
         config.put("queryFeedbackEmailSubjectTemplate", queryFeedbackEmailSubjectTemplate);
         config.put("queryFeedbackEmailBodyTemplate", queryFeedbackEmailBodyTemplate);
@@ -316,8 +321,8 @@ public class ConfigurationApplication implements SparkApplication {
         this.timeout = timeout;
     }
 
-    public List<Map> getProxiedImageryProviders() {
-        return proxiedImageryProviders;
+    public List<Map> getImageryProviderUrlMaps() {
+        return imageryProviderUrlMaps;
     }
 
     public String getImageryProviders() {
@@ -394,12 +399,23 @@ public class ConfigurationApplication implements SparkApplication {
                     .toString());
         }
         startImageryEndpoints(imageryProvidersToStart);
-        proxiedImageryProviders.clear();
+        imageryProviderUrlMaps.clear();
         for (Map<String, Object> newImageryProvider : newImageryProviders) {
             HashMap<String, Object> map = new HashMap<>(newImageryProvider);
-            map.put(URL, SERVLET_PATH + "/" + urlToProxyMap.get(newImageryProvider.get(URL)
-                    .toString()));
-            proxiedImageryProviders.add(map);
+            String imageryProviderUrl = newImageryProvider.get(URL).toString();
+            boolean proxyEnabled = true;
+            Object proxyEnabledProp = newImageryProvider.get(PROXY_ENABLED);
+            if (proxyEnabledProp instanceof Boolean) {
+                proxyEnabled = (Boolean) proxyEnabledProp;
+            }
+
+            if (proxyEnabled) {
+                map.put(URL,
+                        SERVLET_PATH + "/" + urlToProxyMap.get(imageryProviderUrl));
+            } else {
+                map.put(URL, imageryProviderUrl);
+            }
+            imageryProviderUrlMaps.add(map);
         }
         imageryProviderMaps = newImageryProviders;
     }
@@ -600,6 +616,14 @@ public class ConfigurationApplication implements SparkApplication {
 
     public void setExternalAuthentication(Boolean isExternalAuthentication) {
         this.isExternalAuthentication = isExternalAuthentication;
+    }
+
+    public boolean isDisableLocalCatalog() {
+        return disableLocalCatalog;
+    }
+
+    public void setDisableLocalCatalog(boolean disableLocalCatalog) {
+        this.disableLocalCatalog = disableLocalCatalog;
     }
 
     public void setQueryFeedbackEnabled(boolean queryFeedbackEnabled) {

@@ -194,10 +194,10 @@ public class CrlCheckerTest {
         String urlPath = "http://example.com/";
         crlChecker.setCrlLocation(urlPath);
 
-        //Cert should pass because a crl should not be set
+        //Cert should fail because existing crl was maintained
         String certificateString = getRevokedCert();
         X509Certificate[] certs = extractX509CertsFromString(certificateString);
-        assertThat(crlChecker.passesCrlCheck(certs), equalTo(true));
+        assertThat(crlChecker.passesCrlCheck(certs), equalTo(false));
     }
 
     @Test
@@ -210,20 +210,20 @@ public class CrlCheckerTest {
         String urlPath = "http://example.com/nocrl.pem";
         crlChecker.setCrlLocation(urlPath);
 
-        //Cert should pass because a crl should not be set
+        //Cert should fail because the existing crl was maintained
         String certificateString = getRevokedCert();
         X509Certificate[] certs = extractX509CertsFromString(certificateString);
-        assertThat(crlChecker.passesCrlCheck(certs), equalTo(true));
+        assertThat(crlChecker.passesCrlCheck(certs), equalTo(false));
     }
 
     private CrlChecker getConfiguredCrlChecker(String encryptionProperties) {
         CrlChecker crlChecker = new CrlChecker();
         Properties prop = crlChecker.loadProperties(encryptionProperties);
-        String crlPropertyValue = prop.getProperty(crlChecker.CRL_PROPERTY_KEY);
+        String crlPropertyValue = prop.getProperty(CrlChecker.CRL_PROPERTY_KEY);
 
         // Prevents a null pointer in the unit tests when appending the unit test's getResource path
         if (crlPropertyValue == null) {
-            crlChecker.setCrlLocation(crlPropertyValue);
+            crlChecker.setCrlLocation(null);
         } else {
             URL url = crlChecker.urlFromPath(crlPropertyValue);
             String crlPath;
@@ -232,7 +232,7 @@ public class CrlCheckerTest {
             if (url != null) {
                 crlPath = crlPropertyValue;
             } else {
-                String crlRelativePath = "/" + prop.getProperty(crlChecker.CRL_PROPERTY_KEY);
+                String crlRelativePath = "/" + prop.getProperty(CrlChecker.CRL_PROPERTY_KEY);
                 crlPath = PKIHandlerTest.class.getResource(crlRelativePath)
                         .getPath();
             }
