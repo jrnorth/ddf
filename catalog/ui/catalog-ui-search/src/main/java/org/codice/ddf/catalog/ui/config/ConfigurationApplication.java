@@ -34,6 +34,9 @@ import org.apache.commons.collections.Factory;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.boon.json.JsonFactory;
+import org.boon.json.JsonParserFactory;
+import org.boon.json.JsonSerializerFactory;
+import org.boon.json.ObjectMapper;
 import org.codice.ddf.branding.BrandingPlugin;
 import org.codice.proxy.http.HttpProxyService;
 import org.slf4j.Logger;
@@ -126,6 +129,10 @@ public class ConfigurationApplication implements SparkApplication {
         return readOnly;
     }
 
+    private ObjectMapper objectMapper = JsonFactory.create(new JsonParserFactory(),
+            new JsonSerializerFactory().includeNulls()
+                    .includeEmpty());
+
     private boolean disableLocalCatalog = false;
 
     private boolean queryFeedbackEnabled = false;
@@ -136,6 +143,8 @@ public class ConfigurationApplication implements SparkApplication {
 
     private String queryFeedbackEmailDestination;
 
+    private int maximumUploadSize = 1_048_576;
+
     public List<String> getAttributeAliases() {
         return attributeAliases.entrySet()
                 .stream()
@@ -145,6 +154,13 @@ public class ConfigurationApplication implements SparkApplication {
 
     public List<String> getHiddenAttributes() {
         return hiddenAttributes;
+    }
+
+    public List<String> getAttributeDescriptions() {
+        return attributeDescriptions.entrySet()
+                .stream()
+                .map(pair -> String.format("%s=%s", pair.getKey(), pair.getValue()))
+                .collect(Collectors.toList());
     }
 
     public void setScheduleFrequencyList(List<Long> scheduleFrequencyList) {
@@ -163,14 +179,24 @@ public class ConfigurationApplication implements SparkApplication {
         this.resultShow = resultShow;
     }
 
+    public void setMaximumUploadSize(int size) {
+        this.maximumUploadSize = size;
+    }
+
+    public int getMaximumUploadSize() {
+        return maximumUploadSize;
+    }
+
     public void setAttributeAliases(List<String> attributeAliases) {
-        this.attributeAliases = attributeAliases.stream()
-                .map(str -> str.split("="))
-                .collect(Collectors.toMap(list -> list[0].trim(), list -> list[1].trim()));
+        this.attributeAliases = parseAttributeAndValuePairs(attributeAliases);
     }
 
     public void setHiddenAttributes(List<String> hiddenAttributes) {
         this.hiddenAttributes = hiddenAttributes;
+    }
+
+    public void setAttributeDescriptions(List<String> attributeDescriptions) {
+        this.attributeDescriptions = parseAttributeAndValuePairs(attributeDescriptions);
     }
 
     private List<String> readOnly = ImmutableList.of("checksum",
@@ -189,6 +215,8 @@ public class ConfigurationApplication implements SparkApplication {
     private Map<String, String> attributeAliases = Collections.emptyMap();
 
     private List<String> hiddenAttributes = Collections.emptyList();
+
+    private Map<String, String> attributeDescriptions = Collections.emptyMap();
 
     private int sourcePollInterval = 60000;
 
@@ -252,6 +280,7 @@ public class ConfigurationApplication implements SparkApplication {
         config.put("summaryShow", summaryShow);
         config.put("resultShow", resultShow);
         config.put("hiddenAttributes", hiddenAttributes);
+        config.put("attributeDescriptions", attributeDescriptions);
         config.put("attributeAliases", attributeAliases);
         config.put("sourcePollInterval", sourcePollInterval);
         config.put("scheduleFrequencyList", scheduleFrequencyList);
@@ -268,14 +297,13 @@ public class ConfigurationApplication implements SparkApplication {
 
     @Override
     public void init() {
-        get("/config", (req, res) -> this.getConfig(), JsonFactory.create()::toJson);
+        get("/config", (req, res) -> this.getConfig(), objectMapper::toJson);
 
         exception(Exception.class, (ex, req, res) -> {
             res.status(500);
             res.header(CONTENT_TYPE, APPLICATION_JSON);
             LOGGER.warn("Failed to serve request.", ex);
-            res.body(JsonFactory.create()
-                    .toJson(ImmutableMap.of("message", ex.getMessage())));
+            res.body(objectMapper.toJson(ImmutableMap.of("message", ex.getMessage())));
         });
     }
 
@@ -402,7 +430,8 @@ public class ConfigurationApplication implements SparkApplication {
         imageryProviderUrlMaps.clear();
         for (Map<String, Object> newImageryProvider : newImageryProviders) {
             HashMap<String, Object> map = new HashMap<>(newImageryProvider);
-            String imageryProviderUrl = newImageryProvider.get(URL).toString();
+            String imageryProviderUrl = newImageryProvider.get(URL)
+                    .toString();
             boolean proxyEnabled = true;
             Object proxyEnabledProp = newImageryProvider.get(PROXY_ENABLED);
             if (proxyEnabledProp instanceof Boolean) {
@@ -410,8 +439,7 @@ public class ConfigurationApplication implements SparkApplication {
             }
 
             if (proxyEnabled) {
-                map.put(URL,
-                        SERVLET_PATH + "/" + urlToProxyMap.get(imageryProviderUrl));
+                map.put(URL, SERVLET_PATH + "/" + urlToProxyMap.get(imageryProviderUrl));
             } else {
                 map.put(URL, imageryProviderUrl);
             }
@@ -487,6 +515,19 @@ public class ConfigurationApplication implements SparkApplication {
         return config;
     }
 
+    private Map<String, String> parseAttributeAndValuePairs(List<String> pairs) {
+        return pairs.stream()
+            .map(str -> str.split("=", 2))
+            .filter((list) -> {
+                if (list.length <= 1) {
+                    LOGGER.debug("Filtered out invalid attribute/value pair: {}", list[0]);
+                    return false;
+                }
+                return true;
+            })
+            .collect(Collectors.toMap(list -> list[0].trim(), list -> list[1].trim()));
+    }
+
     public HttpProxyService getHttpProxy() {
         return httpProxy;
     }
@@ -507,7 +548,7 @@ public class ConfigurationApplication implements SparkApplication {
         return resultPageSize;
     }
 
-    public void setResultPageSize(Integer resultPageSize){
+    public void setResultPageSize(Integer resultPageSize) {
         this.resultPageSize = resultPageSize;
     }
 
@@ -551,7 +592,7 @@ public class ConfigurationApplication implements SparkApplication {
         return this.isEditingAllowed;
     }
 
-    public void setIsEditingAllowed(Boolean isEditingAllowed){
+    public void setIsEditingAllowed(Boolean isEditingAllowed) {
         this.isEditingAllowed = isEditingAllowed;
     }
 
@@ -653,4 +694,5 @@ public class ConfigurationApplication implements SparkApplication {
     public void setQueryFeedbackEmailDestination(String queryFeedbackEmailDestination) {
         this.queryFeedbackEmailDestination = queryFeedbackEmailDestination;
     }
+
 }
