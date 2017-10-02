@@ -32,7 +32,6 @@ var store = require('js/store');
 var user = require('component/singletons/user-instance');
 var VisualizationDropdown = require('component/dropdown/visualization-selector/dropdown.visualization-selector.view');
 var DropdownModel = require('component/dropdown/dropdown');
-var lessVariables = require('js/LessVariables');
 
 var defaultGoldenLayoutContent = {
     content: [{
@@ -50,17 +49,19 @@ var defaultGoldenLayoutContent = {
 };
 
 function getGoldenLayoutSettings(){
-    var minimumScreenSize = parseFloat(lessVariables.get('@minimumScreenSize'));
+    var minimumScreenSize = 20; //20 rem or 320px at base font size
     var fontSize = parseInt(user.get('user').get('preferences').get('fontSize'));
+    var theme = user.get('user').get('preferences').get('theme').getTheme();
     return {
         settings: {
             showPopoutIcon: false,
+            responsiveMode: 'none'
         },
         dimensions: {
-            borderWidth: 0.5 * parseFloat(lessVariables.get('@minimumSpacing')) * fontSize,
+            borderWidth: 0.5 * parseFloat(theme.minimumSpacing) * fontSize,
             minItemHeight: minimumScreenSize * fontSize,
             minItemWidth: minimumScreenSize * fontSize,
-            headerHeight: parseFloat(lessVariables.get('@minimumButtonSize')) * fontSize,
+            headerHeight: parseFloat(theme.minimumButtonSize) * fontSize,
             dragProxyWidth: 300,
             dragProxyHeight: 200
         }
@@ -178,7 +179,7 @@ module.exports = Marionette.LayoutView.extend({
         this.goldenLayout.init();
     },
     getGoldenLayoutConfig: function(){
-        var currentConfig = user.get('user').get('preferences').get('goldenLayout');
+        var currentConfig = user.get('user').get('preferences').get(this.options.configName);
         if (currentConfig === undefined){
             currentConfig = defaultGoldenLayoutContent;
         }
@@ -217,13 +218,13 @@ module.exports = Marionette.LayoutView.extend({
         if (this.goldenLayout.isInitialised) {
             var currentConfig = this.goldenLayout.toConfig();
             removeEphemeralState(currentConfig);
-            user.get('user').get('preferences').set('goldenLayout', currentConfig);
+            user.get('user').get('preferences').set(this.options.configName, currentConfig);
             wreqr.vent.trigger('resize');
             //do not add a window resize event, that will cause an endless loop.  If you need something like that, listen to the wreqr resize event.
         }
     },
     setupListeners: function () {
-        this.listenTo(lessVariables, 'change:initialized', this.updateFontSize);
+        this.listenTo(user.get('user').get('preferences'), 'change:theme', this.updateFontSize);
         this.listenTo(user.get('user').get('preferences'), 'change:fontSize', this.updateFontSize);
         this.listenForResize();
     },

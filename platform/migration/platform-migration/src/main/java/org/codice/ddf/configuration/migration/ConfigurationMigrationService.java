@@ -1,48 +1,78 @@
 /**
  * Copyright (c) Codice Foundation
- * <p>
- * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
- * General Public License as published by the Free Software Foundation, either version 3 of the
- * License, or any later version.
- * <p>
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
- * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
- * is distributed along with this program and can be found at
+ *
+ * <p>This is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software Foundation, either version 3 of
+ * the License, or any later version.
+ *
+ * <p>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details. A copy of the GNU Lesser General Public
+ * License is distributed along with this program and can be found at
  * <http://www.gnu.org/licenses/lgpl.html>.
  */
-
 package org.codice.ddf.configuration.migration;
 
 import java.nio.file.Path;
-import java.util.Collection;
-
-import javax.validation.constraints.NotNull;
-
-import org.codice.ddf.migration.MigrationException;
-import org.codice.ddf.migration.MigrationWarning;
-import org.codice.ddf.platform.services.common.Describable;
+import java.util.function.Consumer;
+import org.codice.ddf.migration.MigrationMessage;
+import org.codice.ddf.migration.MigrationReport;
 
 /**
- * Service that provides a way to migrate configurations from one instance of DDF to another.  This
+ * Service that provides a way to migrate configurations from one instance of DDF to another. This
  * includes exporting and importing of configurations.
+ *
+ * <p><b> This code is experimental. While this interface is functional and tested, it may change or
+ * be removed in a future version of the library. </b>
  */
 public interface ConfigurationMigrationService {
+  /**
+   * Exports configurations to the specified path.
+   *
+   * @param exportDirectory path to export configurations to
+   * @return a migration report for the export operation
+   * @throws IllegalArgumentException if <code>exportDirectory</code> is <code>null</code>
+   */
+  MigrationReport doExport(Path exportDirectory);
 
-    /**
-     * Exports configurations to specified path
-     *
-     * @param exportDirectory path to export configurations
-     * @return MigrationWarning returned if there were non-fatal issues when exporting
-     * @throws MigrationException thrown if one or more Configurations couldn't be exported
-     */
-    Collection<MigrationWarning> export(@NotNull Path exportDirectory) throws MigrationException;
+  /**
+   * Exports configurations to the specified path.
+   *
+   * <p><i>Note:</i> This version of the <code>doExport()</code> method will callback the provided
+   * consumer every time a migration message is recorded. The message will also be recorded with the
+   * report returned at the completion of the operation.
+   *
+   * @param exportDirectory path to export configurations to
+   * @param consumer a consumer to call whenever a new migration message is recorded during the
+   *     operation
+   * @return a migration report for the export operation
+   * @throws IllegalArgumentException if <code>exportDirectory</code> or <code>consumer</code> is
+   *     <code>null</code>
+   */
+  MigrationReport doExport(Path exportDirectory, Consumer<MigrationMessage> consumer);
 
-    /**
-     * Gets detailed information about all the {@link org.codice.ddf.migration.DataMigratable}
-     * services currently registered.
-     *
-     * @return A collection of type {@link Describable}.
-     */
-    Collection<Describable> getOptionalMigratableInfo();
+  /**
+   * Imports configurations from the specified path.
+   *
+   * @param exportDirectory path to import configurations from
+   * @return a migration report for the import operation
+   * @throws IllegalArgumentException if <code>exportDirectory</code> is <code>null</code>
+   */
+  MigrationReport doImport(Path exportDirectory);
+
+  /**
+   * Imports configurations from the specified path.
+   *
+   * <p><i>Note:</i> This version of the <code>doImport()</code> method will callback the provided
+   * consumer every time a migration message is recorded. The message will also be recorded with the
+   * report returned at the completion of the operation.
+   *
+   * @param exportDirectory path to import configurations from
+   * @param consumer a consumer to call whenever a new migration message is recorded during the
+   *     operation
+   * @return a migration report for the import operation
+   * @throws IllegalArgumentException if <code>exportDirectory</code> or <code>consumer</code> is
+   *     <code>null</code>
+   */
+  MigrationReport doImport(Path exportDirectory, Consumer<MigrationMessage> consumer);
 }

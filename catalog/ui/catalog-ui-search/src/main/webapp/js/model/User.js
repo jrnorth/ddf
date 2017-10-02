@@ -22,8 +22,10 @@ define([
     'js/model/UploadBatch',
     'component/announcement',
     'component/blacklist-item/blacklist-item',
+    'moment',
+    'js/model/Theme',
     'backboneassociations'
-], function (_, wreqr, Backbone, properties, Alert, Common, UploadBatch, announcement, BlackListItem) {
+], function (_, wreqr, Backbone, properties, Alert, Common, UploadBatch, announcement, BlackListItem, moment, Theme) {
     'use strict';
 
     var User = {};
@@ -148,7 +150,12 @@ define([
                 uploads: [],
                 fontSize: '16',
                 resultCount: properties.resultCount,
-                goldenLayout: undefined
+                timeFormat: Common.getTimeFormats()['24'],
+                goldenLayout: undefined,
+                goldenLayoutUpload: undefined,
+                goldenLayoutMetacard: undefined,
+                goldenLayoutAlert: undefined,
+                theme: new Theme()
             };
         },
         relations: [
@@ -177,6 +184,11 @@ define([
                 type: Backbone.Many,
                 key: 'resultBlacklist',
                 relatedModel: BlackListItem
+            },
+            {
+                type: Backbone.One,
+                key: 'theme',
+                relatedModel: Theme
             }
         ],
         initialize: function(){
@@ -190,6 +202,9 @@ define([
             this.listenTo(this, 'change:visualization', this.savePreferences);
             this.listenTo(this, 'change:fontSize', this.savePreferences);
             this.listenTo(this, 'change:goldenLayout', this.savePreferences);
+            this.listenTo(this, 'change:goldenLayoutUpload', this.savePreferences);
+            this.listenTo(this, 'change:goldenLayoutMetacard', this.savePreferences);
+            this.listenTo(this, 'change:goldenLayoutAlert', this.savePreferences);
         },
         handleRemove: function(){
             this.savePreferences();
@@ -315,6 +330,9 @@ define([
         },
         getSummaryShown: function(){
             return this.get('user').getSummaryShown();
+        },
+        getUserReadableDate: function(date){
+            return moment(date).format(this.get('user').get('preferences').get('timeFormat'));
         },
         parse: function (body) {
             if (body.isGuest) {

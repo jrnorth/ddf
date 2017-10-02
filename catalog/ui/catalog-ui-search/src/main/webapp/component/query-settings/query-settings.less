@@ -1,46 +1,13 @@
 @{customElementNamespace}query-settings {
   .customElement;
 
-  overflow: auto;
+  overflow: hidden;
 
   .editor-properties {
-    overflow: auto;
-    max-height: ~"calc(100% - 2*@{minimumButtonSize})";
-    padding: 10px 10px;
-  }
-
-  .settings-title,
-  .settings-sorting,
-  .settings-federation,
-  .settings-src {
-
-  }
-
-  .settings-federation {
-  }
-
-  .settings-sorting-field {
-  }
-
-
-
-  .settings-sorting {
-  }
-
-  .settings-src {
-    display: none;
-  }
-
-  .settings-label {
-    color: grey;
-    .is-bold();
-    padding-left: 10px;
-    line-height: @minimumButtonSize;
-    height: @minimumButtonSize;
+    padding: 0px @minimumSpacing @minimumSpacing @minimumSpacing;
   }
 
   .editor-footer {
-    margin-top: 20px;
     height: @minimumButtonSize;
     white-space: nowrap;
     .inlineFix;
@@ -56,9 +23,13 @@
       width: 50%;
       display: none;
     }
-    > .editor-save {
-      width: 50%;
-      display: none;
+    >.editor-save {
+        width: 30%;
+        display: none;
+    }
+    > .editor-saveRun {
+        width: 70%;
+        display: none;
     }
   }
 
@@ -74,14 +45,11 @@
       > .editor-save {
         display: inline-block;
       }
+      > .editor-saveRun {
+        display: inline-block;
+      }
     }
   }
-}
-
-@{customElementNamespace}query-settings.is-specific-sources {
-    .settings-src {
-      display: block;
-    }
 }
 
  .is-small-screen, .is-mobile-screen {

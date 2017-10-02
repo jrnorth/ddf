@@ -83,25 +83,27 @@ module.exports = function OpenlayersMap(insertionElement, selectionInterface, no
     var shapes = [];
     var map = createMap(insertionElement);
     listenToResize();
-    setupDrawingTools(map);
+    var drawingTools = setupDrawingTools(map);
 
     function setupDrawingTools(map) {
-        new DrawBBox.Controller({
-            map: map,
-            notificationEl: notificationEl
-        });
-        new DrawCircle.Controller({
-            map: map,
-            notificationEl: notificationEl
-        });
-        new DrawPolygon.Controller({
-            map: map,
-            notificationEl: notificationEl
-        });
-        new DrawLine.Controller({
-            map: map,
-            notificationEl: notificationEl
-        });
+        return {
+            bbox: new DrawBBox.Controller({
+                map: map,
+                notificationEl: notificationEl
+            }),
+            circle: new DrawCircle.Controller({
+                map: map,
+                notificationEl: notificationEl
+            }),
+            polygon: new DrawPolygon.Controller({
+                map: map,
+                notificationEl: notificationEl,
+            }),
+            line: new DrawLine.Controller({
+                map: map,
+                notificationEl: notificationEl,
+            })
+        };
     }
 
     function resizeMap() {
@@ -117,6 +119,18 @@ module.exports = function OpenlayersMap(insertionElement, selectionInterface, no
     }
 
     var exposedMethods = _.extend({}, Map, {
+        drawLine: function(model){
+            drawingTools.line.draw(model);
+        },
+        drawBbox: function(model){
+            drawingTools.bbox.draw(model);
+        },
+        drawCircle: function(model){
+            drawingTools.circle.draw(model);
+        },
+        drawPolygon: function(model){
+            drawingTools.polygon.draw(model);
+        },
         onLeftClick: function(callback) {
             $(map.getTargetElement()).on('click', function(e) {
                 var boundingRect = map.getTargetElement().getBoundingClientRect();
@@ -329,10 +343,11 @@ module.exports = function OpenlayersMap(insertionElement, selectionInterface, no
 
             feature.setStyle(new Openlayers.style.Style({
                 image: new Openlayers.style.Icon({
-                    img: DrawingUtility.getCircle({
-                        fillColor: options.color
+                    img: DrawingUtility.getCircleWithIcon({
+                        fillColor: options.color,
+                        icon: options.icon,
                     }),
-                    imgSize: [22, 22]
+                    imgSize: [44, 44]
                 })
             }));
 
@@ -455,11 +470,12 @@ module.exports = function OpenlayersMap(insertionElement, selectionInterface, no
                 if (geometryInstance.constructor === Openlayers.geom.Point) {
                     feature.setStyle(new Openlayers.style.Style({
                         image: new Openlayers.style.Icon({
-                            img: DrawingUtility.getCircle({
+                            img: DrawingUtility.getCircleWithIcon({
                                 fillColor: options.color,
-                                strokeColor: options.isSelected ? 'black' : 'white' 
+                                strokeColor: options.isSelected ? 'black' : 'white',
+                                icon: options.icon
                             }),
-                            imgSize: [22, 22]
+                            imgSize: [44, 44]
                         })
                     }));
                 } else if (geometryInstance.constructor === Openlayers.geom.LineString) {

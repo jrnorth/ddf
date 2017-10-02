@@ -11,13 +11,14 @@
  **/
 /*global define*/
 define([
+    'jquery',
     'underscore',
     'backbone',
     'wreqr',
     'js/model/Metacard',
     'js/model/Query',
     'js/model/Workspace'
-], function (_, Backbone, wreqr, Metacard, Query, Workspace) {
+], function ($, _, Backbone, wreqr, Metacard, Query, Workspace) {
 
     return Backbone.AssociatedModel.extend({
         relations: [
@@ -51,6 +52,11 @@ define([
                 key: 'activeSearchResults',
                 relatedModel: Metacard.MetacardResult
             },
+            {
+                type: Backbone.Many,
+                key: 'completeActiveSearchResults',
+                relatedModel: Metacard.MetacardResult
+            }
         ],
         defaults: {
             currentWorkspace: undefined,
@@ -64,7 +70,10 @@ define([
             editing: true,
             activeSearchResults: [],
             activeSearchResultsAttributes: [],
-            drawing: false
+            completeActiveSearchResults: [],
+            completeActiveSearchResultsAttributes: [],
+            drawing: false,
+            drawingModel: undefined
         },
         initialize: function(){
             this.listenTo(wreqr.vent, 'search:drawline', this.turnOnDrawing);
@@ -74,6 +83,23 @@ define([
             this.listenTo(wreqr.vent, 'search:drawstop', this.turnOffDrawing);
             this.listenTo(wreqr.vent, 'search:drawend', this.turnOffDrawing);
             this.listenTo(this.get('activeSearchResults'), 'update add remove reset', this.updateActiveSearchResultsAttributes);
+            this.listenTo(this.get('completeActiveSearchResults'), 'update add remove reset', this.updateActiveSearchResultsFullAttributes);
+        },
+        updateActiveSearchResultsFullAttributes: function() {
+            var availableAttributes = this.get('completeActiveSearchResults').reduce(function(currentAvailable, result) {
+                currentAvailable = _.union(currentAvailable, Object.keys(result.get('metacard').get('properties').toJSON()));
+                return currentAvailable;
+            }, []).sort();
+            this.set('completeActiveSearchResultsAttributes', availableAttributes);
+        },
+        getCompleteActiveSearchResultsAttributes: function(){
+            return this.get('completeActiveSearchResultsAttributes');
+        },
+        getCompleteActiveSearchResults: function(){
+            return this.get('completeActiveSearchResults');
+        },
+        setCompleteActiveSearchResults: function(results){
+            this.get('completeActiveSearchResults').reset(results.models || results);
         },
         updateActiveSearchResultsAttributes: function(){
             var availableAttributes = this.get('activeSearchResults').reduce(function(currentAvailable, result) {
@@ -85,11 +111,14 @@ define([
         getActiveSearchResultsAttributes: function(){
             return this.get('activeSearchResultsAttributes');
         },
-        turnOnDrawing: function(){
+        turnOnDrawing: function(model){
             this.set('drawing', true);
+            this.set('drawingModel', model);
+            $('html').toggleClass('is-drawing', true);
         },
         turnOffDrawing: function(){
             this.set('drawing', false);
+            $('html').toggleClass('is-drawing', false);
         },
         isEditing: function(){
             return this.get('editing');

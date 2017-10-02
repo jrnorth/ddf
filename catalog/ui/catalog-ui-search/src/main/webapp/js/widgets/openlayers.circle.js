@@ -61,6 +61,9 @@ define([
             },
 
             modelToCircle: function (model) {
+                if (model.get('lon') === undefined || model.get('lat') === undefined){
+                    return undefined;
+                }
                 var rectangle = new ol.geom.Circle(translateToOpenlayersCoordinate([model.get('lon'), model.get('lat')]), model.get('radius') / this.map.getView().getProjection().getMetersPerUnit());
                 return rectangle;
             },
@@ -179,7 +182,7 @@ define([
         });
 
         Draw.Controller = Marionette.Controller.extend({
-            enabled: maptype.is2d(),
+            enabled: true,
             initialize: function (options) {
                 this.map = options.map;
                 this.notificationEl = options.notificationEl;

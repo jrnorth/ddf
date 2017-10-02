@@ -4,9 +4,15 @@ pipeline {
     agent none
     options {
         buildDiscarder(logRotator(numToKeepStr:'25'))
+        disableConcurrentBuilds()
+        timestamps()
     }
     triggers {
-        cron('H H(17-19) * * *')
+        /*
+          Restrict nightly builds to master branch, all others will be built on change only.
+          Note: The BRANCH_NAME will only work with a multi-branch job using the github-branch-source
+        */
+        cron(BRANCH_NAME == "master" ? "H H(17-19) * * *" : "")
     }
     environment {
         DOCS = 'distribution/docs'
@@ -50,10 +56,11 @@ pipeline {
                                     checkout scm
                                 }
                                 timeout(time: 3, unit: 'HOURS') {
-                                    withMaven(maven: 'M35', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LARGE_MVN_OPTS} ${LINUX_MVN_RANDOM}', options: [artifactsPublisher(disabled: true), dependenciesFingerprintPublisher(disabled: true, includeScopeCompile: false, includeScopeProvided: false, includeScopeRuntime: false, includeSnapshotVersions: false)]) {
+                                    // TODO: Maven downgraded to work around a linux build issue. Falling back to system java to work around a linux build issue. re-investigate upgrading later
+                                    withMaven(maven: 'Maven 3.3.9', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LARGE_MVN_OPTS} ${LINUX_MVN_RANDOM}', options: [artifactsPublisher(disabled: true), dependenciesFingerprintPublisher(disabled: true, includeScopeCompile: false, includeScopeProvided: false, includeScopeRuntime: false, includeSnapshotVersions: false)]) {
                                         sh 'mvn install -pl !$DOCS -DskipStatic=true -DskipTests=true -T 1C'
                                         sh 'mvn clean install -B -T 1C -pl !$ITESTS -Dgib.enabled=true -Dgib.referenceBranch=/refs/remotes/origin/$CHANGE_TARGET'
-                                        sh 'mvn install -B -Dmaven.test.redirectTestOutputToFile=true -pl $ITESTS -nsu'
+                                        sh 'mvn install -B -pl $ITESTS -nsu'
                                     }
                                 }
                             }
@@ -68,7 +75,7 @@ pipeline {
                                     withMaven(maven: 'M35', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LARGE_MVN_OPTS}', options: [artifactsPublisher(disabled: true), dependenciesFingerprintPublisher(disabled: true, includeScopeCompile: false, includeScopeProvided: false, includeScopeRuntime: false, includeSnapshotVersions: false)]) {
                                         bat 'mvn install -pl !%DOCS% -DskipStatic=true -DskipTests=true -T 1C'
                                         bat 'mvn clean install -B -T 1C -pl !%ITESTS% -Dgib.enabled=true -Dgib.referenceBranch=/refs/remotes/origin/%CHANGE_TARGET%'
-                                        bat 'mvn install -B -Dmaven.test.redirectTestOutputToFile=true -pl %ITESTS% -nsu'
+                                        bat 'mvn install -B -pl %ITESTS% -nsu'
                                     }
                                 }
                             }
@@ -88,9 +95,10 @@ pipeline {
                                         checkout scm
                                     }
                                     timeout(time: 3, unit: 'HOURS') {
-                                        withMaven(maven: 'M35', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LARGE_MVN_OPTS} ${LINUX_MVN_RANDOM}') {
+                                        // TODO: Maven downgraded to work around a linux build issue. Falling back to system java to work around a linux build issue. re-investigate upgrading later
+                                        withMaven(maven: 'Maven 3.3.9', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LARGE_MVN_OPTS} ${LINUX_MVN_RANDOM}') {
                                             sh 'mvn clean install -B -T 1C -pl !$ITESTS'
-                                            sh 'mvn install -B -Dmaven.test.redirectTestOutputToFile=true -pl $ITESTS -nsu'
+                                            sh 'mvn install -B -pl $ITESTS -nsu'
                                         }
                                     }
                                 }
@@ -104,7 +112,7 @@ pipeline {
                                     timeout(time: 3, unit: 'HOURS') {
                                         withMaven(maven: 'M35', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LARGE_MVN_OPTS}') {
                                             bat 'mvn clean install -B -T 1C -pl !%ITESTS%'
-                                            bat 'mvn install -B -Dmaven.test.redirectTestOutputToFile=true -pl %ITESTS% -nsu'
+                                            bat 'mvn install -B -pl %ITESTS% -nsu'
                                         }
                                     }
                                 }
@@ -121,7 +129,14 @@ pipeline {
                                     checkout scm
                                 }
                                 withMaven(maven: 'M35', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LARGE_MVN_OPTS} ${LINUX_MVN_RANDOM}') {
-                                    sh 'mvn install -q -B -Powasp -DskipTests=true -DskipStatic=true -pl !$DOCS'
+                                    script {
+                                        // If this build is not a pull request, run full owasp scan. Otherwise run incremntal scan
+                                        if (env.CHANGE_ID == null) {
+                                            sh 'mvn install -q -B -Powasp -DskipTests=true -DskipStatic=true -pl !$DOCS'
+                                        } else {
+                                            sh 'mvn install -q -B -Powasp -DskipTests=true -DskipStatic=true -pl !$DOCS -Dgib.enabled=true -Dgib.referenceBranch=/refs/remotes/origin/$CHANGE_TARGET'
+                                        }
+                                    }
                                 }
                             }
                         },
@@ -131,8 +146,15 @@ pipeline {
                                     checkout scm
                                 }
                                 withMaven(maven: 'M35', jdk: 'jdk8-latest', globalMavenSettingsConfig: 'default-global-settings', mavenSettingsConfig: 'codice-maven-settings', mavenOpts: '${LARGE_MVN_OPTS} ${LINUX_MVN_RANDOM}') {
-                                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                                        sh 'mvn -q -B -Dfindbugs.skip=true -Dcheckstyle.skip=true org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.host.url=https://sonarqube.com -Dsonar.login=$SONAR_TOKEN  -Dsonar.organization=codice -Dsonar.projectKey=ddf -pl !$DOCS,!$ITESTS'
+                                    withCredentials([string(credentialsId: 'SonarQubeGithubToken', variable: 'SONARQUBE_GITHUB_TOKEN'), string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                                        script {
+                                            // If this build is not a pull request, run sonar scan. otherwise run incremental scan
+                                            if (env.CHANGE_ID == null) {
+                                                sh 'mvn -q -B -Dfindbugs.skip=true -Dcheckstyle.skip=true org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.host.url=https://sonarqube.com -Dsonar.login=$SONAR_TOKEN  -Dsonar.organization=codice -Dsonar.projectKey=ddf -pl !$DOCS,!$ITESTS'
+                                            } else {
+                                                sh 'mvn -q -B -Dfindbugs.skip=true -Dcheckstyle.skip=true org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.github.pullRequest=${CHANGE_ID} -Dsonar.github.oauth=${SONARQUBE_GITHUB_TOKEN} -Dsonar.analysis.mode=preview -Dsonar.host.url=https://sonarqube.com -Dsonar.login=$SONAR_TOKEN -Dsonar.organization=codice -Dsonar.projectKey=ddf -pl !$DOCS,!$ITESTS -Dgib.enabled=true -Dgib.referenceBranch=/refs/remotes/origin/$CHANGE_TARGET'
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -193,7 +215,7 @@ pipeline {
             when {
                 allOf {
                     expression { env.CHANGE_ID == null }
-                    expression { BRANCH_NAME ==~ /((?:\d*\.)?\d.x|master)/ }
+                    expression { env.BRANCH_NAME ==~ /((?:\d*\.)?\d.x|master)/ }
                     environment name: 'JENKINS_ENV', value: 'prod'
                 }
             }

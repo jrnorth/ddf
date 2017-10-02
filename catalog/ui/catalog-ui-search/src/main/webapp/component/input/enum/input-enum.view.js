@@ -22,8 +22,9 @@ define([
     'js/Common',
     '../input.view',
     'component/dropdown/dropdown.view',
-    'moment'
-], function (Marionette, _, $, template, CustomElements, Common, InputView, DropdownView, moment) {
+    'moment',
+    'component/singletons/user-instance'
+], function (Marionette, _, $, template, CustomElements, Common, InputView, DropdownView, moment, user) {
 
     function getValue(model){
         var multivalued = model.get('property').get('enumMulti');
@@ -31,16 +32,16 @@ define([
         if (value !== undefined && model.get('property').get('type') === 'DATE'){
             if (multivalued && value.map){
                 value = value.map(function(subvalue){
-                    return Common.getHumanReadableDate(subvalue);
+                    return user.getUserReadableDate(subvalue);
                 });
             } else {
-                value = Common.getHumanReadableDate(value);
+                value = user.getUserReadableDate(value);
             }
         }
         if (!multivalued){
             value = [value];
         }
-        return value; 
+        return value;
     }
 
     return InputView.extend({
@@ -80,12 +81,14 @@ define([
                         if (value.label) {
                             return {
                                 label: value.label,
-                                value: value.value
+                                value: value.value,
+                                class: value.class
                             };
                         } else {
                             return {
                                 label: value,
-                                value: value
+                                value: value,
+                                class: value
                             };
                         }
                     }),

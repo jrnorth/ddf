@@ -29,6 +29,10 @@
     .customElement;
     overflow: auto;
   }
+
+  .twipsy {
+    margin-left: 50px;
+  }
 }
 
 @{customElementNamespace}map.is-cesium.is-hovering {
@@ -59,7 +63,8 @@
 @{customElementNamespace}map.is-cesium.not-supported {
   #mapDrawingPopup,
   #mapTools,
-  #mapContainer {
+  #mapContainer,
+  > .drawing-tools {
     display: none;
   }
 

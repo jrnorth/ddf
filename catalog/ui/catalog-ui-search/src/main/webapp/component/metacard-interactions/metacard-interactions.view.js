@@ -25,8 +25,16 @@ define([
     'component/singletons/user-instance',
     'component/singletons/sources-instance',
     'decorator/menu-navigation.decorator',
-    'decorator/Decorators'
-], function (wreqr, Marionette, _, $, template, CustomElements, store, router, user, sources, MenuNavigationDecorator, Decorators) {
+    'decorator/Decorators',
+    'js/model/Query',
+    'wkx',
+    'js/CQLUtils',
+    'component/confirmation/query/confirmation.query.view',
+    'component/loading/loading.view'
+], function (wreqr, Marionette, _, $, template, 
+    CustomElements, store, router, user, sources, 
+    MenuNavigationDecorator, Decorators, Query, wkx, 
+    CQLUtils, QueryConfirmationView, LoadingView) {
 
     return Marionette.ItemView.extend(Decorators.decorate({
         template: template,
@@ -42,6 +50,7 @@ define([
             'click .interaction-expand': 'handleExpand',
             'click .interaction-share': 'handleShare',
             'click .interaction-download': 'handleDownload',
+            'click .interaction-create-search': 'handleCreateSearch',
             'click .metacard-interaction': 'handleClick'
         },
         ui: {
@@ -51,7 +60,8 @@ define([
             if (currentWorkspace) {
                 this.listenTo(currentWorkspace, 'change:metacards', this.checkIfSaved);
             }
-            this.listenTo(user.get('user').get('preferences').get('resultBlacklist'), 
+            this.listenTo(this.model, 'change:metacard>properties', this.onRender);
+            this.listenTo(user.get('user').get('preferences').get('resultBlacklist'),
                 'add remove update reset', this.checkIfBlacklisted);
         },
         onRender: function(){
@@ -61,6 +71,7 @@ define([
             this.checkIfMultiple();
             this.checkIfRouted();
             this.checkIfBlacklisted();
+            this.checkHasLocation();
         },
         handleSave: function(){
             var currentWorkspace = store.getCurrentWorkspace();
@@ -111,12 +122,66 @@ define([
             });
         },
         handleShare: function(){
-            
+
         },
         handleDownload: function(){
             this.model.forEach(function(result){
                 window.open(result.get('metacard').get('properties').get('resource-download-url'));
             });
+        },
+        handleCreateSearch: function(){
+            var locations = this.model.reduce((locationArray, model) => {
+                let location = model.get('metacard').get('properties').get('location');
+                if (location){
+                    let locationGeometry = wkx.Geometry.parse(location);
+                    let cqlString = "(" + CQLUtils.buildIntersectCQL(locationGeometry) + ")";
+                    locationArray.push(cqlString);
+                }
+                return locationArray;
+            }, []);
+            if (locations.length === 0){
+                return;  // shouldn't happen but just in case
+            }
+            var combinedCqlString = locations.reduce((cqlString, subCqlString, index) => {
+                if (index !== 0) {
+                    cqlString = cqlString + " OR ";
+                }
+                cqlString = cqlString + subCqlString;
+                return cqlString;
+            }, '');
+            let cqlString = "(" + combinedCqlString + ")";
+            var newQuery = new Query.Model({
+                isAdvanced: locations.length > 1
+            });
+            var queryModel = store.getCurrentQueries();
+            newQuery.set('cql', cqlString);
+            if (queryModel.canAddQuery()){
+                queryModel.add(newQuery);
+                store.setCurrentQuery(newQuery);
+            } else {
+                this.listenTo(QueryConfirmationView.generateConfirmation({}),
+                    'change:choice',
+                    function (confirmation) {
+                        var choice = confirmation.get('choice');
+                        if (choice === true) {
+                            var loadingview = new LoadingView();
+                            store.get('workspaces').once('sync', function (workspace, resp, options) {
+                                loadingview.remove();
+                                wreqr.vent.trigger('router:navigate', {
+                                    fragment: 'workspaces/' + workspace.id,
+                                    options: {
+                                        trigger: true
+                                    }
+                                });
+                            });
+                            store.get('workspaces').createWorkspaceWithQuery(newQuery);
+                        } else if (choice !== false) {
+                            store.getCurrentQueries().remove(choice);
+                            store.getCurrentQueries().add(newQuery);
+                            store.setCurrentQuery(newQuery);
+                        }
+                    }.bind(this));
+            }
         },
         handleClick: function(){
             this.$el.trigger('closeDropdown.'+CustomElements.getNamespace());
@@ -159,6 +224,18 @@ define([
                 }
             });
             this.$el.toggleClass('is-blacklisted', isBlacklisted);
+        },
+        checkHasLocation: function(){
+            var locations = this.model.reduce((locationArray, model) => {
+                let location = model.get('metacard').get('properties').get('location');
+                if (location){
+                    let locationGeometry = wkx.Geometry.parse(location);
+                    let cqlString = "(" + CQLUtils.buildIntersectCQL(locationGeometry) + ")";
+                    locationArray.push(cqlString);
+                }
+                return locationArray;
+            }, []);
+            this.$el.toggleClass('has-location', locations.length > 0);
         },
         checkTypes: function(){
             var types = {};

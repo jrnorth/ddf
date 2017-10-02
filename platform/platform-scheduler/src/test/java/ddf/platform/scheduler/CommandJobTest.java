@@ -1,14 +1,14 @@
 /**
  * Copyright (c) Codice Foundation
- * <p/>
- * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
- * General Public License as published by the Free Software Foundation, either version 3 of the
- * License, or any later version.
- * <p/>
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
- * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
- * is distributed along with this program and can be found at
+ *
+ * <p>This is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software Foundation, either version 3 of
+ * the License, or any later version.
+ *
+ * <p>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details. A copy of the GNU Lesser General Public
+ * License is distributed along with this program and can be found at
  * <http://www.gnu.org/licenses/lgpl.html>.
  */
 package ddf.platform.scheduler;
@@ -17,13 +17,15 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.isA;
+import static org.mockito.Matchers.notNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ddf.security.Subject;
+import java.io.InputStream;
 import java.util.concurrent.Callable;
-
 import org.apache.karaf.shell.api.console.Session;
 import org.apache.karaf.shell.api.console.SessionFactory;
 import org.junit.Before;
@@ -36,8 +38,6 @@ import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ddf.security.Subject;
-
 /**
  * Tests the {@link CommandJob} class.
  *
@@ -45,186 +45,181 @@ import ddf.security.Subject;
  * @author ddf.isgs@lmco.com
  */
 public class CommandJobTest {
-    private static final Logger LOGGER = LoggerFactory.getLogger(CommandJobTest.class);
 
-    private SessionFactory sessionFactory;
+  private static final Logger LOGGER = LoggerFactory.getLogger(CommandJobTest.class);
 
-    @Before
-    public void setup() {
-        sessionFactory = mock(SessionFactory.class);
-    }
+  private SessionFactory sessionFactory;
 
-    /**
-     * Do no execution when no command processor available
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testNoCommandProcessor() throws Exception {
+  @Before
+  public void setup() {
+    sessionFactory = mock(SessionFactory.class);
+  }
 
-        // given
-        String command = "info";
+  /**
+   * Do no execution when no command processor available
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testNoCommandProcessor() throws Exception {
+    // given
+    String command = "info";
 
-        CommandJob job = getCommandJob();
+    CommandJob job = getCommandJob();
 
-        // when
-        job.execute(getJobExecutionContext(command));
+    // when
+    job.execute(getJobExecutionContext(command));
 
-        // then
-        /* we should not have a problem */
-    }
+    // then
+    /* we should not have a problem */
+  }
 
-    /**
-     * Do not execute command on null input
-     *
-     * @throws Exception
-     */
-    @SuppressWarnings("ConstantConditions")
-    @Test
-    public void testNullCommand() throws Exception {
+  /**
+   * Do not execute command on null input
+   *
+   * @throws Exception
+   */
+  @SuppressWarnings("ConstantConditions")
+  @Test
+  public void testNullCommand() throws Exception {
+    // given
+    String command = null;
 
-        // given
-        String command = null;
+    FirstArgumentAnswer captureInput = new FirstArgumentAnswer();
 
-        FirstArgumentAnswer captureInput = new FirstArgumentAnswer();
+    Session session = getSession(captureInput);
 
-        Session session = getSession(captureInput);
+    when(sessionFactory.create(notNull(InputStream.class), any(), any())).thenReturn(session);
 
-        when(sessionFactory.create(any(), any(), any())).thenReturn(session);
+    CommandJob job = getCommandJob();
 
-        CommandJob job = getCommandJob();
+    // when
+    job.execute(getJobExecutionContext(command));
 
-        // when
-        job.execute(getJobExecutionContext(command));
+    // then
+    verifySessionCallsAndSessionClosed(command, session, 0);
+  }
 
-        // then
-        verifySessionCalls(command, session, 0, 1);
+  /**
+   * An empty command will be executed
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testEmptyCommand() throws Exception {
+    // given
+    String command = "";
 
-    }
+    FirstArgumentAnswer captureInput = new FirstArgumentAnswer();
 
-    /**
-     * An empty command will be executed
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testEmptyCommand() throws Exception {
-        // given
-        String command = "";
+    Session session = getSession(captureInput);
 
-        FirstArgumentAnswer captureInput = new FirstArgumentAnswer();
+    when(sessionFactory.create(notNull(InputStream.class), any(), any())).thenReturn(session);
 
-        Session session = getSession(captureInput);
+    CommandJob job = getCommandJob();
 
-        when(sessionFactory.create(any(), any(), any())).thenReturn(session);
+    // when
+    job.execute(getJobExecutionContext(command));
 
-        CommandJob job = getCommandJob();
+    // then
+    assertThat(captureInput.getInputArg(), is(command));
 
-        // when
-        job.execute(getJobExecutionContext(command));
+    verifySessionCallsAndSessionClosed(command, session, 1);
+  }
 
-        // then
-        assertThat(captureInput.getInputArg(), is(command));
+  /**
+   * Tests the simplest command will be executed.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testSimpleCommand() throws Exception {
+    // given
+    String command = "info";
 
-        verifySessionCalls(command, session, 1, 1);
+    FirstArgumentAnswer captureInput = new FirstArgumentAnswer();
 
-    }
+    Session session = getSession(captureInput);
 
-    /**
-     * Tests the simplest command will be executed.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testSimpleCommand() throws Exception {
-        // given
-        String command = "info";
+    when(sessionFactory.create(notNull(InputStream.class), any(), any())).thenReturn(session);
 
-        FirstArgumentAnswer captureInput = new FirstArgumentAnswer();
+    CommandJob job = getCommandJob();
 
-        Session session = getSession(captureInput);
+    // when
+    job.execute(getJobExecutionContext(command));
 
-        when(sessionFactory.create(any(), any(), any())).thenReturn(session);
+    // then
 
-        CommandJob job = getCommandJob();
+    assertThat(captureInput.getInputArg(), is(command));
 
-        // when
-        job.execute(getJobExecutionContext(command));
+    verifySessionCallsAndSessionClosed(command, session, 1);
+  }
 
-        // then
+  @Test
+  public void testNullContext() throws JobExecutionException {
+    CommandJob job = getCommandJob();
+    job.execute(null);
+  }
 
-        assertThat(captureInput.getInputArg(), is(command));
+  @Test
+  public void testNullMergedJobDataMap() throws JobExecutionException {
+    CommandJob job = getCommandJob();
 
-        verifySessionCalls(command, session, 1, 1);
+    JobExecutionContext jobExecutionContext = mock(JobExecutionContext.class);
+    when(jobExecutionContext.getMergedJobDataMap()).thenReturn(null);
 
-    }
+    job.execute(jobExecutionContext);
+  }
 
-    @Test
-    public void testNullContext() throws JobExecutionException {
-        CommandJob job = getCommandJob();
-        job.doExecute(null);
-    }
-
-    @Test
-    public void testNullMergedJobDataMap() throws JobExecutionException {
-        CommandJob job = getCommandJob();
-
-        JobExecutionContext jobExecutionContext = mock(JobExecutionContext.class);
-        when(jobExecutionContext.getMergedJobDataMap()).thenReturn(null);
-
-        job.doExecute(jobExecutionContext);
-    }
-
-    private CommandJob getCommandJob() {
-        return new CommandJob() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public Subject getSystemSubject() {
-                Subject subject = mock(Subject.class);
-                when(subject.execute(Matchers.<Callable<Object>>any())).thenAnswer(invocation -> {
-                    Callable<Object> callable = (Callable<Object>) invocation.getArguments()[0];
-                    return callable.call();
+  private CommandJob getCommandJob() {
+    return new CommandJob() {
+      @SuppressWarnings("unchecked")
+      @Override
+      public Subject getSystemSubject() {
+        Subject subject = mock(Subject.class);
+        when(subject.execute(Matchers.<Callable<Object>>any()))
+            .thenAnswer(
+                invocation -> {
+                  Callable<Object> callable = (Callable<Object>) invocation.getArguments()[0];
+                  return callable.call();
                 });
-                return subject;
-            }
+        return subject;
+      }
 
-            @Override
-            protected SessionFactory getSessionFactory() {
-                return sessionFactory;
-            }
+      @Override
+      protected SessionFactory getSessionFactory() {
+        return sessionFactory;
+      }
+    };
+  }
 
-        };
+  private void verifySessionCallsAndSessionClosed(
+      String command, Session session, int expectedAmountOfCalls) throws Exception {
+    verify(session, times(expectedAmountOfCalls)).execute(command);
+    verify(session, times(1)).close();
+  }
+
+  private Session getSession(Answer<String> captureInput) {
+    Session session = mock(Session.class);
+
+    try {
+      when(session.execute(isA(CharSequence.class))).then(captureInput);
+    } catch (Exception e) {
+      LOGGER.error("Exception occurred during command session", e);
     }
 
-    void verifySessionCalls(String command, Session session, int expectedAmountOfCalls,
-            int expectedTimesToClose) throws Exception {
-        verify(session, times(expectedAmountOfCalls)).execute(command);
-        verify(session, times(expectedTimesToClose)).close();
-    }
+    return session;
+  }
 
-    private Session getSession(Answer<String> captureInput) {
+  private JobExecutionContext getJobExecutionContext(String command) {
+    JobExecutionContext context = mock(JobExecutionContext.class);
 
-        Session session = mock(Session.class);
+    JobDataMap jobDataMap = new JobDataMap();
 
-        try {
-            when(session.execute(isA(CharSequence.class))).then(captureInput);
-        } catch (Exception e) {
-            LOGGER.error("Exception occurred during command session", e);
-        }
+    jobDataMap.put(CommandJob.COMMAND_KEY, command);
 
-        return session;
-    }
+    when(context.getMergedJobDataMap()).thenReturn(jobDataMap);
 
-    private JobExecutionContext getJobExecutionContext(String command) {
-
-        JobExecutionContext context = mock(JobExecutionContext.class);
-
-        JobDataMap jobDataMap = new JobDataMap();
-
-        jobDataMap.put(CommandJob.COMMAND_KEY, command);
-
-        when(context.getMergedJobDataMap()).thenReturn(jobDataMap);
-
-        return context;
-    }
+    return context;
+  }
 }

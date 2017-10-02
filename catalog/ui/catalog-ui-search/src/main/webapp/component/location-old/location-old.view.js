@@ -26,9 +26,11 @@ define([
     './location-old',
     'js/CQLUtils',
     'component/property/property',
-    'component/announcement'
+    'component/announcement',
+    'js/DistanceUtils'
 ], function (require, $, Backbone, Marionette, _, properties, MetaCard, wreqr, template, maptype,
-             store, CustomElements, LocationOldModel, CQLUtils, Property, Announcement) {
+             store, CustomElements, LocationOldModel, CQLUtils, Property, Announcement, 
+             DistanceUtils) {
     var minimumDifference = 0.0001;
     var minimumBuffer = 0.000001;
     var deltaThreshold = 0.0000001;
@@ -60,7 +62,8 @@ define([
             'click #usng': 'swapLocationTypeUsng',
             'click #utm': 'swapLocationTypeUtm',
             'change #radiusUnits': 'onRadiusUnitsChanged',
-            'change #lineUnits': 'onLineUnitsChanged'
+            'change #lineUnits': 'onLineUnitsChanged',
+            'click > .location-draw button': 'triggerDraw'
         },
         regions: {
             keyword: "#keyword-autocomplete"
@@ -73,6 +76,16 @@ define([
             this.deserialize();
             this.setupListeners();
             this.handleCurrentMode();
+            this.listenTo(this.model, 'change', this.updateMap);
+        },
+        // Updates the map with a drawing whenever the user is entering coordinates manually
+        updateMap: function() {
+            if (!this.isDestroyed) {
+                var mode = this.model.get('mode');
+                if (mode !== undefined && store.get('content').get('drawing') !== true) {
+                    wreqr.vent.trigger('search:' + mode + 'display', this.model);
+                }
+            }
         },
         handleCurrentMode: function(){
             this.$el.toggleClass('is-line', Boolean(this.model.get('line')));
@@ -86,6 +99,7 @@ define([
             this.$el.toggleClass('is-circle', mode === "circle");
             this.$el.toggleClass('is-bbox', mode === "bbox");
             this.$el.toggleClass('is-keyword', mode === "keyword");
+            this.model.set('mode', mode === 'polygon' ? 'poly' : mode);
         },
         setupListeners: function () {
             this.listenTo(this.propertyModel.get('property'), 'change:isEditing', this.handleEdit);
@@ -209,7 +223,7 @@ define([
                 radius: 1,
                 bbox: undefined,
                 polygon: undefined,
-                hasKeyword: false,                
+                hasKeyword: false,
                 usng: undefined,
                 usngbb: undefined,
                 utmEasting: undefined,
@@ -333,13 +347,13 @@ define([
                 var radiusUnitVal = view.model.get('radiusUnits');
                 switch (direction) {
                     case 'ViewToModel':
-                        var distanceInMeters = view.getDistanceInMeters(value, radiusUnitVal);
+                        var distanceInMeters = DistanceUtils.getDistanceInMeters(value, radiusUnitVal);
                         //radius value is bound to radius since radiusValue is converted, so we just need to set
                         //the value so that it shows up in the view
                         view.model.set('radius', distanceInMeters);
                         return distanceInMeters;
                     case 'ModelToView':
-                        var distanceFromMeters = view.getDistanceFromMeters(view.model.get('radius'), radiusUnitVal);
+                        var distanceFromMeters = DistanceUtils.getDistanceFromMeters(view.model.get('radius'), radiusUnitVal);
                         var currentValue = this.boundEls[0].value;
                         // same used in cesium.bbox.js
                         // only update the view's value if it's significantly different from the model's value or is <= minimumBuffer (min for cql)
@@ -349,13 +363,13 @@ define([
                 var lineUnitVal = view.model.get('lineUnits');
                 switch (direction) {
                     case 'ViewToModel':
-                        var distanceInMeters = view.getDistanceInMeters(value, lineUnitVal);
+                        var distanceInMeters = DistanceUtils.getDistanceInMeters(value, lineUnitVal);
                         //radius value is bound to radius since radiusValue is converted, so we just need to set
                         //the value so that it shows up in the view
                         view.model.set('lineWidth', distanceInMeters);
                         return distanceInMeters;
                     case 'ModelToView':
-                        var distanceFromMeters = view.getDistanceFromMeters(view.model.get('lineWidth'), lineUnitVal);
+                        var distanceFromMeters = DistanceUtils.getDistanceFromMeters(view.model.get('lineWidth'), lineUnitVal);
                         var currentValue = this.boundEls[0].value;
                         // same used in cesium.bbox.js
                         // only update the view's value if it's significantly different from the model's value or is <= minimumBuffer (min for cql)
@@ -533,32 +547,33 @@ define([
             });
         },
         drawLine: function () {
-            if (this.propertyModel.get('property').get('isEditing')) {
-                this.clearLocation();
-                wreqr.vent.trigger('search:drawline', this.model);
-                this.changeMode("line");
-            }
+            this.clearLocation();
+            this.changeMode("line");
         },
         drawCircle: function () {
-            if (this.propertyModel.get('property').get('isEditing')) {
-                this.clearLocation();
-                wreqr.vent.trigger('search:drawcircle', this.model);
-                this.changeMode("circle");
-            }
+            this.clearLocation();
+            this.changeMode("circle");
         },
         drawPolygon: function () {
-            if (this.propertyModel.get('property').get('isEditing')) {
-                this.clearLocation();
-                wreqr.vent.trigger('search:drawpoly', this.model);
-                this.changeMode("polygon");
-            }
+            this.clearLocation();
+            this.changeMode("polygon");
         },
         drawBbox: function () {
-            if (this.propertyModel.get('property').get('isEditing')) {
-                this.clearLocation();
-                wreqr.vent.trigger('search:drawbbox', this.model);
-                this.changeMode("bbox");
+            this.clearLocation();
+            this.changeMode("bbox");
+        },
+        triggerDraw: function(){
+            var drawingType = 'line';
+            if (this.$el.hasClass('is-line')){
+                drawingType = 'line';
+            } else if (this.$el.hasClass('is-bbox')){
+                drawingType = 'bbox';
+            } else if (this.$el.hasClass('is-circle')){
+                drawingType = 'circle';
+            } else if (this.$el.hasClass('is-polygon')){
+                drawingType = 'poly';
             }
+            wreqr.vent.trigger('search:draw'+drawingType, this.model);
         },
         searchByKeyword: function () {
             if (this.propertyModel.get('property').get('isEditing')) {
@@ -568,44 +583,10 @@ define([
             }
         },
         onLineUnitsChanged: function () {
-            this.$('#lineWidthValue').val(this.getDistanceFromMeters(this.model.get('lineWidth'), this.$('#lineUnits').val()));
+            this.$('#lineWidthValue').val(DistanceUtils.getDistanceFromMeters(this.model.get('lineWidth'), this.$('#lineUnits').val()));
         },
         onRadiusUnitsChanged: function () {
-            this.$('#radiusValue').val(this.getDistanceFromMeters(this.model.get('radius'), this.$('#radiusUnits').val()));
-        },
-        getDistanceInMeters: function (distance, units) {
-            distance = distance || 0;
-            switch (units) {
-                case 'meters':
-                    return distance;
-                case 'kilometers':
-                    return distance * 1000;
-                case 'feet':
-                    return distance * 0.3048;
-                case 'yards':
-                    return distance * 0.9144;
-                case 'miles':
-                    return distance * 1609.34;
-                default:
-                    return distance;
-            }
-        },
-        getDistanceFromMeters: function (distance, units) {
-            distance = distance || 0;
-            switch (units) {
-                case 'meters':
-                    return distance;
-                case 'kilometers':
-                    return distance / 1000;
-                case 'feet':
-                    return distance / 0.3048;
-                case 'yards':
-                    return distance / 0.9144;
-                case 'miles':
-                    return distance / 1609.34;
-                default:
-                    return distance;
-            }
+            this.$('#radiusValue').val(DistanceUtils.getDistanceFromMeters(this.model.get('radius'), this.$('#radiusUnits').val()));
         },
         serializeData: function () {
             return this.model.toJSON({

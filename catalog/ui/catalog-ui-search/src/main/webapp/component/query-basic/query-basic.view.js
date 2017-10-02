@@ -20,6 +20,7 @@ define([
     './query-basic.hbs',
     'js/CustomElements',
     'js/store',
+    'js/IconHelper',
     'component/dropdown/dropdown',
     'component/dropdown/query-src/dropdown.query-src.view',
     'component/property/property.view',
@@ -28,10 +29,12 @@ define([
     'component/singletons/metacard-definitions',
     'component/singletons/sources-instance',
     'js/CQLUtils',
-    'component/query-settings/query-settings.view'
-], function (Marionette, _, $, template, CustomElements, store, DropdownModel,
+    'component/query-settings/query-settings.view',
+    'component/query-time/query-time.view',
+    'js/Common'
+], function (Marionette, _, $, template, CustomElements, store, IconHelper, DropdownModel,
              QuerySrcView, PropertyView, Property, cql, metacardDefinitions, sources,
-             CQLUtils, QuerySettingsView) {
+            CQLUtils, QuerySettingsView, QueryTimeView, Common) {
 
     function isNested(filter) {
         var nested = false;
@@ -130,14 +133,7 @@ define([
             basicSettings: '.basic-settings',
             basicText: '.basic-text',
             basicTextMatch: '.basic-text-match',
-            basicTime: '.basic-time',
-            basicTimeField: '.basic-time-field',
-            basicTimeBefore: '.basic-time-before',
-            basicTimeAfter: '.basic-time-after',
-            basicTimeBetweenBefore: '.between-before',
-            basicTimeBetweenAfter: '.between-after',
-            basicTimeRelativeValue: '.relative-value',
-            basicTimeRelativeUnit: '.relative-unit',
+            basicTime: '.basic-time-details',
             basicLocation: '.basic-location',
             basicLocationSpecific: '.basic-location-specific',
             basicType: '.basic-type',
@@ -145,41 +141,41 @@ define([
         },
         ui: {},
         filter: undefined,
-        onBeforeShow: function () {
+        onBeforeShow: function(){
+            this.model = this.model._cloneOf ? store.getQueryById(this.model._cloneOf) : this.model;
             var translationToBasicMap = translateFilterToBasicMap(cql.simplify(cql.read(this.model.get('cql'))));
             this.filter = translationToBasicMap.propertyValueMap;
             this.handleDownConversion(translationToBasicMap.downConversion);
             this.setupSettings();
+            this.setupTime();
             this.setupTextInput();
             this.setupTextMatchInput();
-            this.setupTimeInput();
-            this.setupTimeBefore();
-            this.setupTimeAfter();
-            this.setupTimeBetween();
-            this.setupTimeRelative();
+            
             this.setupLocation();
             this.setupLocationInput();
             this.setupType();
             this.setupTypeSpecific();
-            this.turnOnLimitedWidth();
-            this.listenTo(this.basicTime.currentView.model, 'change:value', this.handleTimeRangeValue);
+            
             this.listenTo(this.basicLocation.currentView.model, 'change:value', this.handleLocationValue);
             this.listenTo(this.basicType.currentView.model, 'change:value', this.handleTypeValue);
-            this.handleTimeRangeValue();
+
             this.handleLocationValue();
             this.handleTypeValue();
-            if (this.model._cloneOf === undefined) {
-                this.edit();
-            } else {
-                this.turnOffEdit();
-            }
+            this.turnOnLimitedWidth();
+            this.edit();
         },
         setupSettings: function () {
             this.basicSettings.show(new QuerySettingsView({
                 model: this.model
             }))
         },
-        setupTypeSpecific: function () {
+        setupTime: function(){
+            this.basicTime.show(new QueryTimeView({
+                model: this.model,
+                filter: this.filter
+            }));
+        },
+        setupTypeSpecific: function(){
             var currentValue = [];
             if (this.filter['metadata-content-type']) {
                 currentValue = _.uniq(this.filter['metadata-content-type'].map(function (subfilter) {
@@ -198,7 +194,8 @@ define([
                                 }).length === 0)) {
                                 enumArray.push({
                                     label: contentType.name,
-                                    value: contentType.value
+                                    value: contentType.value,
+                                    class: "icon " + IconHelper.getClassByName(contentType.value)
                                 });
                             }
                         });
@@ -206,9 +203,10 @@ define([
                     }, metacardDefinitions.enums.datatype ? metacardDefinitions.enums.datatype.map(function (value) {
                         return {
                             label: value,
-                            value: value
-                        };
-                    }) : []),
+                            value: value,
+                            class : "icon " + IconHelper.getClassByName(value)
+                       };
+                   }) : []),
                     value: [currentValue],
                     id: 'Types'
                 })
@@ -275,171 +273,7 @@ define([
             this.$el.toggleClass('is-location-any', location === 'any');
             this.$el.toggleClass('is-location-specific', location === 'specific');
         },
-        handleTimeRangeValue: function () {
-            var timeRange = this.basicTime.currentView.model.getValue()[0];
-            this.$el.toggleClass('is-timeRange-any', timeRange === 'any');
-            this.$el.toggleClass('is-timeRange-before', timeRange === 'before');
-            this.$el.toggleClass('is-timeRange-after', timeRange === 'after');
-            this.$el.toggleClass('is-timeRange-between', timeRange === 'between');
-            this.$el.toggleClass('is-timeRange-relative', timeRange === 'relative');
-        },
-        setupTimeBefore: function () {
-            var currentBefore = '';
-            var currentAfter = '';
-            if (this.filter.anyDate) {
-                this.filter.anyDate.forEach(function (subfilter) {
-                    if (subfilter.type === 'BEFORE') {
-                        currentBefore = subfilter.value;
-                    } else if (subfilter.type === 'AFTER') {
-                        currentAfter = subfilter.value;
-                    }
-                });
-            }
-            this.basicTimeBefore.show(new PropertyView({
-                model: new Property({
-                    value: [currentBefore],
-                    id: 'Before',
-                    placeholder: 'Limit search to before this time.',
-                    type: 'DATE'
-                })
-            }));
-        },
-        setupTimeAfter: function () {
-            var currentBefore = '';
-            var currentAfter = '';
-            if (this.filter.anyDate) {
-                this.filter.anyDate.forEach(function (subfilter) {
-                    if (subfilter.type === 'BEFORE') {
-                        currentBefore = subfilter.value;
-                    } else if (subfilter.type === 'AFTER') {
-                        currentAfter = subfilter.value;
-                    }
-                });
-            }
-            this.basicTimeAfter.show(new PropertyView({
-                model: new Property({
-                    value: [currentAfter],
-                    id: 'After',
-                    placeholder: 'Limit search to after this time.',
-                    type: 'DATE'
-                })
-            }));
-        },
-        setupTimeBetween: function () {
-            var currentBefore = '';
-            var currentAfter = '';
-            if (this.filter.anyDate) {
-                this.filter.anyDate.forEach(function (subfilter) {
-                    if (subfilter.type === 'BEFORE') {
-                        currentBefore = subfilter.value;
-                    } else if (subfilter.type === 'AFTER') {
-                        currentAfter = subfilter.value;
-                    }
-                });
-            }
-            this.basicTimeBetweenBefore.show(new PropertyView({
-                model: new Property({
-                    value: [currentBefore],
-                    id: 'Before',
-                    placeholder: 'Limit search to before this time.',
-                    type: 'DATE'
-                })
-            }));
-            this.basicTimeBetweenAfter.show(new PropertyView({
-                model: new Property({
-                    value: [currentAfter],
-                    id: 'After',
-                    placeholder: 'Limit search to after this time.',
-                    type: 'DATE'
-                })
-            }));
-        },
-        setupTimeRelative: function () {
-            var currentLast = 1;
-            var currentUnit = '';
-            if (this.filter.anyDate) {
-                this.filter.anyDate.forEach(function (subfilter) {
-                    if (subfilter.type === '=') {
-                        var duration = subfilter.value.substring(9, subfilter.value.length - 1).match(/(T?\d+)./)[0];
-                        currentUnit = duration.substring(duration.length - 1, duration.length);
-                        currentLast = duration.match(/\d+/);
-
-                        currentUnit = currentUnit.toLowerCase();
-                        if (duration.indexOf('T') === -1 && currentUnit === 'm') {
-                            //must capitalize months
-                            currentUnit = currentUnit.toUpperCase();
-                        }
-                    }
-                });
-            }
-            this.basicTimeRelativeValue.show(new PropertyView({
-                model: new Property({
-                    value: [currentLast],
-                    id: 'Last',
-                    placeholder: 'Limit searches to between the present and this time.',
-                    type: 'INTEGER'
-                })
-            }));
-            this.basicTimeRelativeUnit.show(new PropertyView({
-                model: new Property({
-                    value: [currentUnit || 'h'],
-                    enum: [{
-                        label: 'Minutes',
-                        value: 'm'
-                    }, {
-                        label: 'Hours',
-                        value: 'h'
-                    }, {
-                        label: 'Days',
-                        value: 'd'
-                    }, {
-                        label: 'Months',
-                        value: 'M'
-                    }, {
-                        label: 'Years',
-                        value: 'y'
-                    }],
-                    id: 'Unit'
-                })
-            }))
-        },
-        setupTimeInput: function () {
-            var currentValue = 'any';
-            if (this.filter.anyDate) {
-                if (this.filter.anyDate.length > 1) {
-                    currentValue = 'between'
-                } else if (this.filter.anyDate[0].type === 'AFTER') {
-                    currentValue = 'after'
-                } else if (this.filter.anyDate[0].type === 'BEFORE') {
-                    currentValue = 'before'
-                } else {
-                    currentValue = 'relative';
-                }
-            }
-            this.basicTime.show(new PropertyView({
-                model: new Property({
-                    value: [currentValue],
-                    id: 'Time Range',
-                    enum: [{
-                        label: 'Any',
-                        value: 'any'
-                    }, {
-                        label: 'After',
-                        value: 'after'
-                    }, {
-                        label: 'Before',
-                        value: 'before'
-                    }, {
-                        label: 'Between',
-                        value: 'between'
-                    }, {
-                        label: 'Relative',
-                        value: 'relative'
-                    }]
-                })
-            }));
-        },
-        setupTextMatchInput: function () {
+        setupTextMatchInput: function(){
             this.basicTextMatch.show(new PropertyView({
                 model: new Property({
                     value: [this.filter.anyText && this.filter.anyText[0].type === 'LIKE' ? 'LIKE' : 'ILIKE'],
@@ -492,13 +326,12 @@ define([
                 $(tabable[0]).focus();
             }
         },
-        cancel: function () {
-            if (this.model._cloneOf === undefined) {
-                store.resetQuery();
-            } else {
-                this.$el.removeClass('is-editing');
-                this.onBeforeShow();
-            }
+        focus: function(){
+            this.basicText.currentView.focus();
+        },
+        cancel: function(){
+            this.$el.removeClass('is-editing');
+            this.onBeforeShow();
         },
         handleDownConversion: function (downConversion) {
             this.$el.toggleClass('is-down-converted', downConversion);
@@ -510,78 +343,21 @@ define([
             var filter = this.constructFilter();
             var generatedCQL = CQLUtils.transformFilterToCQL(filter);
             this.model.set({
-                cql: generatedCQL
+                cql: generatedCQL,
+                isAdvanced: false
             });
-            store.saveQuery();
         },
         constructFilter: function () {
             var filters = [];
 
-            var timeRange = this.basicTime.currentView.model.getValue()[0];
-            var timeBefore, timeAfter, timeLast, timeUnit;
-            switch (timeRange) {
-                case 'before':
-                    timeBefore = this.basicTimeBefore.currentView.model.getValue()[0];
-                    break;
-                case 'after':
-                    timeAfter = this.basicTimeAfter.currentView.model.getValue()[0];
-                    break;
-                case 'between':
-                    timeBefore = this.basicTimeBetweenBefore.currentView.model.getValue()[0];
-                    timeAfter = this.basicTimeBetweenAfter.currentView.model.getValue()[0];
-                    break;
-                case 'relative':
-                    timeLast = Math.floor(this.basicTimeRelativeValue.currentView.model.getValue()[0]);
-                    timeUnit = this.basicTimeRelativeUnit.currentView.model.getValue()[0];
-                    break;
-            }
-            if (timeBefore) {
-                var timeFilter = {
-                    type: 'OR',
-                    filters: [
-                        CQLUtils.generateFilter('BEFORE', 'created', timeBefore),
-                        CQLUtils.generateFilter('BEFORE', 'modified', timeBefore),
-                        CQLUtils.generateFilter('BEFORE', 'effective', timeBefore),
-                        CQLUtils.generateFilter('BEFORE', 'metacard.created', timeBefore),
-                        CQLUtils.generateFilter('BEFORE', 'metacard.modified', timeBefore)
-                    ]
-                };
-                filters.push(timeFilter);
-            }
-            if (timeAfter) {
-                var timeFilter = {
-                    type: 'OR',
-                    filters: [
-                        CQLUtils.generateFilter('AFTER', 'created', timeAfter),
-                        CQLUtils.generateFilter('AFTER', 'modified', timeAfter),
-                        CQLUtils.generateFilter('AFTER', 'effective', timeAfter),
-                        CQLUtils.generateFilter('AFTER', 'metacard.created', timeAfter),
-                        CQLUtils.generateFilter('AFTER', 'metacard.modified', timeAfter)
-                    ]
-                };
-                filters.push(timeFilter);
-            }
-            if (timeLast) {
-                var duration;
-                if (timeUnit === 'm' || timeUnit === 'h') {
-                    duration = "PT" + timeLast + timeUnit.toUpperCase();
-                } else {
-                    duration = "P" + timeLast + timeUnit.toUpperCase();
-                }
+            var text = this.basicText.currentView.model.getValue()[0];
+            text = text === "" ? '*' : text;
+            var matchCase = this.basicTextMatch.currentView.model.getValue()[0];
+            filters.push(CQLUtils.generateFilter(matchCase, 'anyText', text));
 
-                var relativeFunction = 'RELATIVE(' + duration + ')';
-                var timeDuration = {
-                    type: 'OR',
-                    filters: [
-                        CQLUtils.generateFilter('=', 'created', relativeFunction),
-                        CQLUtils.generateFilter('=', 'modified', relativeFunction),
-                        CQLUtils.generateFilter('=', 'effective', relativeFunction),
-                        CQLUtils.generateFilter('=', 'metacard.created', relativeFunction),
-                        CQLUtils.generateFilter('=', 'metacard.modified', relativeFunction)
-                    ]
-                };
-                filters.push(timeDuration);
-            }
+            this.basicTime.currentView.constructFilter().forEach((timeFilter) => {
+                filters.push(timeFilter);
+            });
 
             var locationSpecific = this.basicLocation.currentView.model.getValue()[0];
             var location = this.basicLocationSpecific.currentView.model.getValue()[0];
@@ -616,6 +392,16 @@ define([
                 type: 'AND',
                 filters: filters
             };
+        },
+        setDefaultTitle: function(){
+            var text = this.basicText.currentView.model.getValue()[0];
+            var title;
+            if (text === "") {
+                title = this.model.get('cql');
+            } else {
+                title = text;
+            }
+            this.model.set('title', title);
         }
     });
 });

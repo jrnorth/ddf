@@ -82,6 +82,10 @@
             <version>${spatial4j.version}</version>
         </dependency>
         <dependency>
+            <groupId>ddf.platform.util</groupId>
+            <artifactId>platform-util</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.noggit</groupId>
             <artifactId>noggit</artifactId>
             <version>0.6</version>
@@ -133,7 +137,8 @@
                             lucene-spatial3d,
                             spatial-geocoding-api-impl,
                             spatial4j,
-                            noggit
+                            noggit,
+                            platform-util
                         </Embed-Dependency>
                     </instructions>
                 </configuration>
@@ -165,7 +170,7 @@
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.72</minimum>
+                                            <minimum>0.71</minimum>
                                         </limit>
                                         <limit>
                                             <counter>INSTRUCTION</counter>

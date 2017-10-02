@@ -20,6 +20,7 @@ define([
     'jquery',
     './result-item.hbs',
     'js/CustomElements',
+    'js/IconHelper',
     'js/store',
     'js/Common',
     'component/dropdown/dropdown',
@@ -32,7 +33,7 @@ define([
     'moment',
     'component/singletons/sources-instance',
     'behaviors/button.behavior'
-], function (Backbone, Marionette, _, $, template, CustomElements, store, Common, DropdownModel,
+], function (Backbone, Marionette, _, $, template, CustomElements, IconHelper, store, Common, DropdownModel,
              MetacardInteractionsDropdownView, ResultIndicatorView, properties, router, user,
              metacardDefinitions, moment, sources) {
 
@@ -48,11 +49,12 @@ define([
         },
         events: {
             'click .result-save': 'handleSave',
-            'click .result-unsave': 'handleUnsave'
+            'click .result-unsave': 'handleUnsave',
+            'click .result-download': 'triggerDownload'
         },
         regions: {
             resultActions: '.result-actions',
-            resultIndicator: '.result-indicator'
+            resultIndicator: '.container-indicator'
         },
         behaviors: {
             button: {}
@@ -73,7 +75,7 @@ define([
             this.listenTo(this.model.get('metacard').get('properties'), 'change', this.handleMetacardUpdate);
             this.listenTo(user.get('user').get('preferences'), 'change:resultDisplay', this.checkDisplayType);
             this.listenTo(router, 'change', this.handleMetacardUpdate);
-            this.listenTo(user.get('user').get('preferences').get('resultBlacklist'), 
+            this.listenTo(user.get('user').get('preferences').get('resultBlacklist'),
                 'add remove update reset', this.checkIfBlacklisted);
             this.listenTo(this.options.selectionInterface.getSelectedResults(), 'update add remove reset', this.handleSelectionChange);
             this.handleSelectionChange();
@@ -107,9 +109,14 @@ define([
             }));
         },
         addConfiguredResultProperties: function(result){
+            result.showSource = false;
             result.customDetail = [];
             if (properties.resultShow) {
                 properties.resultShow.forEach(function (additionProperty) {
+                    if (additionProperty === 'source-id') {
+                        result.showSource = true;
+                        return;
+                    }
                     var value = result.metacard.properties[additionProperty];
                     if (value && metacardDefinitions.metacardTypes[additionProperty]) {
                         switch (metacardDefinitions.metacardTypes[additionProperty].type) {
@@ -137,6 +144,10 @@ define([
             result.local = Boolean(result.metacard.properties['source-id'] === sources.localCatalog);
             var dateModified = moment(result.metacard.properties.modified);
             result.niceDiff = Common.getMomentDate(dateModified);
+
+            //icon
+            result.icon = IconHelper.getClass(this.model);
+
             //check validation errors
             var validationErrors = result.metacard.properties['validation-errors'];
             var validationWarnings = result.metacard.properties['validation-warnings'];
@@ -192,6 +203,9 @@ define([
             this.$el.toggleClass('is-revision', this.model.isRevision());
             this.$el.toggleClass('is-deleted', this.model.isDeleted());
             this.$el.toggleClass('is-remote', this.model.isRemote());
+        },
+        triggerDownload: function(e) {
+            window.open(this.model.get('metacard').get('properties').get('resource-download-url'));
         },
         handleSave: function(e){
             e.preventDefault();
