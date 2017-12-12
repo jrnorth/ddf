@@ -391,5 +391,6 @@
         <module>email</module>
         <module>platform-app</module>
         <module>osgi</module>
+        <module>ignite</module>
     </modules>
 </project>

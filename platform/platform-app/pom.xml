@@ -373,6 +373,26 @@
             <artifactId>org.apache.felix.coordinator</artifactId>
             <version>${felix.coordinator.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-core</artifactId>
+            <version>${ignite.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-rest-http</artifactId>
+            <version>${ignite.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-osgi</artifactId>
+            <version>${ignite.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ddf.platform.ignite</groupId>
+            <artifactId>ignite-igniter</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!--END dependencies for enterprise features in platform-app features-->
     </dependencies>
     <properties>
