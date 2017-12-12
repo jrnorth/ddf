@@ -73,6 +73,10 @@
         <bean class="org.codice.ddf.catalog.ui.metacard.workspace.ListMetacardTypeImpl"/>
     </service>
 
+    <service interface="ddf.catalog.data.MetacardType">
+        <bean class="org.codice.ddf.catalog.ui.scheduling.ScheduleMetacardTypeImpl"/>
+    </service>
+
     <bean id="workspacePreIngestPlugin"
           class="org.codice.ddf.catalog.ui.security.WorkspacePreIngestPlugin">
         <argument ref="subjectIdentity"/>
@@ -231,6 +235,7 @@
         <argument>
             <reference-list interface="ddf.catalog.data.MetacardType"/>
         </argument>
+        <argument ref="persistentStore"/>
         <argument ref="associated"/>
         <argument ref="csvQueryResponseTransformer" />
         <argument ref="attributeRegistry" />
@@ -341,6 +346,14 @@
         <argument ref="workspacePersistentStore"/>
         <argument ref="smtpClient"/>
     </bean>
+
+    <bean id="querySchedulingPostIngestPlugin" class="org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin">
+        <argument ref="catalogFramework"/>
+        <argument ref="persistentStore"/>
+        <argument ref="workspaceTransformer"/>
+    </bean>
+
+    <service ref="querySchedulingPostIngestPlugin" interface="ddf.catalog.plugin.PostIngestPlugin"/>
 
     <bean id="workspaceQueryService"
           class="org.codice.ddf.catalog.ui.query.monitor.impl.WorkspaceQueryServiceImpl"

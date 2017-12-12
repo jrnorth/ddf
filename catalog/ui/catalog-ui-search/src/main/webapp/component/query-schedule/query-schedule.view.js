@@ -15,6 +15,7 @@
 /*global define, setTimeout*/
 define([
     'marionette',
+    'backbone',
     'underscore',
     'jquery',
     './query-schedule.hbs',
@@ -25,10 +26,11 @@ define([
     'component/property/property',
     'component/dropdown/dropdown.view',
     'component/radio/radio.view',
+    'component/singletons/user-instance',
     'moment',
     'js/Common'
-], function(Marionette, _, $, template, CustomElements, store, properties, PropertyView, Property,
-    DropdownView, RadioView, Moment, Common) {
+], function(Marionette, Backbone, _, $, template, CustomElements, store, properties, PropertyView, Property,
+    DropdownView, RadioView, user, Moment, Common) {
 
     function getHumanReadableDuration(milliseconds) {
         var duration = Moment.duration(milliseconds);
@@ -61,33 +63,138 @@ define([
         template: template,
         tagName: CustomElements.register('query-schedule'),
         modelEvents: {},
-        events: {
-            'click .editor-edit': 'turnOnEditing',
-            'click .editor-cancel': 'cancel',
-            'click .editor-save': 'save'
-        },
         regions: {
-            propertyInterval: '.property-interval'
+            enableScheduling: '.enable-scheduling',
+            scheduleProperties: '.schedule-properties',
+            amountPicker: '.amount-picker',
+            unitPicker: '.unit-picker',
+            startPicker: '.start-picker',
+            endPicker: '.end-picker',
+            deliveryPicker: '.delivery-methods-picker'
         },
         ui: {},
         initialize: function(){
             this.model = this.model._cloneOf ? store.getQueryById(this.model._cloneOf) : this.model;
-            this.listenTo(this.model, 'change:polling', Common.safeCallback(this.onBeforeShow));
         },
         onBeforeShow: function() {
-            this.setupInterval();
+            this.turnOffEditing();
+            this.setupRegions();
+            this.listenTo(this.enableScheduling.currentView.model, 'change:value', this.handleSchedulingValue);
+            this.listenTo(this.amountPicker.currentView.model, 'change:value', this.handleAmountPickerValue);
             this.turnOnEditing();
         },
-        setupInterval: function() {
-            this.propertyInterval.show(new PropertyView({
+
+        setupRegions: function() {
+            this.enableScheduling.show(new PropertyView({
                 model: new Property({
-                    enum: pollingFrequencyEnum,
-                    value: [this.model.get('polling') || false],
-                    id: 'Frequency'
+                    value: [this.model.get('isScheduled')],
+                    id: 'Schedule',
+                    radio: [{
+                        label: 'On',
+                        value: true,
+                        title: 'Activate Query Scheduling'
+                    }, {
+                        label: 'Off',
+                        value: false,
+                        title: 'Deactivate Query Scheduling'
+                    }]
                 })
             }));
-            this.propertyInterval.currentView.turnOffEditing();
-            this.propertyInterval.currentView.turnOnLimitedWidth();
+            this.enableScheduling.currentView.turnOnLimitedWidth();
+            this.handleSchedulingValue();
+
+            this.amountPicker.show(new PropertyView({
+                model: new Property({
+                    value: [this.model.get('scheduleAmount')],
+                    id: '',
+                    type: 'INTEGER',
+                    showValidationIssues: false,
+                    showLabel: false
+                })
+            }));
+            this.amountPicker.currentView.turnOnLimitedWidth();
+
+            this.unitPicker.show(new PropertyView({
+                model: new Property({
+                    value: [this.model.get('scheduleUnit')],
+                    id: '',
+                    enum: [{
+                        label: 'Months', 
+                        value: 'months'
+                    }, {
+                        label: 'Weeks',
+                        value: 'weeks'
+                    }, {
+                        label: 'Days',
+                        value: 'days'
+                    }, {
+                        label: 'Hours',
+                        value: 'hours'
+                    }, {
+                        label: 'Minutes',
+                        value: 'minutes'
+                    }],
+                    showValidationIssues: false,
+                    showLabel: false
+                })
+            }));
+            this.unitPicker.currentView.turnOnLimitedWidth();
+
+            this.startPicker.show(new PropertyView({
+                model: new Property({
+                    value: [this.model.get('scheduleStart')],
+                    id: 'Starts on',
+                    placeholder: 'Date and time for query to take effect',
+                    type: 'DATE'
+                })
+            }));
+            this.startPicker.currentView.turnOnLimitedWidth();
+
+            this.endPicker.show(new PropertyView({
+                model: new Property({
+                    value: [this.model.get('scheduleEnd')],
+                    id: 'Ends on',
+                    placeholder: 'Date and time for query to stop',
+                    type: 'DATE'
+                })
+            }));
+            this.endPicker.currentView.turnOnLimitedWidth();
+
+            //let currentDeliveryValues = this.model.get('deliveryIds').map(deliveryId => ({ label: deliveryId, value: deliveryId, class: '' }));
+            // let possibleEnumValues = ['myFTP', 'myEmail', 'myPhysicalMailingService'].map(val => ({label: val, value: val, class: ''})); 
+            // let possibleEnumValues = {};
+            let possibleEnumValues = user.get('user').getPreferences().get('deliveryMethods').map(val => ({label: val.get('name'), value: val.get('deliveryId'), class: ''}));
+            
+            // let possibleEnumValues = ['myFTP', 'myEmail', 'myPhysicalMailingService'].map(val => ({label: val, value: val, class: ''}));
+            this.deliveryPicker.show(new PropertyView({
+                model: new Property({
+                    enumFiltering: false,
+                    showValidationIssues: false,
+                    enumMulti: true,
+                    enum: possibleEnumValues,
+                    value: [this.model.get('deliveryIds')],
+                    id: 'Delivery Method'
+                })
+            }));
+            this.deliveryPicker.currentView.turnOnLimitedWidth();
+
+            // var deliveryMethods = [{ label: 'All Available Methods', value: 'all-methods' }].concat([{ label: 'Email', value: 'joshua.mack@connexta.com'}]);
+            // this.deliveryPicker.show(DropdownView.createSimpleDropdown({
+            //     list: mappedMethods,
+            //     defaultSelection: [mappedMethods[0]] || ['No Delivery Options Available'],
+            //     isMultiSelect: true
+            // }));
+        },
+        handleSchedulingValue: function() {
+            var isScheduling = this.enableScheduling.currentView.model.getValue()[0];
+            this.$el.toggleClass('is-scheduled', isScheduling);
+        },
+        handleAmountPickerValue: function() {
+            var currVal = this.amountPicker.currentView.model.getValue()[0];
+            if (currVal < 0) {
+                console.log('Hey currval is less than 0. changing model value to be [0]');
+                this.amountPicker.currentView.model.setValue([0]);
+            }
         },
         turnOnEditing: function() {
             this.$el.addClass('is-editing');
@@ -104,21 +211,25 @@ define([
                 }
             });
         },
-        cancel: function() {
-            this.$el.removeClass('is-editing');
-            this.onBeforeShow();
-            this.$el.trigger('closeDropdown.'+CustomElements.getNamespace());
-        },
-        save: function() {
-            var value =  this.propertyInterval.currentView.model.getValue()[0];
-            if (value === false) {
-                this.model.unset('polling');
-            } else {
-                this.model.set({
-                    polling: value
-                });
-            }
-            this.cancel();
+        getSchedulingConfiguration: function() {
+            this.model.set({
+                isScheduled: this.enableScheduling.currentView.model.getValue()[0],
+                scheduleAmount: this.amountPicker.currentView.model.getValue()[0],
+                scheduleUnit: this.unitPicker.currentView.model.getValue()[0],
+                scheduleStart: this.startPicker.currentView.model.getValue()[0],
+                scheduleEnd: this.endPicker.currentView.model.getValue()[0],
+                deliveryIds: this.deliveryPicker.currentView.model.getValue()[0]
+            });
+            return this.model;
+
+            // return {
+            //     isScheduled: this.enableScheduling.currentView.model.getValue()[0],
+            //     scheduleAmount: this.amountPicker.currentView.model.getValue()[0],
+            //     scheduleUnit: this.unitPicker.currentView.model.getValue()[0],
+            //     scheduleStart: this.startPicker.currentView.model.getValue()[0],
+            //     scheduleEnd: this.endPicker.currentView.model.getValue()[0],
+            //     scheduleSubscribers: scheduleSubscribers
+            // };
         }
     });
 });

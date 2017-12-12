@@ -43,6 +43,8 @@ public class QueryMetacardTypeImpl extends MetacardTypeImpl {
 
   public static final String QUERY_TYPE = "type";
 
+  public static final String QUERY_SCHEDULES = "schedules";
+
   private static final Set<AttributeDescriptor> QUERY_DESCRIPTORS;
 
   static {
@@ -137,6 +139,15 @@ public class QueryMetacardTypeImpl extends MetacardTypeImpl {
             false /* tokenized */,
             false /* multivalued */,
             BasicTypes.STRING_TYPE));
+
+    QUERY_DESCRIPTORS.add(
+        new AttributeDescriptorImpl(
+            QUERY_SCHEDULES,
+            false /* indexed */,
+            true /* stored */,
+            false /* tokenized */,
+            true /* multivalued */,
+            BasicTypes.XML_TYPE));
   }
 
   public QueryMetacardTypeImpl() {

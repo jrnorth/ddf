@@ -21,6 +21,7 @@
         <feature prerequisite="true">spatial-app</feature>
         <feature prerequisite="true">camel-http</feature>
         <feature prerequisite="true">search-ui-app</feature>
+        <feature prerequisite="true">ignite</feature>
         <configfile finalname="/etc/org.codice.ddf.catalog.ui.config.config" override="false">
             mvn:ddf.ui/search-ui-app/${project.version}/properties/catalog-ui-config
         </configfile>
