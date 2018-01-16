@@ -24,6 +24,8 @@ import org.apache.ignite.osgi.IgniteAbstractOsgiContextActivator;
 public class IgniteIgniter extends IgniteAbstractOsgiContextActivator {
   @Override
   public IgniteConfiguration igniteConfiguration() {
-    return new IgniteConfiguration();
+    IgniteConfiguration configuration = new IgniteConfiguration();
+    configuration.setMetricsLogFrequency(0);
+    return configuration;
   }
 }

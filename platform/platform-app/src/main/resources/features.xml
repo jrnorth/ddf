@@ -1115,6 +1115,8 @@
         <bundle dependency="true">mvn:org.apache.ignite/ignite-core/${ignite.version}</bundle>
         <bundle dependency="true">mvn:org.apache.ignite/ignite-osgi/${ignite.version}</bundle>
         <bundle dependency="true">mvn:org.apache.ignite/ignite-rest-http/${ignite.version}</bundle>
+        <bundle dependency="true">mvn:org.apache.ignite/ignite-schedule/${ignite.version}</bundle>
+        <bundle dependency="true">mvn:org.apache.ignite/ignite-slf4j/${ignite.version}</bundle>
         <bundle>mvn:ddf.platform.ignite/ignite-igniter/${project.version}</bundle>
     </feature>
 
