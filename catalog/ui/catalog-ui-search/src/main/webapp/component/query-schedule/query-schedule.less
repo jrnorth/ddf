@@ -7,45 +7,30 @@
     padding: 0px @minimumSpacing @minimumSpacing @minimumSpacing;
   }
 
-  .editor-footer {
-    height: @minimumButtonSize;
-    white-space: nowrap;
-
-    > button {
-      height: 100%;
-      display: inline-block;
-    }
-    > .editor-edit {
-      width: 100%;
-    }
-    > .editor-cancel {
-      width: 50%;
-      display: none;
-    }
-    > .editor-save {
-      width: 50%;
-      display: none;
-    }
-  }
-
-  &.is-editing {
-    .editor-footer {
-
-      > .editor-edit {
-        display: none;
-      }
-      > .editor-cancel {
-        display: inline-block;
-      }
-      > .editor-save {
-        display: inline-block;
-      }
-    }
+  .schedule-properties {
+    display: none;
+    margin-left: 20px;
   }
 }
 
-@{customElementNamespace}query-schedule.is-specific-sources {
-  .settings-src {
+@{customElementNamespace}query-schedule.is-scheduled {
+  .schedule-properties {
     display: block;
+  }
+
+  .amount-picker {
+    white-space: nowrap;
+    overflow: hidden;
+    width: ~'calc(10%)';
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .unit-picker {
+    white-space: nowrap;
+    overflow: hidden;
+    width: ~'calc(30%)';
+    display: inline-block;
+    vertical-align: middle;
   }
 }

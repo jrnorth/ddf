@@ -34,5 +34,6 @@
     <modules>
         <module>rest-assured</module>
         <module>restito</module>
+        <module>ignite-schedule</module>
     </modules>
 </project>

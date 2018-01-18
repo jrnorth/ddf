@@ -250,8 +250,7 @@ public class CronQuery extends CronQueryJson implements Runnable {
             job.cancel();
             return runningQueries.tryMap(
                 runningQueries -> {
-                  final @Nullable Map<String, CronQuery> usersQueries =
-                      runningQueries.get(getUsername());
+                  final Map<String, CronQuery> usersQueries = runningQueries.get(getUsername());
                   if (usersQueries == null || !usersQueries.containsKey(getJobID())) {
                     return error("This %s was not found in the scheduled queries cache!", this);
                   }

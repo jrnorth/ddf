@@ -18,8 +18,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class Fallible<Value> {
-  private @Nullable String error;
-  private @Nullable Value value;
+  private String error;
+  private Value value;
 
   private Fallible(String error, Value value) {
     this.error = error;
@@ -218,8 +218,8 @@ public class Fallible<Value> {
    */
   public final <R> Fallible<R> tryMap(Function<? super Value, Fallible<R>> transformer) {
     // This is equivalent to tryMapValue(transformer.apply(value)) except that the short circuiting
-    // of the ternary
-    // operator can ensure that the transformer function is not executed unless the value is used.
+    // of the ternary operator can ensure that the transformer function is not executed unless the
+    // value is used.
     return hasError() ? error(error) : transformer.apply(value);
   }
 
