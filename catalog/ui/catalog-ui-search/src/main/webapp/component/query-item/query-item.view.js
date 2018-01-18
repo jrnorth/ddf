@@ -25,14 +25,13 @@ define([
     'component/dropdown/query-interactions/dropdown.query-interactions.view',
     'component/dropdown/dropdown.view',
     'component/query-feed/query-feed.view',
-    'component/dropdown/query-schedule/dropdown.query-schedule.view',
     'component/dropdown/query-status/dropdown.query-status.view',
     'component/dropdown/query-settings/dropdown.query-settings.view',
     'component/dropdown/query-editor/dropdown.query-editor.view',
     'behaviors/button.behavior'
 ], function (Marionette, _, $, template, CustomElements, store, moment,
              DropdownModel, DropdownQueryInteractionsView, DropdownView, QueryFeedView,
-            QueryScheduleView, QueryStatusView, QuerySettingsView, QueryEditorView) {
+             QueryStatusView, QuerySettingsView, QueryEditorView) {
 
     return Marionette.LayoutView.extend({
         template: template,
@@ -60,7 +59,6 @@ define([
             queryEditor: '.query-edit',
             querySettings: '.query-settings',
             queryStatus: '.query-status',
-            querySchedule: '.query-schedule'
         },
         initialize: function(options){
             var query = store.getQueryById(this.model.id);
@@ -94,10 +92,6 @@ define([
             this._queryInteractions = new DropdownModel();
             this.queryActions.show(new DropdownQueryInteractionsView({
                 model: this._queryInteractions,
-                modelForComponent: this.model
-            }));
-            this.querySchedule.show(new QueryScheduleView({
-                model: new DropdownModel(),
                 modelForComponent: this.model
             }));
             this.querySettings.show(new QuerySettingsView({
@@ -140,8 +134,5 @@ define([
             store.setQueryById(this.model.id);
             e.stopPropagation();
         },
-        editSchedule: function(e){
-            e.stopPropagation(e);
-        }
     });
 });

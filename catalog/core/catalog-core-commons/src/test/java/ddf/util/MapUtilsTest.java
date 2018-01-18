@@ -55,19 +55,20 @@ public class MapUtilsTest {
 
   @Test
   public void testMapValues() {
-    final Map<String, Double> approximateLetterCounts =
-        MapUtils.mapValues(HARRY_POTTER_WORD_COUNTS, wordCount -> wordCount * 5.1);
+    final Map<String, String> approximateLetterCounts =
+        MapUtils.mapValues(
+            HARRY_POTTER_WORD_COUNTS, wordCount -> String.format("%.1f", wordCount * 5.1));
     assertThat(
         approximateLetterCounts,
         equalTo(
             ImmutableMap.builder()
-                .put("Sorcerer's Stone", 392_414.4)
-                .put("Chamber of Secrets", 434_219.1)
-                .put("Prisoner of Azkaban", 546_990.3)
-                .put("Goblet of Fire", 972_248.7)
-                .put("Order of the Phoenix", 1_310_929.5)
-                .put("Half-Blood Prince", 861_507.3)
-                .put("Deathly Hallows", 1_010_957.7)
+                .put("Sorcerer's Stone", "392414.4")
+                .put("Chamber of Secrets", "434219.1")
+                .put("Prisoner of Azkaban", "546990.3")
+                .put("Goblet of Fire", "972248.7")
+                .put("Order of the Phoenix", "1310929.5")
+                .put("Half-Blood Prince", "861507.3")
+                .put("Deathly Hallows", "1010957.7")
                 .build()));
   }
 

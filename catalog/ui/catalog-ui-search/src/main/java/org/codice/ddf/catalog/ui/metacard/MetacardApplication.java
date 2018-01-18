@@ -471,7 +471,10 @@ public class MetacardApplication implements SparkApplication {
         APPLICATION_JSON,
         (req, res) -> {
           Map<String, Object> incoming =
-              JsonFactory.create().parser().parseMap(util.safeGetBody(req));
+              new JsonParserFactory()
+                  .setCheckDates(false)
+                  .createFastParser()
+                  .parseMap(util.safeGetBody(req));
           Metacard saved = saveMetacard(transformer.transform(incoming));
           Map<String, Object> response = transformer.transform(saved);
 
@@ -486,7 +489,10 @@ public class MetacardApplication implements SparkApplication {
           String id = req.params(":id");
 
           Map<String, Object> workspace =
-              JsonFactory.create().parser().parseMap(util.safeGetBody(req));
+              new JsonParserFactory()
+                  .setCheckDates(false)
+                  .createFastParser()
+                  .parseMap(util.safeGetBody(req));
 
           Metacard metacard = transformer.transform(workspace);
           metacard.setAttribute(new AttributeImpl(Metacard.ID, id));
@@ -594,8 +600,7 @@ public class MetacardApplication implements SparkApplication {
     post(
         "/annotations",
         (req, res) -> {
-          Map<String, Object> incoming =
-              JsonFactory.create().parser().parseMap(util.safeGetBody(req));
+          Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
           String workspaceId = incoming.get("workspace").toString();
           String queryId = incoming.get("parent").toString();
           String annotation = incoming.get("note").toString();
@@ -663,8 +668,7 @@ public class MetacardApplication implements SparkApplication {
         "/annotations/:id",
         APPLICATION_JSON,
         (req, res) -> {
-          Map<String, Object> incoming =
-              JsonFactory.create().parser().parseMap(util.safeGetBody(req));
+          Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
           String noteMetacardId = req.params(":id");
           String note = incoming.get("note").toString();
           Metacard metacard;
