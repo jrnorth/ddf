@@ -99,6 +99,15 @@ public class QueryApplication implements SparkApplication {
 
           CqlQueryResponse cqlQueryResponse = executeCqlQuery(cqlRequest);
           String result = mapper.toJson(cqlQueryResponse);
+
+          // Work-around for paths being behind VPCs with non-public DNS values - wlm
+          String host =
+              org.codice.ddf.configuration.SystemBaseUrl.getProtocol()
+                  + org.codice.ddf.configuration.SystemBaseUrl.getHost()
+                  + ":"
+                  + org.codice.ddf.configuration.SystemBaseUrl.getPort();
+          result = result.replaceAll(host, "");
+
           return result;
         });
 
