@@ -309,9 +309,9 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
               Fallible<QueryResponse> queryResults;
 
-              Subject systemSubject = SECURITY.runAsAdmin(SECURITY::getSystemSubject);
+              Subject guestSubject = SECURITY.getGuestSubject("0.0.0.0");
               queryResults =
-                  systemSubject.execute(
+                  guestSubject.execute(
                       () -> {
                         try {
                           return of(catalogFramework.query(queryRequest));
@@ -334,8 +334,11 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                   qr -> {
                     final Map<String, Pair<WorkspaceMetacardImpl, Long>> notifiableQueryResults =
                         MapUtils.fromList(
-                            qr.getResults(),
-                            result -> result.getMetacard().getId(),
+                            qr.getResults().stream().collect(Collectors.toList()),
+                            result ->
+                                result.getMetacard().getId()
+                                    + ":"
+                                    + result.getMetacard().getSourceId(),
                             result ->
                                 Pair.of(
                                     WorkspaceMetacardImpl.from(result.getMetacard()),
