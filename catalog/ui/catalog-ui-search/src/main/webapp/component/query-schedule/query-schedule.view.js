@@ -68,7 +68,8 @@ define([
             amountPicker: '.amount-picker',
             unitPicker: '.unit-picker',
             startPicker: '.start-picker',
-            endPicker: '.end-picker'
+            endPicker: '.end-picker',
+            deliveryPicker: '.delivery-methods-picker'
         },
         ui: {},
         initialize: function(){
@@ -82,12 +83,6 @@ define([
             this.turnOnEditing();
         },
 
-        // isScheduled: scheduleConfig.isScheduled,
-        // scheduleAmount: scheduleConfig.scheduleAmount,
-        // scheduleUnit: scheduleConfig.scheduleAmount,
-        // scheduleStart: scheduleConfig.scheduleStart,
-        // scheduleEnd: scheduleConfig.scheduleEnd
-
         setupRegions: function() {
             this.enableScheduling.show(new PropertyView({
                 model: new Property({
@@ -95,10 +90,10 @@ define([
                     id: 'Schedule',
                     radio: [{
                         label: 'On',
-                        value: 'on'
+                        value: true
                     }, {
                         label: 'Off',
-                        value: 'off'
+                        value: false
                     }]
                 })
             }));
@@ -162,10 +157,30 @@ define([
             }));
             this.endPicker.currentView.turnOnLimitedWidth();
 
+            //let currentDeliveryValues = this.model.get('deliveryIds').map(deliveryId => ({ label: deliveryId, value: deliveryId, class: '' }));
+            let possibleEnumValues = ['myFTP', 'myEmail', 'myPhysicalMailingService'].map(val => ({label: val, value: val, class: ''}));
+            this.deliveryPicker.show(new PropertyView({
+                model: new Property({
+                    enumFiltering: false,
+                    showValidationIssues: false,
+                    enumMulti: true,
+                    enum: possibleEnumValues,
+                    value: [this.model.get('deliveryIds')],
+                    id: 'Delivery Method'
+                })
+            }));
+            this.deliveryPicker.currentView.turnOnLimitedWidth();
+
+            // var deliveryMethods = [{ label: 'All Available Methods', value: 'all-methods' }].concat([{ label: 'Email', value: 'joshua.mack@connexta.com'}]);
+            // this.deliveryPicker.show(DropdownView.createSimpleDropdown({
+            //     list: mappedMethods,
+            //     defaultSelection: [mappedMethods[0]] || ['No Delivery Options Available'],
+            //     isMultiSelect: true
+            // }));
         },
         handleSchedulingValue: function() {
             var isScheduling = this.enableScheduling.currentView.model.getValue()[0];
-            this.$el.toggleClass('is-scheduled', isScheduling === 'on');
+            this.$el.toggleClass('is-scheduled', isScheduling);
         },
         handleAmountPickerValue: function() {
             var currVal = this.amountPicker.currentView.model.getValue()[0];
@@ -190,58 +205,24 @@ define([
             });
         },
         getSchedulingConfiguration: function() {
-            var currentConfig = {
-                // isScheduleEnabled: this.enableScheduling.currentView.model.getValue()[0],
-                // scheduleOptions: {
-                //     amountValue: this.amountPicker.currentView.model.getValue()[0],
-                //     unitValue: this.unitPicker.currentView.model.getValue()[0],
-                //     startValue: this.startPicker.currentView.model.getValue()[0],
-                //     endValue: this.endPicker.currentView.model.getValue()[0]
-                // }
+            this.model.set({
                 isScheduled: this.enableScheduling.currentView.model.getValue()[0],
                 scheduleAmount: this.amountPicker.currentView.model.getValue()[0],
                 scheduleUnit: this.unitPicker.currentView.model.getValue()[0],
                 scheduleStart: this.startPicker.currentView.model.getValue()[0],
-                scheduleEnd: this.endPicker.currentView.model.getValue()[0]
-            };
+                scheduleEnd: this.endPicker.currentView.model.getValue()[0],
+                deliveryIds: this.deliveryPicker.currentView.model.getValue()[0]
+            });
+            return this.model;
 
-            // var amountValue = this.amountPicker.currentView.model.getValue()[0];
-            // var unitValue = this.unitPicker.currentView.model.getValue()[0];
-            // var startValue = this.startPicker.currentView.model.getValue()[0];
-            // var endValue = this.endPicker.currentView.model.getValue()[0];
-            // var cronStr = this.getCronStr(amountValue, unitValue, startValue, endValue);
-            
-            return currentConfig;
-        }//,
-        // getCronStr(amountValue, unitValue, startValue, endValue) {
-
-        //     var startTime = Moment(startValue);
-        //     var endTime = Moment(endValue);
-
-        //     var cronMinute = '* ';
-        //     var cronHour = '* ';
-        //     var cronDayOfMonth = '* ';
-        //     var cronMonth = '* ';
-        //     var cronDayOfWeek = '*';
-
-        //     switch(unitValue) {
-        //         case 'months':
-        //         break;
-        //         case 'weeks':
-        //         cronDayOfWeek = startTime.day();
-        //         break;
-        //         case 'days':
-                
-        //         break;
-        //         case 'hours':
-        //         cronHour = '/' + String(amountValue);
-        //         break;
-        //         case 'minutes':
-        //         cronMinute = '*/' + String(amountValue);
-        //         break;
-        //     }
-
-        //     return cronMinute + cronHour + cronDayOfMonth + cronMonth + cronDayOfWeek;
-        // }
+            // return {
+            //     isScheduled: this.enableScheduling.currentView.model.getValue()[0],
+            //     scheduleAmount: this.amountPicker.currentView.model.getValue()[0],
+            //     scheduleUnit: this.unitPicker.currentView.model.getValue()[0],
+            //     scheduleStart: this.startPicker.currentView.model.getValue()[0],
+            //     scheduleEnd: this.endPicker.currentView.model.getValue()[0],
+            //     scheduleSubscribers: scheduleSubscribers
+            // };
+        }
     });
 });
