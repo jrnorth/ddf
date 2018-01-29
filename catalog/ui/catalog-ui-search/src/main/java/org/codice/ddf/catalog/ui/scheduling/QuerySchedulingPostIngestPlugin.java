@@ -108,10 +108,6 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   private final CatalogFramework catalogFramework;
 
-  private final EmailDeliveryService emailDeliveryService;
-
-  private final FtpDeliveryService ftpDeliveryService;
-
   private final PersistentStore persistentStore;
 
   private final WorkspaceTransformer workspaceTransformer;
@@ -125,8 +121,6 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       PersistentStore persistentStore,
       WorkspaceTransformer workspaceTransformer) {
     this.catalogFramework = catalogFramework;
-    this.emailDeliveryService = emailNotifierService;
-    this.ftpDeliveryService = ftpDeliveryService;
     this.persistentStore = persistentStore;
     this.workspaceTransformer = workspaceTransformer;
 

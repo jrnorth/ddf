@@ -14,7 +14,6 @@
 package ddf.util;
 
 import com.sun.istack.internal.Nullable;
-
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -83,14 +82,15 @@ public class Fallible<Value> {
     return new Fallible<>(String.format(errorFormat, formatParams), null);
   }
 
-  public static <OldElement> Fallible<?> forEach(Collection<OldElement> inputs, Function<OldElement, Fallible<?>> mapper) {
+  public static <OldElement> Fallible<?> forEach(
+      Collection<OldElement> inputs, Function<OldElement, Fallible<?>> mapper) {
     final String errors =
-            inputs
-                    .stream()
-                    .map(input -> mapper.apply(input))
-                    .map(fallible -> fallible.mapValue((String) null).orDo(Function.identity()))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.joining("\n"));
+        inputs
+            .stream()
+            .map(input -> mapper.apply(input))
+            .map(fallible -> fallible.mapValue((String) null).orDo(Function.identity()))
+            .filter(Objects::nonNull)
+            .collect(Collectors.joining("\n"));
     if (errors.isEmpty()) {
       return success();
     }
@@ -267,6 +267,17 @@ public class Fallible<Value> {
     return hasError() ? error(errorTransformer.apply(error)) : this;
   }
 
+  /**
+   * Prepends the given prefix to this {@link Fallible}'s error message if it has one; if this
+   * {@link Fallible} has a value, nothing happens.
+   *
+   * @param prefix the string format of the string to be prepended to the error if one is present.
+   * @param formatParams the parameters used to construct the error message via {@link
+   *     String#format(String, Object...)}.
+   * @return a {@link Fallible} containing either the same value as before or a new error message
+   *     created by formatting the prefix with the given parameters, then appending the original
+   *     error message to the result.
+   */
   public final Fallible<Value> prependToError(String prefix, Object... formatParams) {
     return hasError() ? error(String.format(prefix, formatParams) + error) : this;
   }
