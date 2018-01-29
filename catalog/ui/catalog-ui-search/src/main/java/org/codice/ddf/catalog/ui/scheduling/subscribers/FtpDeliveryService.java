@@ -22,13 +22,17 @@ public class FtpDeliveryService implements QueryDeliveryService {
 
   public static final String PASSWORD_PARAMETER_KEY = "password";
 
-  public static final ImmutableSet<QueryDeliveryParameter> PROPERTIES = ImmutableSet.of(new QueryDeliveryParameter(HOSTNAME_PARAMETER_KEY, QueryDeliveryDatumType.STRING),
+  public static final ImmutableSet<QueryDeliveryParameter> PROPERTIES =
+      ImmutableSet.of(
+          new QueryDeliveryParameter(HOSTNAME_PARAMETER_KEY, QueryDeliveryDatumType.STRING),
           new QueryDeliveryParameter(PORT_PARAMETER_KEY, QueryDeliveryDatumType.INTEGER),
           new QueryDeliveryParameter(USERNAME_PARAMETER_KEY, QueryDeliveryDatumType.STRING),
           new QueryDeliveryParameter(PASSWORD_PARAMETER_KEY, QueryDeliveryDatumType.STRING));
 
   public static final Pattern FTP_HOSTNAME_PATTERN =
-      Pattern.compile("^([0-9]{1,3}(\\.[0-9]{1,3}){3}|[0-9a-f]{4}:([0-9a-f]{4}){7})$", Pattern.CASE_INSENSITIVE);
+      Pattern.compile(
+          "^([0-9]{1,3}(\\.[0-9]{1,3}){3}|[0-9a-f]{4}:([0-9a-f]{4}){7})$",
+          Pattern.CASE_INSENSITIVE);
 
   @Override
   public String getDeliveryType() {
@@ -41,7 +45,8 @@ public class FtpDeliveryService implements QueryDeliveryService {
   }
 
   @Override
-  public Fallible<?> deliver(final Metacard queryMetacard, QueryResponse queryResults, Map<String, Object> parameters) {
+  public Fallible<?> deliver(
+      final Metacard queryMetacard, QueryResponse queryResults, Map<String, Object> parameters) {
     return MapUtils.tryGet(parameters, SUBSCRIBER_TYPE_KEY, String.class)
         .tryMap(
             type -> {
@@ -53,7 +58,7 @@ public class FtpDeliveryService implements QueryDeliveryService {
 
               return MapUtils.tryGetAndRun(
                   parameters,
-                      HOSTNAME_PARAMETER_KEY,
+                  HOSTNAME_PARAMETER_KEY,
                   String.class,
                   PORT_PARAMETER_KEY,
                   Integer.class,

@@ -47,7 +47,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -131,68 +130,67 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     this.persistentStore = persistentStore;
     this.workspaceTransformer = workspaceTransformer;
 
-    deliveryServicesByName = ImmutableMap.of("email", emailNotifierService, "ftp", ftpDeliveryService);
+    deliveryServicesByName =
+        ImmutableMap.of("email", emailNotifierService, "ftp", ftpDeliveryService);
 
     // TODO TEMP
     LOGGER.warn("Query scheduling plugin created!");
   }
 
-  private Fallible<Map<String, Object>> getDeliveryInfo(final String userId, final String deliveryID) {
-              List<Map<String, Object>> preferencesList;
-              try {
-                preferencesList =
-                    persistentStore.get(
-                        PersistenceType.PREFERENCES_TYPE.toString(),
-                        String.format("user = '%s'", userId));
-              } catch (PersistenceException exception) {
-                return Fallible.<Map<String, Object>>error(
-                    "There was a problem attempting to retrieve the preferences for user '%s': %s",
-                    userId, exception.getMessage());
-              }
-              if (preferencesList.size() != 1) {
-                return Fallible.<Map<String, Object>>error(
-                    "There were %d preference entries found for user '%s'!",
-                    preferencesList.size(), userId);
-              }
-              final Map<String, Object> preferencesItem = preferencesList.get(0);
+  private Fallible<Map<String, Object>> getDeliveryInfo(
+      final String userId, final String deliveryID) {
+    List<Map<String, Object>> preferencesList;
+    try {
+      preferencesList =
+          persistentStore.get(
+              PersistenceType.PREFERENCES_TYPE.toString(), String.format("user = '%s'", userId));
+    } catch (PersistenceException exception) {
+      return error(
+          "There was a problem attempting to retrieve the preferences for user '%s': %s",
+          userId, exception.getMessage());
+    }
+    if (preferencesList.size() != 1) {
+      return error(
+          "There were %d preference entries found for user '%s'!", preferencesList.size(), userId);
+    }
+    final Map<String, Object> preferencesItem = preferencesList.get(0);
 
-              return MapUtils.tryGet(preferencesItem, "preferences_json_bin", byte[].class)
+    return MapUtils.tryGet(preferencesItem, "preferences_json_bin", byte[].class)
+        .tryMap(
+            json -> {
+              final Map<String, Object> preferences =
+                  JsonFactory.create()
+                      .parser()
+                      .parseMap(new String(json, Charset.defaultCharset()));
+
+              return MapUtils.tryGet(preferences, "destinations", List.class)
                   .tryMap(
-                      json -> {
-                        final Map<String, Object> preferences =
-                            JsonFactory.create()
-                                .parser()
-                                .parseMap(new String(json, Charset.defaultCharset()));
+                      usersDestinations -> {
+                        final List<Map<String, Object>> matchingDestinations =
+                            ((List<Map<String, Object>>) usersDestinations)
+                                .stream()
+                                .filter(
+                                    destination ->
+                                        MapUtils.tryGet(destination, "id", String.class)
+                                            .map(deliveryID::equals)
+                                            .orDo(
+                                                error -> {
+                                                  LOGGER.error(
+                                                      "There was a problem attempting to retrieve the ID for a destination in the preferences for user '%s': %s",
+                                                      userId, error);
+                                                  return false;
+                                                }))
+                                .collect(Collectors.toList());
+                        if (matchingDestinations.size() != 1) {
+                          return error(
+                              "There were %d destinations matching the ID \"%s\" for user '%s'; only one is suspected!",
+                              matchingDestinations.size(), deliveryID, userId);
+                        }
+                        final Map<String, Object> destinationData = matchingDestinations.get(0);
 
-                        return MapUtils.tryGet(preferences, "destinations", List.class)
-                            .tryMap(
-                                usersDestinations -> {
-                                  final List<Map<String, Object>> matchingDestinations =
-                                      ((List<Map<String, Object>>) usersDestinations)
-                                          .stream()
-                                          .filter(
-                                              destination ->
-                                                  MapUtils.tryGet(destination, "id", String.class)
-                                                      .map(deliveryID::equals)
-                                                      .orDo(
-                                                          error -> {
-                                                            LOGGER.error(
-                                                                "There was a problem attempting to retrieve the ID for a destination in the preferences for user '%s': %s",
-                                                                userId, error);
-                                                            return false;
-                                                          }))
-                                          .collect(Collectors.toList());
-                                  if (matchingDestinations.size() != 1) {
-                                    return Fallible.<Map<String, Object>>error(
-                                        "There were %d destinations matching the ID \"%s\" for user '%s'; only one is suspected!",
-                                        matchingDestinations.size(), deliveryID, userId);
-                                  }
-                                  final Map<String, Object> destinationData =
-                                      matchingDestinations.get(0);
-
-                                  return of(destinationData);
-                                });
+                        return of(destinationData);
                       });
+            });
   }
 
   private Fallible<QueryResponse> runQuery(final String cqlQuery) {
@@ -233,14 +231,22 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
             });
   }
 
-  private Fallible<?> deliver(final Metacard queryMetacard, final QueryResponse results, final Map<String, Object> notifyParameters) {
+  private Fallible<?> deliver(
+      final Map<String, Object> queryMetacardData,
+      final QueryResponse results,
+      final Map<String, Object> notifyParameters) {
     return MapUtils.tryGet(notifyParameters, QueryDeliveryService.SUBSCRIBER_TYPE_KEY, String.class)
-            .tryMap(type -> {
+        .tryMap(
+            type -> {
               if (!deliveryServicesByName.containsKey(type)) {
-                return error("The delivery method \"%s\" was not recognized; this query scheduling system recognized the following delivery methods: %s.", type, deliveryServicesByName.keySet());
+                return error(
+                    "The delivery method \"%s\" was not recognized; this query scheduling system recognized the following delivery methods: %s.",
+                    type, deliveryServicesByName.keySet());
               }
 
-              deliveryServicesByName.get(type).deliver(queryMetacard, results, notifyParameters);
+              deliveryServicesByName
+                  .get(type)
+                  .deliver(queryMetacardData, results, notifyParameters);
 
               return success();
             });
@@ -248,7 +254,8 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   private Fallible<SchedulerFuture<?>> scheduleJob(
       final IgniteScheduler scheduler,
-      final Metacard queryMetacard,
+      final Map<String, Object> queryMetacardData,
+      final String queryMetacardId,
       final String cqlQuery,
       final String scheduleUserId,
       final int scheduleInterval,
@@ -303,16 +310,25 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                         unitsPassedSinceStarted = 0;
 
                         runQuery(cqlQuery)
-                                .tryMap(results ->
-                                          forEach(scheduleDeliveryIDs,
-                                                  subscriberID ->
-                                                          getDeliveryInfo(scheduleUserId, subscriberID)
-                                                          .prependToError("There was a problem retrieving the delivery information with ID \"%s\" for user '%s': %s", subscriberID, scheduleUserId)
-                                                          .tryMap(deliveryInfo ->
-                                                                  deliver(queryMetacard, results, deliveryInfo)
-                                                                  .prependToError("There was a problem delivering query results to delivery info with ID \"%s\" for user '%s': %s", subscriberID, scheduleUserId))
-                                          )
-                                ).elseDo(LOGGER::error);
+                            .tryMap(
+                                results ->
+                                    forEach(
+                                        scheduleDeliveryIDs,
+                                        subscriberID ->
+                                            getDeliveryInfo(scheduleUserId, subscriberID)
+                                                .prependToError(
+                                                    "There was a problem retrieving the delivery information with ID \"%s\" for user '%s': ",
+                                                    subscriberID, scheduleUserId)
+                                                .tryMap(
+                                                    deliveryInfo ->
+                                                        deliver(
+                                                                queryMetacardData,
+                                                                results,
+                                                                deliveryInfo)
+                                                            .prependToError(
+                                                                "There was a problem delivering query results to delivery info with ID \"%s\" for user '%s': ",
+                                                                subscriberID, scheduleUserId))))
+                            .elseDo(LOGGER::error);
                       } else {
                         unitsPassedSinceStarted++;
                       }
@@ -320,7 +336,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                   } else {
                     // TODO TEMP
                     LOGGER.warn("Ending scheduled query...");
-                    thisPlugin.cancelSchedule(queryMetacard.getId()).elseDo(LOGGER::error);
+                    thisPlugin.cancelSchedule(queryMetacardId).elseDo(LOGGER::error);
                   }
                 }
               },
@@ -328,13 +344,14 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     } catch (IgniteException exception) {
       return error(
           "There was a problem attempting to schedule a job for a query metacard \"%s\": %s",
-          queryMetacard.getId(), exception.getMessage());
+          queryMetacardId, exception.getMessage());
     }
   }
 
   private Fallible<SchedulerFuture<?>> readScheduleDataAndSchedule(
       final IgniteScheduler scheduler,
-      final Metacard queryMetacard,
+      final Map<String, Object> queryMetacardData,
+      final String queryMetacardId,
       final String cqlQuery,
       final Map<String, Object> scheduleData) {
     return MapUtils.tryGet(scheduleData, ScheduleMetacardTypeImpl.IS_SCHEDULED, Boolean.class)
@@ -366,7 +383,8 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                       scheduleDeliveries) ->
                       scheduleJob(
                           scheduler,
-                          queryMetacard,
+                          queryMetacardData,
+                          queryMetacardId,
                           cqlQuery,
                           scheduleUserId,
                           scheduleInterval,
@@ -377,7 +395,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
             });
   }
 
-  private Fallible<?> readQueryMetacardAndSchedule(final Metacard queryMetacard, final Map<String, Object> queryMetacardData) {
+  private Fallible<?> readQueryMetacardAndSchedule(final Map<String, Object> queryMetacardData) {
     if (Ignition.state() != IgniteState.STARTED) {
       return error("Cron queries cannot be scheduled without a running Ignite instance!");
     }
@@ -400,24 +418,31 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
               return newMap;
             });
 
-    if (runningQueries.containsKey(queryMetacard.getId())) {
-      return error(
-          "This metacard cannot be scheduled because a job is already scheduled for it!");
-    }
-
     return MapUtils.tryGetAndRun(
         queryMetacardData,
-        QueryMetacardTypeImpl.QUERY_CQL,
+        Metacard.ID,
         String.class,
-        QueryMetacardTypeImpl.QUERY_SCHEDULE_DATA,
-        Map.class,
-        (cqlQuery, scheduleData) ->
-            readScheduleDataAndSchedule(
-                    scheduler,
-                    queryMetacard,
-                    cqlQuery,
-                    (Map<String, Object>) scheduleData)
-                .ifValue(job -> runningQueries.put(queryMetacard.getId(), job)));
+        queryMetacardId -> {
+          if (runningQueries.containsKey(queryMetacardId)) {
+            return error(
+                "This metacard cannot be scheduled because a job is already scheduled for it!");
+          }
+
+          return MapUtils.tryGetAndRun(
+              queryMetacardData,
+              QueryMetacardTypeImpl.QUERY_CQL,
+              String.class,
+              QueryMetacardTypeImpl.QUERY_SCHEDULE_DATA,
+              Map.class,
+              (cqlQuery, scheduleData) ->
+                  readScheduleDataAndSchedule(
+                          scheduler,
+                          queryMetacardData,
+                          queryMetacardId,
+                          cqlQuery,
+                          (Map<String, Object>) scheduleData)
+                      .ifValue(job -> runningQueries.put(queryMetacardId, job)));
+        });
   }
 
   private Fallible<?> cancelSchedule(final String queryMetacardId) {
@@ -425,7 +450,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
         runningQueries -> {
           final @Nullable SchedulerFuture<?> job = runningQueries.get(queryMetacardId);
           if (job == null) {
-            return success().mapValue(null);
+            return success();
           } else if (job.isCancelled()) {
             return error(
                 "This job scheduled under the ID \"%s\" cannot be cancelled because it is not running!",
@@ -446,7 +471,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   }
 
   private Fallible<?> processMetacard(
-      Metacard workspaceMetacard, BiFunction<Metacard, Map<String, Object>, Fallible<?>> metacardAction) {
+      Metacard workspaceMetacard, Function<Map<String, Object>, Fallible<?>> metacardAction) {
     if (!WorkspaceMetacardImpl.isWorkspaceMetacard(workspaceMetacard)) {
       return success();
     }
@@ -495,7 +520,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   private <T extends Response> T processSingularResponse(
       T response,
       List<Metacard> metacards,
-      BiFunction<Metacard, Map<String, Object>, Fallible<?>> metacardAction)
+      Function<Map<String, Object>, Fallible<?>> metacardAction)
       throws PluginExecutionException {
     List<ImmutablePair<Metacard, String>> errors = new ArrayList<>();
 
@@ -532,7 +557,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
           String.format(
               "Processing old metacard of type %s...",
               update.getOldMetacard().getMetacardType().getName()));
-      processMetacard(update.getOldMetacard(), (metacard, metacardData) -> readQueryMetacardAndCancelSchedule(metacardData))
+      processMetacard(update.getOldMetacard(), this::readQueryMetacardAndCancelSchedule)
           .elseDo(error -> errors.add(ImmutablePair.of(update.getOldMetacard(), error)));
       // TODO TEMP
       LOGGER.warn(
@@ -554,21 +579,5 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     LOGGER.warn("Processing deletion...");
     return processSingularResponse(
         deletion, deletion.getDeletedMetacards(), this::readQueryMetacardAndCancelSchedule);
-  }
-
-  public CatalogFramework getCatalogFramework() {
-    return catalogFramework;
-  }
-
-  public EmailDeliveryService getEmailDeliveryService() {
-    return emailDeliveryService;
-  }
-
-  public PersistentStore getPersistentStore() {
-    return persistentStore;
-  }
-
-  public WorkspaceTransformer getWorkspaceTransformer() {
-    return workspaceTransformer;
   }
 }
