@@ -4,7 +4,6 @@ import static ddf.util.Fallible.*;
 
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableSet;
-import ddf.catalog.data.Metacard;
 import ddf.catalog.operation.QueryResponse;
 import ddf.util.Fallible;
 import ddf.util.MapUtils;
@@ -46,7 +45,9 @@ public class FtpDeliveryService implements QueryDeliveryService {
 
   @Override
   public Fallible<?> deliver(
-      final Metacard queryMetacard, QueryResponse queryResults, Map<String, Object> parameters) {
+      Map<String, Object> queryMetacardData,
+      QueryResponse queryResults,
+      Map<String, Object> parameters) {
     return MapUtils.tryGet(parameters, SUBSCRIBER_TYPE_KEY, String.class)
         .tryMap(
             type -> {
