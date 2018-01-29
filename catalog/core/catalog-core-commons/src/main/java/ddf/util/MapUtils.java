@@ -18,6 +18,7 @@ import static ddf.util.Fallible.*;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -128,7 +129,7 @@ public class MapUtils {
   }
 
   public static <Key, MapValue, Casted extends MapValue> Fallible<Casted> tryGet(
-      Map<Key, MapValue> map, Key key, Class<Casted> expectedClass) {
+      Map<? super Key, MapValue> map, Key key, Class<Casted> expectedClass) {
     final MapValue mapValue = map.get(key);
     if (mapValue == null) {
       return error("This map has no key \"%s\"!", key);
@@ -139,5 +140,59 @@ public class MapUtils {
     } else {
       return of(expectedClass.cast(mapValue));
     }
+  }
+
+  public static <Key, MapValue, Casted extends MapValue, Result> Fallible<Result> tryGetAndRun(
+          Map<? super Key, MapValue> map, Key key, Class<Casted> expectedClass, Function<Casted, Fallible<Result>> function) {
+    return tryGet(map, key, expectedClass).tryMap(function);
+  }
+
+  public static <Key, MapValue, Casted1 extends MapValue, Casted2 extends MapValue, Result> Fallible<Result> tryGetAndRun(
+          Map<? super Key, MapValue> map, Key key1, Class<Casted1> expectedClass1, Key key2, Class<Casted2> expectedClass2, BiFunction<Casted1, Casted2, Fallible<Result>> function) {
+    return tryGet(map, key1, expectedClass1).tryMap(value1 -> tryGetAndRun(map, key2, expectedClass2, value2 -> function.apply(value1, value2)));
+  }
+
+  @FunctionalInterface
+  public interface TriFunction<A,B,C,R> {
+
+    R apply(A a, B b, C c);
+  }
+
+  public static <Key, MapValue, Casted1 extends MapValue, Casted2 extends MapValue, Casted3 extends MapValue, Result> Fallible<Result> tryGetAndRun(
+          Map<? super Key, MapValue> map, Key key1, Class<Casted1> expectedClass1, Key key2, Class<Casted2> expectedClass2, Key key3, Class<Casted3> expectedClass3, TriFunction<Casted1, Casted2, Casted3, Fallible<Result>> function) {
+    return tryGetAndRun(map, key1, expectedClass1, key2, expectedClass2, (value1, value2) -> tryGet(map, key3, expectedClass3).tryMap(value3 -> function.apply(value1, value2, value3)));
+  }
+
+  @FunctionalInterface
+  public interface QuadFunction<A,B,C,D,R> {
+
+    R apply(A a, B b, C c, D d);
+  }
+
+  public static <Key, MapValue, Casted1 extends MapValue, Casted2 extends MapValue, Casted3 extends MapValue, Casted4 extends MapValue, Result> Fallible<Result> tryGetAndRun(
+          Map<? super Key, MapValue> map, Key key1, Class<Casted1> expectedClass1, Key key2, Class<Casted2> expectedClass2, Key key3, Class<Casted3> expectedClass3, Key key4, Class<Casted4> expectedClass4, QuadFunction<Casted1, Casted2, Casted3, Casted4, Fallible<Result>> function) {
+    return tryGetAndRun(map, key1, expectedClass1, key2, expectedClass2, key3, expectedClass3, (value1, value2, value3) -> tryGet(map, key4, expectedClass4).tryMap(value4 -> function.apply(value1, value2, value3, value4)));
+  }
+
+  @FunctionalInterface
+  public interface QuintFunction<A,B,C,D,E,R> {
+
+    R apply(A a, B b, C c, D d, E e);
+  }
+
+  public static <Key, MapValue, Casted1 extends MapValue, Casted2 extends MapValue, Casted3 extends MapValue, Casted4 extends MapValue, Casted5 extends MapValue, Result> Fallible<Result> tryGetAndRun(
+          Map<? super Key, MapValue> map, Key key1, Class<Casted1> expectedClass1, Key key2, Class<Casted2> expectedClass2, Key key3, Class<Casted3> expectedClass3, Key key4, Class<Casted4> expectedClass4, Key key5, Class<Casted5> expectedClass5, QuintFunction<Casted1, Casted2, Casted3, Casted4, Casted5, Fallible<Result>> function) {
+    return tryGetAndRun(map, key1, expectedClass1, key2, expectedClass2, key3, expectedClass3, key4, expectedClass4, (value1, value2, value3, value4) -> tryGet(map, key5, expectedClass5).tryMap(value5 -> function.apply(value1, value2, value3, value4, value5)));
+  }
+
+  @FunctionalInterface
+  public interface SextFunction<A,B,C,D,E,F,R> {
+
+    R apply(A a, B b, C c, D d, E e, F f);
+  }
+
+  public static <Key, MapValue, Casted1 extends MapValue, Casted2 extends MapValue, Casted3 extends MapValue, Casted4 extends MapValue, Casted5 extends MapValue, Casted6 extends MapValue, Result> Fallible<Result> tryGetAndRun(
+          Map<? super Key, MapValue> map, Key key1, Class<Casted1> expectedClass1, Key key2, Class<Casted2> expectedClass2, Key key3, Class<Casted3> expectedClass3, Key key4, Class<Casted4> expectedClass4, Key key5, Class<Casted5> expectedClass5, Key key6, Class<Casted6> expectedClass6, SextFunction<Casted1, Casted2, Casted3, Casted4, Casted5, Casted6, Fallible<Result>> function) {
+    return tryGetAndRun(map, key1, expectedClass1, key2, expectedClass2, key3, expectedClass3, key4, expectedClass4, key5, expectedClass5, (value1, value2, value3, value4, value5) -> tryGet(map, key6, expectedClass6).tryMap(value6 -> function.apply(value1, value2, value3, value4, value5, value6)));
   }
 }

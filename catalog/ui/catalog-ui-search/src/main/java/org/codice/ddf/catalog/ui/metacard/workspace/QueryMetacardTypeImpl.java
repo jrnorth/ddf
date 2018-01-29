@@ -43,17 +43,7 @@ public class QueryMetacardTypeImpl extends MetacardTypeImpl {
 
   public static final String QUERY_TYPE = "type";
 
-  public static final String QUERY_IS_SCHEDULED = "isScheduled";
-
-  public static final String QUERY_SCHEDULE_AMOUNT = "scheduleAmount";
-
-  public static final String QUERY_SCHEDULE_UNIT = "scheduleUnit";
-
-  public static final String QUERY_SCHEDULE_START = "scheduleStart";
-
-  public static final String QUERY_SCHEDULE_END = "scheduleEnd";
-
-  //  public static final String QUERY_SCHEDULE_OPTIONS = "scheduleStart";
+  public static final String QUERY_SCHEDULE_DATA = "scheduleData";
 
   private static final Set<AttributeDescriptor> QUERY_DESCRIPTORS;
 
@@ -152,48 +142,12 @@ public class QueryMetacardTypeImpl extends MetacardTypeImpl {
 
     QUERY_DESCRIPTORS.add(
         new AttributeDescriptorImpl(
-            QUERY_IS_SCHEDULED,
+            QUERY_SCHEDULE_DATA,
             false /* indexed */,
             true /* stored */,
             false /* tokenized */,
             false /* multivalued */,
-            BasicTypes.BOOLEAN_TYPE));
-
-    QUERY_DESCRIPTORS.add(
-        new AttributeDescriptorImpl(
-            QUERY_SCHEDULE_AMOUNT,
-            false /* indexed */,
-            true /* stored */,
-            false /* tokenized */,
-            false /* multivalued */,
-            BasicTypes.INTEGER_TYPE));
-
-    QUERY_DESCRIPTORS.add(
-        new AttributeDescriptorImpl(
-            QUERY_SCHEDULE_UNIT,
-            false /* indexed */,
-            true /* stored */,
-            false /* tokenized */,
-            false /* multivalued */,
-            BasicTypes.STRING_TYPE));
-
-    QUERY_DESCRIPTORS.add(
-        new AttributeDescriptorImpl(
-            QUERY_SCHEDULE_START,
-            false /* indexed */,
-            true /* stored */,
-            false /* tokenized */,
-            false /* multivalued */,
-            BasicTypes.STRING_TYPE));
-
-    QUERY_DESCRIPTORS.add(
-        new AttributeDescriptorImpl(
-            QUERY_SCHEDULE_END,
-            false /* indexed */,
-            true /* stored */,
-            false /* tokenized */,
-            false /* multivalued */,
-            BasicTypes.STRING_TYPE));
+            BasicTypes.XML_TYPE));
   }
 
   public QueryMetacardTypeImpl() {

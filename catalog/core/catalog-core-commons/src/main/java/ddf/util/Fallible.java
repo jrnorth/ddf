@@ -14,8 +14,12 @@
 package ddf.util;
 
 import com.sun.istack.internal.Nullable;
+
+import java.util.Collection;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class Fallible<Value> {
   private String error;
@@ -77,6 +81,21 @@ public class Fallible<Value> {
    */
   public static <Any> Fallible<Any> error(String errorFormat, Object... formatParams) {
     return new Fallible<>(String.format(errorFormat, formatParams), null);
+  }
+
+  public static <OldElement> Fallible<?> forEach(Collection<OldElement> inputs, Function<OldElement, Fallible<?>> mapper) {
+    final String errors =
+            inputs
+                    .stream()
+                    .map(input -> mapper.apply(input))
+                    .map(fallible -> fallible.mapValue((String) null).orDo(Function.identity()))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.joining("\n"));
+    if (errors.isEmpty()) {
+      return success();
+    }
+
+    return error(errors);
   }
 
   /**
@@ -246,6 +265,10 @@ public class Fallible<Value> {
    */
   public final Fallible<Value> mapError(Function<String, String> errorTransformer) {
     return hasError() ? error(errorTransformer.apply(error)) : this;
+  }
+
+  public final Fallible<Value> prependToError(String prefix, Object... formatParams) {
+    return hasError() ? error(String.format(prefix, formatParams) + error) : this;
   }
 
   /**
