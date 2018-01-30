@@ -1,6 +1,10 @@
 package org.codice.ddf.catalog.ui.scheduling.subscribers;
 
 public class QueryDeliveryParameter {
+  public static final String NAME_STR = "name";
+
+  public static final String TYPE_STR = "type";
+
   private String name;
 
   private QueryDeliveryDatumType type;

@@ -39,6 +39,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.codice.ddf.catalog.ui.scheduling.ScheduleMetacardImpl;
 import org.codice.ddf.catalog.ui.util.EndpointUtil;
 
 public class WorkspaceTransformer {
@@ -92,6 +93,17 @@ public class WorkspaceTransformer {
                   .collect(Collectors.toList());
             }));
     metacardToJsonEntryMapper.put(
+        QueryMetacardTypeImpl.QUERY_SCHEDULES,
+        remapValue(
+            value -> {
+              List<Map<String, Object>> schedules = (List) value;
+              return schedules
+                  .stream()
+                  .map(transformIntoMetacard(new ScheduleMetacardImpl()))
+                  .map(this::toMetacardXml)
+                  .collect(Collectors.toList());
+            }));
+    metacardToJsonEntryMapper.put(
         Security.ACCESS_INDIVIDUALS,
         remapValue(
             value -> {
@@ -133,6 +145,18 @@ public class WorkspaceTransformer {
               List<String> lists = (List) value;
 
               return lists
+                  .stream()
+                  .map(this::toMetacardFromXml)
+                  .map(this::transform)
+                  .collect(Collectors.toList());
+            }));
+    jsonToMetacardEntryMapper.put(
+        QueryMetacardTypeImpl.QUERY_SCHEDULES,
+        remapValue(
+            value -> {
+              List<String> schedules = (List) value;
+
+              return schedules
                   .stream()
                   .map(this::toMetacardFromXml)
                   .map(this::transform)

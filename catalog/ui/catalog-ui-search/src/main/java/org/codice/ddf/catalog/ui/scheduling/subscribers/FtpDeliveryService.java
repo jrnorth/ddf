@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 public class FtpDeliveryService implements QueryDeliveryService {
+  public static final String DISPLAY_NAME = "DDF FTP Delivery Serivce";
+
   public static final String SUBSCRIBER_TYPE = "FTP";
 
   public static final String HOSTNAME_PARAMETER_KEY = "hostname";
@@ -26,7 +28,7 @@ public class FtpDeliveryService implements QueryDeliveryService {
           new QueryDeliveryParameter(HOSTNAME_PARAMETER_KEY, QueryDeliveryDatumType.STRING),
           new QueryDeliveryParameter(PORT_PARAMETER_KEY, QueryDeliveryDatumType.INTEGER),
           new QueryDeliveryParameter(USERNAME_PARAMETER_KEY, QueryDeliveryDatumType.STRING),
-          new QueryDeliveryParameter(PASSWORD_PARAMETER_KEY, QueryDeliveryDatumType.STRING));
+          new QueryDeliveryParameter(PASSWORD_PARAMETER_KEY, QueryDeliveryDatumType.PASSWORD));
 
   public static final Pattern FTP_HOSTNAME_PATTERN =
       Pattern.compile(
@@ -36,6 +38,11 @@ public class FtpDeliveryService implements QueryDeliveryService {
   @Override
   public String getDeliveryType() {
     return SUBSCRIBER_TYPE;
+  }
+
+  @Override
+  public String getDisplayName() {
+    return DISPLAY_NAME;
   }
 
   @Override

@@ -23,6 +23,8 @@ import org.codice.ddf.platform.email.SmtpClient;
 import org.joda.time.DateTime;
 
 public class EmailDeliveryService implements QueryDeliveryService {
+  public static final String DISPLAY_NAME = "DDF Email Delivery Service";
+
   public static final String DELIVERY_TYPE = "email";
 
   public static final String EMAIL_PARAMETER_KEY = "email";
@@ -46,6 +48,11 @@ public class EmailDeliveryService implements QueryDeliveryService {
   @Override
   public String getDeliveryType() {
     return DELIVERY_TYPE;
+  }
+
+  @Override
+  public String getDisplayName() {
+    return DISPLAY_NAME;
   }
 
   @Override

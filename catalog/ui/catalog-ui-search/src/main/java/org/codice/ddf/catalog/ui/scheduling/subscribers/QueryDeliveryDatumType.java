@@ -11,5 +11,6 @@ public enum QueryDeliveryDatumType {
   DOUBLE,
   OBJECT,
   EMAIL,
-  URL
+  URL,
+  PASSWORD
 }

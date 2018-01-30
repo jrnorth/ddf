@@ -367,7 +367,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                   String.class,
                   ScheduleMetacardTypeImpl.SCHEDULE_END,
                   String.class,
-                  ScheduleMetacardTypeImpl.SCHEDULE_SUBSCRIBERS,
+                  ScheduleMetacardTypeImpl.SCHEDULE_DELIVERY_IDS,
                   List.class,
                   (scheduleUserId,
                       scheduleInterval,
@@ -426,7 +426,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
               queryMetacardData,
               QueryMetacardTypeImpl.QUERY_CQL,
               String.class,
-              QueryMetacardTypeImpl.QUERY_SCHEDULE_DATA,
+              QueryMetacardTypeImpl.QUERY_SCHEDULES,
               Map.class,
               (cqlQuery, scheduleData) ->
                   readScheduleDataAndSchedule(
@@ -483,15 +483,12 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                 forEach(
                     (List<Map<String, Object>>) queryMetacards,
                     queryMetacardData -> {
-                      if (!queryMetacardData.containsKey(
-                          QueryMetacardTypeImpl.QUERY_SCHEDULE_DATA)) {
+                      if (!queryMetacardData.containsKey(QueryMetacardTypeImpl.QUERY_SCHEDULES)) {
                         return success();
                       }
 
                       return MapUtils.tryGet(
-                              queryMetacardData,
-                              QueryMetacardTypeImpl.QUERY_SCHEDULE_DATA,
-                              Map.class)
+                              queryMetacardData, QueryMetacardTypeImpl.QUERY_SCHEDULES, Map.class)
                           .tryMap(metacardAction::apply);
                     }));
   }
