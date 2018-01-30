@@ -360,16 +360,10 @@
     </bean>
 
     <service ref="queryEmailDeliveryService" interface="org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService"/>
-    
-    <bean id="queryFtpDeliveryService"
-          class="org.codice.ddf.catalog.ui.scheduling.subscribers.FtpDeliveryService"/>
-
-    <service ref="queryFtpDeliveryService" interface="org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService"/>
 
     <bean id="querySchedulingPostIngestPlugin" class="org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin">
         <argument ref="catalogFramework"/>
         <argument ref="queryEmailDeliveryService"/>
-        <argument ref="queryFtpDeliveryService"/>
         <argument ref="persistentStore"/>
         <argument ref="workspaceTransformer"/>
     </bean>
