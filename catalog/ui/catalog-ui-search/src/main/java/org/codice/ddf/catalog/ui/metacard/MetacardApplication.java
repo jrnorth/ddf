@@ -122,10 +122,14 @@ import org.codice.ddf.catalog.ui.metacard.validation.Validator;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceAttributes;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceTransformer;
 import org.codice.ddf.catalog.ui.query.monitor.api.SubscriptionsPersistentStore;
+import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryParameter;
+import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService;
 import org.codice.ddf.catalog.ui.util.EndpointUtil;
 import org.codice.ddf.security.common.Security;
 import org.opengis.filter.Filter;
 import org.opengis.filter.sort.SortBy;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.servlet.SparkApplication;
@@ -174,6 +178,9 @@ public class MetacardApplication implements SparkApplication {
   private final ConfigurationApplication configuration;
 
   private final NoteUtil noteUtil;
+
+  private final BundleContext bundleContext =
+      FrameworkUtil.getBundle(MetacardApplication.class).getBundleContext();
 
   public MetacardApplication(
       CatalogFramework catalogFramework,
@@ -724,6 +731,42 @@ public class MetacardApplication implements SparkApplication {
           }
           res.status(500);
           return util.getResponseWrapper(ERROR_RESPONSE_TYPE, "Could not delete note metacard!");
+        });
+
+    get(
+        "/digorno",
+        (req, res) -> {
+          Class<QueryDeliveryService> clazz = QueryDeliveryService.class;
+          String filter = "(objectClass=" + QueryDeliveryService.class.getName() + ")";
+
+          List<QueryDeliveryService> deliveryServices =
+              bundleContext
+                  .getServiceReferences(clazz, filter)
+                  .stream()
+                  .map(bundleContext::getService)
+                  .filter(Objects::nonNull)
+                  .collect(Collectors.toList());
+
+          List<Map<String, Object>> responseMaps = new ArrayList<>();
+          HashMap<String, Object> tempMap = null;
+          for (QueryDeliveryService service : deliveryServices) {
+            tempMap = new HashMap<>();
+            // TODO: Replace with a constant keys somewhere and add a displayName key as well
+            tempMap.put(QueryDeliveryService.SUBSCRIBER_TYPE_KEY, service.getDeliveryType());
+            tempMap.put(QueryDeliveryService.DISPLAY_NAME_KEY, service.getDisplayName());
+            List<Map<String, String>> fieldsList = new ArrayList<>();
+            for (QueryDeliveryParameter field : service.getRequiredFields()) {
+              fieldsList.add(
+                  ImmutableMap.<String, String>builder()
+                      .put(QueryDeliveryParameter.NAME_STR, field.getName())
+                      .put(QueryDeliveryParameter.TYPE_STR, field.getType().name())
+                      .build());
+            }
+            tempMap.put("requiredFields", fieldsList);
+            responseMaps.add(new HashMap<>(tempMap));
+          }
+
+          return util.getJson(responseMaps);
         });
 
     after(

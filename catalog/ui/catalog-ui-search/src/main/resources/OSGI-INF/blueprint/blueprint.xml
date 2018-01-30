@@ -73,6 +73,10 @@
         <bean class="org.codice.ddf.catalog.ui.metacard.workspace.ListMetacardTypeImpl"/>
     </service>
 
+    <service interface="ddf.catalog.data.MetacardType">
+        <bean class="org.codice.ddf.catalog.ui.scheduling.ScheduleMetacardTypeImpl"/>
+    </service>
+
     <bean id="workspacePreIngestPlugin"
           class="org.codice.ddf.catalog.ui.security.WorkspacePreIngestPlugin">
         <argument ref="subjectIdentity"/>
@@ -365,6 +369,8 @@
     <bean id="querySchedulingPostIngestPlugin" class="org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin">
         <argument ref="catalogFramework"/>
         <argument ref="queryEmailDeliveryService"/>
+        <argument ref="queryFtpDeliveryService"/>
+        <argument ref="persistentStore"/>
         <argument ref="workspaceTransformer"/>
     </bean>
 

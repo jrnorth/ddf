@@ -24,12 +24,21 @@ public class ScheduleMetacardTypeImpl extends MetacardTypeImpl {
 
   public static final String SCHEDULE_END = "scheduleEnd";
 
-  public static final String SCHEDULE_SUBSCRIBERS = "scheduleSubscribers";
+  public static final String SCHEDULE_DELIVERY_IDS = "deliveryIds";
 
   private static final Set<AttributeDescriptor> SCHEDULE_DESCRIPTORS;
 
   static {
     SCHEDULE_DESCRIPTORS = new HashSet<>();
+
+    SCHEDULE_DESCRIPTORS.add(
+        new AttributeDescriptorImpl(
+            SCHEDULE_USER_ID,
+            false /* indexed */,
+            true /* stored */,
+            false /* tokenized */,
+            false /* multivalued */,
+            BasicTypes.STRING_TYPE));
 
     SCHEDULE_DESCRIPTORS.add(
         new AttributeDescriptorImpl(
@@ -65,7 +74,7 @@ public class ScheduleMetacardTypeImpl extends MetacardTypeImpl {
             true /* stored */,
             false /* tokenized */,
             false /* multivalued */,
-            BasicTypes.DATE_TYPE));
+            BasicTypes.STRING_TYPE));
 
     SCHEDULE_DESCRIPTORS.add(
         new AttributeDescriptorImpl(
@@ -74,16 +83,16 @@ public class ScheduleMetacardTypeImpl extends MetacardTypeImpl {
             true /* stored */,
             false /* tokenized */,
             false /* multivalued */,
-            BasicTypes.DATE_TYPE));
+            BasicTypes.STRING_TYPE));
 
     SCHEDULE_DESCRIPTORS.add(
         new AttributeDescriptorImpl(
-            SCHEDULE_SUBSCRIBERS,
+            SCHEDULE_DELIVERY_IDS,
             false /* indexed */,
             true /* stored */,
             false /* tokenized */,
-            false /* multivalued */,
-            BasicTypes.XML_TYPE));
+            true /* multivalued */,
+            BasicTypes.STRING_TYPE));
   }
 
   public ScheduleMetacardTypeImpl() {
