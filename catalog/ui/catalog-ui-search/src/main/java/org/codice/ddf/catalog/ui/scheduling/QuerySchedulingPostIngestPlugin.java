@@ -63,7 +63,6 @@ import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceAttributes;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceMetacardImpl;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceTransformer;
 import org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService;
-import org.codice.ddf.catalog.ui.scheduling.subscribers.FtpDeliveryService;
 import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService;
 import org.codice.ddf.persistence.PersistenceException;
 import org.codice.ddf.persistence.PersistentStore;
@@ -117,15 +116,13 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   public QuerySchedulingPostIngestPlugin(
       CatalogFramework catalogFramework,
       EmailDeliveryService emailNotifierService,
-      FtpDeliveryService ftpDeliveryService,
       PersistentStore persistentStore,
       WorkspaceTransformer workspaceTransformer) {
     this.catalogFramework = catalogFramework;
     this.persistentStore = persistentStore;
     this.workspaceTransformer = workspaceTransformer;
 
-    deliveryServicesByName =
-        ImmutableMap.of("email", emailNotifierService, "ftp", ftpDeliveryService);
+    deliveryServicesByName = ImmutableMap.of("email", emailNotifierService);
 
     // TODO TEMP
     LOGGER.warn("Query scheduling plugin created!");
