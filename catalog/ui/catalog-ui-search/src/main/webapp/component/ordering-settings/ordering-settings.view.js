@@ -102,7 +102,7 @@ module.exports = Marionette.LayoutView.extend({
 
         if (Object.getOwnPropertyNames(creds).length !== 0) {
             creds['uuid'] = configUuid;
-            creds['ddfUsername'] = user.get('user').get('username');
+            creds['ddfUsername'] = user.get('user').get('userid');
             this.forwardCredentials(creds);
         }
 
