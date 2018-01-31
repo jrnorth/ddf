@@ -41,7 +41,7 @@ public class EmailDeliveryService implements QueryDeliveryService {
       ImmutableSet.of(
           new QueryDeliveryParameter(EMAIL_PARAMETER_KEY, QueryDeliveryDatumType.EMAIL));
 
-  private final String senderEmail;
+  private String senderEmail;
 
   private final SmtpClient smtpClient;
 
@@ -142,5 +142,10 @@ public class EmailDeliveryService implements QueryDeliveryService {
                 return success();
               });
         });
+  }
+
+  @SuppressWarnings("unused")
+  public void setSenderEmail(String senderEmail) {
+    this.senderEmail = senderEmail;
   }
 }
