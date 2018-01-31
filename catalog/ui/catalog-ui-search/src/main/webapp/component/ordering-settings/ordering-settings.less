@@ -1,0 +1,59 @@
+@{customElementNamespace}ordering-settings {
+  .customElement;
+
+  > .settings-header {
+    display: block;
+    text-align: center;
+    padding: @minimumSpacing;
+    font-size: @largeFontSize;
+    border-bottom: #444444 medium solid;
+  }
+
+  > .current-settings {
+    position: relative;
+    display: block;
+    margin-bottom: @mediumSpacing;
+
+    .no-ordering-settings {
+      display: block;
+      text-align: center;
+      padding-top: @minimumSpacing;
+    }
+  }
+
+  > .create-button {
+    display: block;
+    text-align: center;
+    width: 100%;
+    height: @minimumButtonSize;
+    padding-left: @minimumSpacing;
+    padding-right: @minimumSpacing;
+
+    > .fa-plus {
+      padding-right: @minimumSpacing;
+    }
+  }
+
+  > .editor {
+    display: none;
+  }
+}
+
+@{customElementNamespace}ordering-settings.editing-config {
+  > .settings-header {
+    margin-bottom: @minimumSpacing;
+  }
+
+  > .current-settings {
+    display: none;
+  }
+
+  > .create-button {
+    display: none;
+  }
+
+  > .editor {
+    display: block;
+  }
+
+}
