@@ -246,9 +246,10 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   }
 
   private Fallible<?> deliver(
+      final String deliveryType,
       final Map<String, Object> queryMetacardData,
       final QueryResponse results,
-      final String deliveryType,
+      final String deliveryID,
       final Map<String, Object> deliveryParameters) {
     if (!deliveryServicesByName.containsKey(deliveryType)) {
       return error(
@@ -258,7 +259,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
     return deliveryServicesByName
         .get(deliveryType)
-        .deliver(queryMetacardData, results, deliveryParameters);
+        .deliver(queryMetacardData, results, deliveryID, deliveryParameters);
   }
 
   private Fallible<?> deliverAll(
@@ -276,9 +277,10 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                 .tryMap(
                     deliveryInfo ->
                         deliver(
+                                deliveryInfo.getLeft(),
                                 queryMetacardData,
                                 results,
-                                deliveryInfo.getLeft(),
+                                deliveryID,
                                 deliveryInfo.getRight())
                             .prependToError(
                                 "There was a problem delivering query results to delivery info with ID \"%s\" for user '%s': ",
