@@ -349,8 +349,11 @@
 
     <bean id="queryEmailDeliveryService"
           class="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService">
-        <!-- TODO: Use a different email here! -->
-        <argument value="connor.davey@connexta.com"/>
+        <cm:managed-properties
+                persistent-id="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService"
+                update-strategy="container-managed"/>
+
+        <argument value="donotreply@example.com"/>
         <argument ref="smtpClient"/>
     </bean>
 
