@@ -270,12 +270,6 @@
         <argument ref="subjectIdentity"/>
     </bean>
 
-    <bean id="cronApplication" class="org.codice.ddf.catalog.ui.security.cron.CronApplication">
-        <argument ref="catalogFramework"/>
-        <argument ref="endpointUtil"/>
-        <argument ref="emailNotifierService"/>
-    </bean>
-
     <bean id="rootReqSupplier" class="org.codice.ddf.catalog.ui.RootContextRequestSupplier"/>
     <bean id="sparkServlet" class="org.codice.ddf.catalog.ui.SparkServlet">
         <property name="sparkApplications">
@@ -283,7 +277,6 @@
                 <ref component-id="queryApplication"/>
                 <ref component-id="metacardApplication"/>
                 <ref component-id="userApplication"/>
-                <ref component-id="cronApplication"/>
                 <ref component-id="configurationApplication"/>
                 <ref component-id="feedbackApplication"/>
             </list>
@@ -355,7 +348,8 @@
 
     <bean id="queryEmailDeliveryService"
           class="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService">
-        <argument value="donotreply@codice.org"/>
+        <!-- TODO: Use a different email here! -->
+        <argument value="connor.davey@connexta.com"/>
         <argument ref="smtpClient"/>
     </bean>
 

@@ -21,16 +21,22 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import org.codice.ddf.platform.email.SmtpClient;
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+import org.slf4j.LoggerFactory;
 
 public class EmailDeliveryService implements QueryDeliveryService {
-  public static final String DISPLAY_NAME = "DDF Email Delivery Service";
-
   public static final String DELIVERY_TYPE = "email";
+
+  public static final String DELIVERY_TYPE_DISPLAY_NAME = "Email";
 
   public static final String EMAIL_PARAMETER_KEY = "email";
 
   public static final Pattern EMAIL_ADDRESS_PATTERN =
       Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$", Pattern.CASE_INSENSITIVE);
+
+  public static final DateTimeFormatter EMAIL_DATE_TIME_FORMATTER =
+      DateTimeFormat.forPattern("MM/dd/yyyy HH:mm");
 
   public static final ImmutableSet<QueryDeliveryParameter> PROPERTIES =
       ImmutableSet.of(
@@ -52,7 +58,7 @@ public class EmailDeliveryService implements QueryDeliveryService {
 
   @Override
   public String getDisplayName() {
-    return DISPLAY_NAME;
+    return DELIVERY_TYPE_DISPLAY_NAME;
   }
 
   @Override
@@ -70,7 +76,7 @@ public class EmailDeliveryService implements QueryDeliveryService {
         EMAIL_PARAMETER_KEY,
         String.class,
         email -> {
-          if (EMAIL_ADDRESS_PATTERN.matcher(email).matches()) {
+          if (!EMAIL_ADDRESS_PATTERN.matcher(email).matches()) {
             return error("The email address \"%s\" is not a valid email address!", email);
           }
 
@@ -101,7 +107,7 @@ public class EmailDeliveryService implements QueryDeliveryService {
                     new StringBuilder(
                         String.format(
                             "Here are the results for query %s as of %s:",
-                            queryMetacardTitle, DateTime.now()));
+                            queryMetacardTitle, EMAIL_DATE_TIME_FORMATTER.print(DateTime.now())));
                 for (Result queryResult : queryResults.getResults()) {
                   emailBody.append("\n\n");
 
@@ -110,7 +116,8 @@ public class EmailDeliveryService implements QueryDeliveryService {
                       metacard.getMetacardType().getAttributeDescriptors()) {
                     final String key = attributeDescriptor.getName();
 
-                    emailBody.append(String.format("\n%s: %s", key, metacard));
+                    emailBody.append(
+                        String.format("\n%s: %s", key, metacard.getAttribute(key).getValue()));
                   }
                 }
 
@@ -129,6 +136,9 @@ public class EmailDeliveryService implements QueryDeliveryService {
                       exception.getMessage());
                 }
 
+                // TODO TEMP
+                LoggerFactory.getLogger(EmailDeliveryService.class)
+                    .info("Email body:\n" + emailBody.toString());
                 smtpClient.send(message);
 
                 return success();
