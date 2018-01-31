@@ -422,7 +422,7 @@
                             versioning-common
                         </Embed-Dependency>
                         <Web-ContextPath>/search/catalog</Web-ContextPath>
-                        <_wab>src/main/webapp,${project.build.directory}/webapp</_wab>
+                        <_wab>src/main/webapp,target/classes,${project.build.directory}/webapp</_wab>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Import-Package>
                             org.eclipse.jetty.server,
@@ -448,7 +448,9 @@
                             !org.abego.treelayout.*,
                             *
                         </Import-Package>
-                        <Export-Package/>
+                        <Export-Package>
+                            org.codice.ddf.catalog.ui.*
+                        </Export-Package>
                     </instructions>
                 </configuration>
             </plugin>
