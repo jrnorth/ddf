@@ -23,27 +23,6 @@ var OrderingSettingsEditorView = require('../ordering-settings-editor/ordering-s
 var user = require('component/singletons/user-instance');
 const uuid = require('uuid');
 
-const sampleAvailableTypesResponse = [
-    {
-        type: 'ftp-type',
-        displayName: 'FTP',
-        requiredFields: [
-            {name: 'Host', type: 'String'},
-            {name: 'Port', type: 'Integer'},
-            {name: 'Path', type: 'String'},
-            {name: 'Username', type: 'String'},
-            {name: 'Password', type: 'Password'}
-        ]
-    },
-    {
-        type: 'email-type',
-        displayName: 'Email',
-        requiredFields: [
-            {name: 'Email Address', type:'String'}
-        ]
-    }
-];
-
 module.exports = Marionette.LayoutView.extend({
     template: template,
     tagName: CustomElements.register('ordering-settings'),
@@ -70,7 +49,7 @@ module.exports = Marionette.LayoutView.extend({
                 availableTypes = result;
             }
         });
-        let editorModel = new OrderingSettingsEditor({availableTypes: sampleAvailableTypesResponse});
+        let editorModel = new OrderingSettingsEditor({availableTypes: availableTypes});
         this.settingsEditor.show(new OrderingSettingsEditorView({model: editorModel}));
     },
 
