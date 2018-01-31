@@ -70,6 +70,7 @@ public class EmailDeliveryService implements QueryDeliveryService {
   public Fallible<?> deliver(
       final Map<String, Object> queryMetacardData,
       final QueryResponse queryResults,
+      String deliveryID,
       final Map<String, Object> parameters) {
     return MapUtils.tryGetAndRun(
         parameters,

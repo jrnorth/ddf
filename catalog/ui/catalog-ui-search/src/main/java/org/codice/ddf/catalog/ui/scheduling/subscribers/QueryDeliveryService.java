@@ -17,6 +17,7 @@ public interface QueryDeliveryService {
   Fallible<?> deliver(
       Map<String, Object> queryMetacardData,
       QueryResponse queryResults,
+      String deliveryID,
       Map<String, Object> parameters);
 
   /** A unique identifier for a given specific implementation of QueryDeliveryService */
