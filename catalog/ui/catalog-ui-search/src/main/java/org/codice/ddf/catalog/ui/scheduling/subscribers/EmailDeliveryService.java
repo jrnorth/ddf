@@ -23,7 +23,6 @@ import org.codice.ddf.platform.email.SmtpClient;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
-import org.slf4j.LoggerFactory;
 
 public class EmailDeliveryService implements QueryDeliveryService {
   public static final String DELIVERY_TYPE = "email";
