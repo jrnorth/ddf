@@ -137,9 +137,6 @@ public class EmailDeliveryService implements QueryDeliveryService {
                       exception.getMessage());
                 }
 
-                // TODO TEMP
-                LoggerFactory.getLogger(EmailDeliveryService.class)
-                    .info("Email body:\n" + emailBody.toString());
                 smtpClient.send(message);
 
                 return success();
