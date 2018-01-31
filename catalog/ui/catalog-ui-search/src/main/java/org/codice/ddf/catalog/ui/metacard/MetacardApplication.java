@@ -55,6 +55,8 @@ import ddf.catalog.data.types.Core;
 import ddf.catalog.federation.FederationException;
 import ddf.catalog.filter.FilterBuilder;
 import ddf.catalog.operation.DeleteResponse;
+import ddf.catalog.operation.Query;
+import ddf.catalog.operation.QueryRequest;
 import ddf.catalog.operation.QueryResponse;
 import ddf.catalog.operation.ResourceResponse;
 import ddf.catalog.operation.UpdateResponse;
@@ -72,8 +74,10 @@ import ddf.catalog.source.SourceUnavailableException;
 import ddf.catalog.source.UnsupportedQueryException;
 import ddf.catalog.transform.QueryResponseTransformer;
 import ddf.catalog.util.impl.ResultIterable;
+import ddf.security.Credentials;
 import ddf.security.Subject;
 import ddf.security.SubjectUtils;
+import ddf.security.UserCredential;
 import ddf.security.common.audit.SecurityLogger;
 import java.io.IOException;
 import java.io.InputStream;
@@ -751,7 +755,6 @@ public class MetacardApplication implements SparkApplication {
           HashMap<String, Object> tempMap = null;
           for (QueryDeliveryService service : deliveryServices) {
             tempMap = new HashMap<>();
-            // TODO: Replace with a constant keys somewhere and add a displayName key as well
             tempMap.put(QueryDeliveryService.SUBSCRIBER_TYPE_KEY, service.getDeliveryType());
             tempMap.put(QueryDeliveryService.DISPLAY_NAME_KEY, service.getDisplayName());
             List<Map<String, String>> fieldsList = new ArrayList<>();
@@ -768,6 +771,58 @@ public class MetacardApplication implements SparkApplication {
 
           return util.getJson(responseMaps);
         });
+
+    post("/credentials",
+        (req, res) -> {
+          Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
+
+          Class<Credentials> clazz = Credentials.class;
+          String filter = "(objectClass=" + Credentials.class.getName() + ")";
+
+          Optional<Credentials> credentialImpl =
+              bundleContext
+                  .getServiceReferences(clazz, filter)
+                  .stream()
+                  .map(bundleContext::getService)
+                  .filter(Objects::nonNull)
+                  .findFirst();
+
+          if (credentialImpl.isPresent()) {
+            if (incoming.containsKey("ddfUsername")
+                && incoming.containsKey("credUsername")
+                && incoming.containsKey("credPassword")
+                && incoming.containsKey("uuid")) {
+              UserCredential newCred = new UserCredential(
+                  (String)incoming.get("credUsername"),
+                  (String)incoming.get("uuid"),
+                  ((String)incoming.get("credPassword")).toCharArray());
+
+              credentialImpl.get().storeCredential((String)incoming.get("ddfUsername"), newCred);
+            }
+          }
+
+          return util.getResponseWrapper(SUCCESS_RESPONSE_TYPE, "");
+        });
+
+    post("/delivery", (req, res) -> {
+        Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
+
+        if (incoming.containsKey("metacardId")) {
+          Filter filter = filterBuilder.attribute(Core.ID).is().like()
+              .text((String) incoming.get("metacardId"));
+
+          Query query = new QueryImpl(filter);
+          QueryRequest queryRequest = new QueryRequestImpl(query);
+
+          QueryResponse queryResponse = catalogFramework.query(queryRequest);
+
+          //TODO: Perform manual delivery that doesn't route through the scheduling logic
+
+          return util.getResponseWrapper(SUCCESS_RESPONSE_TYPE, "everything went swimmingly");
+        }
+
+        return util.getResponseWrapper(ERROR_RESPONSE_TYPE, "metacard id wasn't supplied with request");
+    });
 
     after(
         (req, res) -> {
