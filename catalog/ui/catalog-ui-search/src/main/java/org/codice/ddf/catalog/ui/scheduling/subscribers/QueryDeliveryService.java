@@ -5,8 +5,12 @@ import ddf.catalog.operation.QueryResponse;
 import ddf.util.Fallible;
 import java.util.Map;
 
+/**
+ * <b> This code is experimental. While this interface is functional and tested, it may change or be
+ * removed in a future version of the library. </b>
+ */
 public interface QueryDeliveryService {
-  String SUBSCRIBER_TYPE_KEY = "deliveryType";
+  String DELIVERY_TYPE_KEY = "deliveryType";
 
   String DISPLAY_NAME_KEY = "displayName";
 

@@ -16,6 +16,7 @@ package org.codice.ddf.platform.ignite;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.osgi.IgniteAbstractOsgiContextActivator;
 
+// TODO: Make Ignite stop dumping logs into the console on startup.
 /**
  * Begins the process of starting Ignite inside OSGi
  *
