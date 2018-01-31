@@ -129,6 +129,8 @@ import org.codice.ddf.catalog.ui.query.monitor.api.SubscriptionsPersistentStore;
 import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryParameter;
 import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService;
 import org.codice.ddf.catalog.ui.util.EndpointUtil;
+import org.codice.ddf.persistence.PersistentStore;
+import org.codice.ddf.persistence.PersistentStore.PersistenceType;
 import org.codice.ddf.security.common.Security;
 import org.opengis.filter.Filter;
 import org.opengis.filter.sort.SortBy;
@@ -173,6 +175,7 @@ public class MetacardApplication implements SparkApplication {
   private final WorkspaceTransformer transformer;
   private final ExperimentalEnumerationExtractor enumExtractor;
   private final SubscriptionsPersistentStore subscriptions;
+  private final PersistentStore persistentStore;
   private final List<MetacardType> types;
   private final Associated associated;
   private final QueryResponseTransformer csvQueryResponseTransformer;
@@ -194,6 +197,7 @@ public class MetacardApplication implements SparkApplication {
       WorkspaceTransformer transformer,
       ExperimentalEnumerationExtractor enumExtractor,
       SubscriptionsPersistentStore subscriptions,
+      PersistentStore persistentStore,
       List<MetacardType> types,
       Associated associated,
       QueryResponseTransformer csvQueryResponseTransformer,
@@ -207,6 +211,7 @@ public class MetacardApplication implements SparkApplication {
     this.transformer = transformer;
     this.enumExtractor = enumExtractor;
     this.subscriptions = subscriptions;
+    this.persistentStore = persistentStore;
     this.types = types;
     this.associated = associated;
     this.csvQueryResponseTransformer = csvQueryResponseTransformer;
@@ -773,7 +778,8 @@ public class MetacardApplication implements SparkApplication {
           return util.getJson(responseMaps);
         });
 
-    post("/credentials",
+    post(
+        "/credentials",
         (req, res) -> {
           Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
 
@@ -793,37 +799,68 @@ public class MetacardApplication implements SparkApplication {
                 && incoming.containsKey("credUsername")
                 && incoming.containsKey("credPassword")
                 && incoming.containsKey("uuid")) {
-              UserCredential newCred = new UserCredential(
-                  (String)incoming.get("credUsername"),
-                  (String)incoming.get("uuid"),
-                  ((String)incoming.get("credPassword")).toCharArray());
+              UserCredential newCred =
+                  new UserCredential(
+                      (String) incoming.get("credUsername"),
+                      (String) incoming.get("uuid"),
+                      ((String) incoming.get("credPassword")).toCharArray());
 
-              credentialImpl.get().storeCredential((String)incoming.get("ddfUsername"), newCred);
+              credentialImpl.get().storeCredential((String) incoming.get("ddfUsername"), newCred);
             }
           }
 
           return util.getResponseWrapper(SUCCESS_RESPONSE_TYPE, "");
         });
 
-    post("/delivery", (req, res) -> {
-        Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
+    post(
+        "/delivery",
+        (req, res) -> {
+          Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
 
-        if (incoming.containsKey("metacardId")) {
-          Filter filter = filterBuilder.attribute(Core.ID).is().like()
-              .text((String) incoming.get("metacardId"));
+          if (incoming.containsKey("metacardId")
+              && incoming.containsKey("deliveryIds")
+              && incoming.containsKey("username")) {
 
-          Query query = new QueryImpl(filter);
-          QueryRequest queryRequest = new QueryRequestImpl(query);
+            String username = (String) incoming.get("username");
 
-          QueryResponse queryResponse = catalogFramework.query(queryRequest);
+            List<Map<String, Object>> preferencesList =
+                persistentStore.get(
+                    PersistenceType.PREFERENCES_TYPE.toString(),
+                    String.format("user = '%s'", username));
 
-          //TODO: Perform manual delivery that doesn't route through the scheduling logic
+            final Map<String, Object> userPrefs = preferencesList.get(0);
 
-          return util.getResponseWrapper(SUCCESS_RESPONSE_TYPE, "everything went swimmingly");
-        }
+            Filter queryFilter =
+                filterBuilder
+                    .attribute(Core.ID)
+                    .is()
+                    .like()
+                    .text((String) incoming.get("metacardId"));
 
-        return util.getResponseWrapper(ERROR_RESPONSE_TYPE, "metacard id wasn't supplied with request");
-    });
+            Query query = new QueryImpl(queryFilter);
+            QueryRequest queryRequest = new QueryRequestImpl(query);
+
+            QueryResponse queryResponse = catalogFramework.query(queryRequest);
+
+            // TODO: Perform manual delivery that doesn't route through the scheduling logic
+            Class<QueryDeliveryService> clazz = QueryDeliveryService.class;
+            String osgiFilter = "(objectClass=" + QueryDeliveryService.class.getName() + ")";
+
+            List<QueryDeliveryService> deliveryServices =
+                bundleContext
+                    .getServiceReferences(clazz, osgiFilter)
+                    .stream()
+                    .map(bundleContext::getService)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            return util.getResponseWrapper(SUCCESS_RESPONSE_TYPE, "everything went swimmingly");
+          }
+
+          return util.getResponseWrapper(
+              ERROR_RESPONSE_TYPE,
+              "Metacard id, username, and all desired delivery ids must be supplied with request.");
+        });
 
     after(
         (req, res) -> {

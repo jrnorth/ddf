@@ -235,6 +235,7 @@
         <argument>
             <reference-list interface="ddf.catalog.data.MetacardType"/>
         </argument>
+        <argument ref="persistentStore"/>
         <argument ref="associated"/>
         <argument ref="csvQueryResponseTransformer" />
         <argument ref="attributeRegistry" />
