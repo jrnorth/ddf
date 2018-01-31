@@ -249,6 +249,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       final String deliveryType,
       final Map<String, Object> queryMetacardData,
       final QueryResponse results,
+      final String username,
       final String deliveryID,
       final Map<String, Object> deliveryParameters) {
     if (!deliveryServicesByName.containsKey(deliveryType)) {
@@ -259,7 +260,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
     return deliveryServicesByName
         .get(deliveryType)
-        .deliver(queryMetacardData, results, deliveryID, deliveryParameters);
+        .deliver(queryMetacardData, results, username, deliveryID, deliveryParameters);
   }
 
   private Fallible<?> deliverAll(
@@ -280,6 +281,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                                 deliveryInfo.getLeft(),
                                 queryMetacardData,
                                 results,
+                                scheduleUsername,
                                 deliveryID,
                                 deliveryInfo.getRight())
                             .prependToError(
