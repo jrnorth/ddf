@@ -27,9 +27,10 @@ define([
     'js/model/Theme',
     'js/ThemeUtils',
     'js/model/QuerySettings',
+    'component/ordering-config/ordering-config',
     'backboneassociations'
-], function (_, _get, wreqr, Backbone, properties, Alert, Common, UploadBatch, announcement, BlackListItem, moment, Theme, ThemeUtils,
-    QuerySettings) {
+], function (_, _get, wreqr, Backbone, properties, Alert, Common, UploadBatch, announcement,
+             BlackListItem, moment, Theme, ThemeUtils, QuerySettings, OrderingConfig) {
     'use strict';
 
     var User = {};
@@ -150,7 +151,8 @@ define([
                 theme: new Theme(),
                 animation: true,
                 hoverPreview: true,
-                querySettings: new QuerySettings()
+                querySettings: new QuerySettings(),
+                orderingSettings: []
             };
         },
         relations: [
@@ -174,6 +176,11 @@ define([
                 type: Backbone.Many,
                 key: 'resultBlacklist',
                 relatedModel: BlackListItem
+            },
+            {
+                type: Backbone.Many,
+                key: 'orderingSettings',
+                relatedModel: OrderingConfig
             },
             {
                 type: Backbone.One,
@@ -203,6 +210,10 @@ define([
         },
         handleRemove: function(){
             this.savePreferences();
+        },
+        addOrderingSetting: function(setting) {
+          this.get('orderingSettings').push(setting);
+          this.savePreferences();
         },
         addUpload: function(upload){
             this.get('uploads').add(upload);
