@@ -33,7 +33,7 @@ module.exports = Marionette.LayoutView.extend({
         let availableTypes = this.model.get('availableTypes');
 
         let types = availableTypes.map(function (type) {
-            return {label: type.displayName, value: type.type, class: ''};
+            return {label: type.displayName, value: type.deliveryType, class: ''};
         });
 
         let fields = availableTypes.map(function (type) {return type.requiredFields;});
