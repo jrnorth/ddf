@@ -18,6 +18,10 @@ import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_METHODS_KEY;
+import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_METHOD_ID_KEY;
+import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_OPTIONS_KEY;
+import static org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService.DELIVERY_TYPE_KEY;
 import static spark.Spark.after;
 import static spark.Spark.delete;
 import static spark.Spark.exception;
@@ -83,6 +87,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -761,7 +766,7 @@ public class MetacardApplication implements SparkApplication {
           for (QueryDeliveryService service : deliveryServices) {
             tempMap = new HashMap<>();
             // TODO: Replace with a constant keys somewhere and add a displayName key as well
-            tempMap.put(QueryDeliveryService.DELIVERY_TYPE_KEY, service.getDeliveryType());
+            tempMap.put(DELIVERY_TYPE_KEY, service.getDeliveryType());
             tempMap.put(QueryDeliveryService.DISPLAY_NAME_KEY, service.getDisplayName());
             List<Map<String, String>> fieldsList = new ArrayList<>();
             for (QueryDeliveryParameter field : service.getRequiredFields()) {
@@ -822,20 +827,44 @@ public class MetacardApplication implements SparkApplication {
               && incoming.containsKey("username")) {
 
             String username = (String) incoming.get("username");
+            String metacardId = (String) incoming.get("metacardId");
 
             List<Map<String, Object>> preferencesList =
                 persistentStore.get(
                     PersistenceType.PREFERENCES_TYPE.toString(),
                     String.format("user = '%s'", username));
 
-            final Map<String, Object> userPrefs = preferencesList.get(0);
+            final Map<String, Object> preferences = preferencesList.get(0);
 
-            Filter queryFilter =
-                filterBuilder
-                    .attribute(Core.ID)
-                    .is()
-                    .like()
-                    .text((String) incoming.get("metacardId"));
+            final Map<String, Object> userPrefs =
+                JsonFactory.create()
+                    .parser()
+                    .parseMap(
+                        new String(
+                            (byte[]) preferences.get("preferences_json_bin"),
+                            Charset.defaultCharset()));
+
+            List<Map<String, Object>> matchingDests = new ArrayList<>();
+            if (userPrefs.containsKey(DELIVERY_METHODS_KEY)) {
+              List<Map<String, Object>> userDests = (List) userPrefs.get(DELIVERY_METHODS_KEY);
+              List<String> deliveryIds = (List<String>) incoming.get("deliveryIds");
+
+              for (Map<String, Object> userDest : userDests) {
+                for (String deliveryId : deliveryIds) {
+                  if (userDest.containsKey(DELIVERY_METHOD_ID_KEY)
+                      && userDest.get(DELIVERY_METHOD_ID_KEY).equals(deliveryId)) {
+                    if (!matchingDests.contains(userDest)) {
+                      matchingDests.add(userDest);
+                    }
+                  }
+                }
+              }
+            } else {
+              util.getResponseWrapper(
+                  SUCCESS_RESPONSE_TYPE, "No delivery methods specified. Nothing to do.");
+            }
+
+            Filter queryFilter = filterBuilder.attribute(Core.ID).is().like().text(metacardId);
 
             Query query = new QueryImpl(queryFilter);
             QueryRequest queryRequest = new QueryRequestImpl(query);
@@ -854,7 +883,31 @@ public class MetacardApplication implements SparkApplication {
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
-            return util.getResponseWrapper(SUCCESS_RESPONSE_TYPE, "everything went swimmingly");
+            for (QueryDeliveryService queryDeliveryService : deliveryServices) {
+              for (Map<String, Object> matchingDest : matchingDests) {
+                if (matchingDest
+                    .get(DELIVERY_TYPE_KEY)
+                    .equals(queryDeliveryService.getDeliveryType())) {
+
+                  Map<String, Object> parameters = new HashMap<>();
+                  for (Map<String, Object> map :
+                      (List<Map<String, Object>>) matchingDest.get(DELIVERY_OPTIONS_KEY)) {
+                    parameters.put(
+                        (String) map.getOrDefault("name", ""), map.getOrDefault("value", ""));
+                  }
+
+                  queryDeliveryService.deliver(
+                      ImmutableMap.<String, Object>builder().put(Core.TITLE, metacardId).build(),
+                      queryResponse,
+                      username,
+                      (String) matchingDest.get(DELIVERY_METHOD_ID_KEY),
+                      parameters);
+                }
+              }
+            }
+
+            return util.getResponseWrapper(
+                SUCCESS_RESPONSE_TYPE, "All deliveries processed. Everything went swimmingly.");
           }
 
           return util.getResponseWrapper(

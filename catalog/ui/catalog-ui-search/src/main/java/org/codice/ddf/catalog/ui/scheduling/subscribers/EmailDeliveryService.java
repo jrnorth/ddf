@@ -117,6 +117,10 @@ public class EmailDeliveryService implements QueryDeliveryService {
                       metacard.getMetacardType().getAttributeDescriptors()) {
                     final String key = attributeDescriptor.getName();
 
+                    if (metacard.getAttribute(key) == null) {
+                      continue;
+                    }
+
                     emailBody.append(
                         String.format("\n%s: %s", key, metacard.getAttribute(key).getValue()));
                   }
