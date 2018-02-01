@@ -13,7 +13,8 @@
  */
 package ddf.util;
 
-import static ddf.util.Fallible.*;
+import static ddf.util.Fallible.error;
+import static ddf.util.Fallible.of;
 
 import java.util.Collection;
 import java.util.List;
