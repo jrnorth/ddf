@@ -79,7 +79,7 @@ module.exports = Marionette.LayoutView.extend({
             let value = region.currentView.model.getValue()[0];
             if (value) {
                 switch (prop) {
-                    case 'configType':
+                    case 'deliveryType':
                         config[prop] = value;
                         break;
                     case 'Name':

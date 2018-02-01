@@ -44,6 +44,7 @@ import java.nio.charset.Charset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -88,7 +89,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   public static final String DELIVERY_METHOD_ID_KEY = "deliveryId";
 
-  public static final String DELIVERY_OPTIONS_KEY = "deliveryOptions";
+  public static final String DELIVERY_OPTIONS_KEY = "fields";
 
   public static final String QUERIES_CACHE_NAME = "scheduled queries";
 
@@ -193,16 +194,26 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                         }
                         final Map<String, Object> destinationData = matchingDestinations.get(0);
 
+                        Map<String, Object> deliveryOptions = new HashMap<>();
+                        try {
+                          List<Map<String, Object>> deliveryOptionsNonParsed =
+                              (List<Map<String, Object>>) destinationData.get(DELIVERY_OPTIONS_KEY);
+                          for (Map<String, Object> valueMap : deliveryOptionsNonParsed) {
+                            deliveryOptions.put(
+                                (String) valueMap.getOrDefault("name", ""),
+                                valueMap.getOrDefault("value", ""));
+                          }
+                        } catch (ClassCastException e) {
+                          return error(
+                              "Unable to parse delivery options from user destination map");
+                        }
+
                         return MapUtils.tryGetAndRun(
                             destinationData,
                             QueryDeliveryService.DELIVERY_TYPE_KEY,
                             String.class,
-                            DELIVERY_OPTIONS_KEY,
-                            Map.class,
-                            (deliveryType, deliveryOptions) ->
-                                of(
-                                    new ImmutablePair<>(
-                                        deliveryType, (Map<String, Object>) deliveryOptions)));
+                            (deliveryType) ->
+                                of(new ImmutablePair<>(deliveryType, deliveryOptions)));
                       });
             });
   }

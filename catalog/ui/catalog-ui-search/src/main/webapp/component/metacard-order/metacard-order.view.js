@@ -78,7 +78,7 @@ module.exports = Marionette.LayoutView.extend({
             data: JSON.stringify({ 
                 metacardId: this.model.get('metacardId')[0],
                 deliveryIds: this.deliveryPicker.currentView.model.getValue()[0],
-                username: user.get('user').get('username')
+                username: user.get('user').get('userid')
             }),
             success: function() {
                 console.log('POST to /delivery successful');

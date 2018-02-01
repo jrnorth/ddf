@@ -59,7 +59,7 @@ module.exports = Marionette.LayoutView.extend({
 
         this.typeDropdown.show(new PropertyView({
             model: new Property({
-                label: 'configType',
+                label: 'deliveryType',
                 enumFiltering: false,
                 showValidationIssues: false,
                 showLabel: false,
