@@ -163,7 +163,7 @@ define([
             //let currentDeliveryValues = this.model.get('deliveryIds').map(deliveryId => ({ label: deliveryId, value: deliveryId, class: '' }));
             // let possibleEnumValues = ['myFTP', 'myEmail', 'myPhysicalMailingService'].map(val => ({label: val, value: val, class: ''})); 
             // let possibleEnumValues = {};
-            let possibleEnumValues = user.get('user').getPreferences().get('deliveryMethods').map(val => ({label: val.userSpecifiedName, value: val.deliveryId, class: ''}));
+            let possibleEnumValues = user.get('user').getPreferences().get('deliveryMethods').map(val => ({label: val.get('name'), value: val.get('deliveryId'), class: ''}));
             
             // let possibleEnumValues = ['myFTP', 'myEmail', 'myPhysicalMailingService'].map(val => ({label: val, value: val, class: ''}));
             this.deliveryPicker.show(new PropertyView({
