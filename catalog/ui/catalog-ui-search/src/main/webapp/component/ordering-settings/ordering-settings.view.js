@@ -83,13 +83,18 @@ module.exports = Marionette.LayoutView.extend({
                         config[prop] = value;
                         break;
                     case 'Name':
+                    case 'name':
                         config[prop.toLowerCase()] = value;
                         break;
                     case 'Password':
+                    case 'password':
                         config.fields.push({name: prop, value: '********'});
                         creds['credPassword'] = value;
                         break;
                     case 'Username':
+                    case 'username':
+                    case 'User':
+                    case 'user':
                         config.fields.push({name: prop, value: value});
                         creds['credUsername'] = value;
                         break;

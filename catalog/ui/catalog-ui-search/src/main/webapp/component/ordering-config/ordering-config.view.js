@@ -34,7 +34,7 @@ module.exports = Marionette.LayoutView.extend({
     handleDelete: function () {
         let configId = this.model.getDeliveryId();
         let userPrefs = user.get('user').getPreferences();
-        userPrefs.get('orderingSettings').remove(configId);
+        userPrefs.get('deliveryMethods').remove(configId);
         userPrefs.savePreferences();
     }
 });
