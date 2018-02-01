@@ -16,9 +16,9 @@ package org.codice.ddf.catalog.ui.scheduling;
 import static ddf.util.Fallible.error;
 import static ddf.util.Fallible.forEach;
 import static ddf.util.Fallible.of;
+import static ddf.util.Fallible.ofNullable;
 import static ddf.util.Fallible.success;
 
-import com.google.common.annotations.VisibleForTesting;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.Constants;
 import ddf.catalog.data.Metacard;
@@ -28,8 +28,6 @@ import ddf.catalog.operation.DeleteResponse;
 import ddf.catalog.operation.Query;
 import ddf.catalog.operation.QueryRequest;
 import ddf.catalog.operation.QueryResponse;
-import ddf.catalog.operation.Response;
-import ddf.catalog.operation.Update;
 import ddf.catalog.operation.UpdateResponse;
 import ddf.catalog.operation.impl.QueryImpl;
 import ddf.catalog.operation.impl.QueryRequestImpl;
@@ -41,9 +39,7 @@ import ddf.util.Fallible;
 import ddf.util.MapUtils;
 import java.nio.charset.Charset;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.cache.CacheException;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.ignite.Ignite;
@@ -61,6 +58,7 @@ import org.apache.ignite.IgniteState;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.scheduler.SchedulerFuture;
 import org.apache.ignite.transactions.TransactionException;
+import org.boon.json.JsonException;
 import org.boon.json.JsonFactory;
 import org.codice.ddf.catalog.ui.metacard.workspace.QueryMetacardTypeImpl;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceAttributes;
@@ -74,6 +72,7 @@ import org.codice.ddf.security.common.Security;
 import org.geotools.filter.text.cql2.CQLException;
 import org.geotools.filter.text.ecql.ECQL;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.opengis.filter.Filter;
@@ -92,7 +91,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   public static final String DELIVERY_METHOD_ID_KEY = "deliveryId";
 
-  public static final String DELIVERY_OPTIONS_KEY = "fields";
+  public static final String DELIVERY_OPTIONS_KEY = "deliveryOptions";
 
   public static final String QUERIES_CACHE_NAME = "scheduled queries";
 
@@ -105,21 +104,6 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   private final BundleContext bundleContext =
       FrameworkUtil.getBundle(QuerySchedulingPostIngestPlugin.class).getBundleContext();
-
-  private static Fallible<IgniteScheduler> scheduler =
-      error(
-          "An Ignite scheduler has not been obtained for this query! Have any queries been started yet?");
-
-  /**
-   * This {@link IgniteCache} relates metacards to running {@link Ignite} scheduled jobs. Keys are
-   * metacard IDs (unique identifiers of metacards) while values are running {@link Ignite} jobs.
-   * This {@link IgniteCache} will become available as soon as a job is scheduled if a running
-   * {@link Ignite} instance is available.
-   */
-  @VisibleForTesting
-  static Fallible<IgniteCache<String, Integer>> runningQueries =
-      error(
-          "An Ignite cache has not been obtained for this query! Have any queries been started yet?");
 
   private final CatalogFramework catalogFramework;
 
@@ -139,88 +123,40 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     LOGGER.warn("Query scheduling plugin created!");
   }
 
-  // TODO: refactor this method so that we can get user preferences once, not for every delivery ID
-  private Fallible<Pair<String, Map<String, Object>>> getDeliveryInfo(
-      final String username, final String deliveryID) {
-    List<Map<String, Object>> preferencesList;
-    try {
-      preferencesList =
-          persistentStore.get(
-              PersistenceType.PREFERENCES_TYPE.toString(), String.format("user = '%s'", username));
-    } catch (PersistenceException exception) {
+  private static Fallible<Ignite> getIgnite() {
+    if (Ignition.state() != IgniteState.STARTED) {
       return error(
-          "There was a problem attempting to retrieve the preferences for user '%s': %s",
-          username, exception.getMessage());
+          "An Ignite instance for scheduling and storing jobs is not currently available!");
     }
-    if (preferencesList.size() != 1) {
-      return error(
-          "There were %d preference entries found for user '%s'!",
-          preferencesList.size(), username);
-    }
-    final Map<String, Object> preferencesItem = preferencesList.get(0);
 
-    return MapUtils.tryGet(preferencesItem, "preferences_json_bin", byte[].class)
+    return of(Ignition.ignite());
+  }
+
+  private static Fallible<IgniteCache<String, Integer>> getRunningQueriesCache(boolean create) {
+    return getIgnite()
         .tryMap(
-            json -> {
-              final Map<String, Object> preferences =
-                  JsonFactory.create()
-                      .parser()
-                      .parseMap(new String(json, Charset.defaultCharset()));
-
-              return MapUtils.tryGet(preferences, DELIVERY_METHODS_KEY, List.class)
-                  .tryMap(
-                      usersDestinations -> {
-                        final List<Map<String, Object>> matchingDestinations =
-                            ((List<Map<String, Object>>) usersDestinations)
-                                .stream()
-                                .filter(
-                                    destination ->
-                                        MapUtils.tryGet(
-                                                destination, DELIVERY_METHOD_ID_KEY, String.class)
-                                            .map(deliveryID::equals)
-                                            .orDo(
-                                                error -> {
-                                                  LOGGER.error(
-                                                      "There was a problem attempting to retrieve the ID for a destination in the preferences for user '%s': %s",
-                                                      username, error);
-                                                  return false;
-                                                }))
-                                .collect(Collectors.toList());
-                        if (matchingDestinations.size() != 1) {
-                          return error(
-                              "There were %d destinations matching the ID \"%s\" for user '%s'; only one is suspected!",
-                              matchingDestinations.size(), deliveryID, username);
-                        }
-                        final Map<String, Object> destinationData = matchingDestinations.get(0);
-
-                        Map<String, Object> deliveryOptions = new HashMap<>();
-                        try {
-                          List<Map<String, Object>> deliveryOptionsNonParsed =
-                              (List<Map<String, Object>>) destinationData.get(DELIVERY_OPTIONS_KEY);
-                          for (Map<String, Object> valueMap : deliveryOptionsNonParsed) {
-                            deliveryOptions.put(
-                                (String) valueMap.getOrDefault("name", ""),
-                                valueMap.getOrDefault("value", ""));
-                          }
-                        } catch (ClassCastException e) {
-                          return error(
-                              "Unable to parse delivery options from user destination map");
-                        }
-
-                        return MapUtils.tryGetAndRun(
-                            destinationData,
-                            QueryDeliveryService.DELIVERY_TYPE_KEY,
-                            String.class,
-                            (deliveryType) ->
-                                of(new ImmutablePair<>(deliveryType, deliveryOptions)));
-                      });
+            ignite -> {
+              try {
+                if (create) {
+                  return of(ignite.getOrCreateCache(QUERIES_CACHE_NAME));
+                } else {
+                  return ofNullable(
+                      ignite.cache(QUERIES_CACHE_NAME),
+                      "A cache does not currently exist for scheduled query data!");
+                }
+              } catch (CacheException exception) {
+                return error(
+                    "There was a problem attempting to retrieve a cache for running query data: %s",
+                    exception.getMessage());
+              }
             });
   }
 
-  private Fallible<QueryResponse> runQuery(final String cqlQuery) {
-    // TODO TEMP
-    LOGGER.warn("Emailing metacard owner...");
+  private static Fallible<IgniteScheduler> getScheduler() {
+    return getIgnite().map(Ignite::scheduler);
+  }
 
+  private Fallible<QueryResponse> runQuery(final String cqlQuery) {
     Filter filter;
     try {
       filter = ECQL.toFilter(cqlQuery);
@@ -259,7 +195,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       final String deliveryType,
       final Map<String, Object> queryMetacardData,
       final QueryResponse results,
-      final String username,
+      final String userID,
       final String deliveryID,
       final Map<String, Object> deliveryParameters) {
     final String filter = String.format("(objectClass=%s)", QueryDeliveryService.class.getName());
@@ -301,41 +237,119 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
     return selectedServices
         .get(0)
-        .deliver(queryMetacardData, results, username, deliveryID, deliveryParameters);
+        .deliver(queryMetacardData, results, userID, deliveryID, deliveryParameters);
+  }
+
+  private Fallible<Map<String, Object>> getUserPreferences(final String userID) {
+    List<Map<String, Object>> preferencesList;
+    try {
+      preferencesList =
+          persistentStore.get(
+              PersistenceType.PREFERENCES_TYPE.toString(), String.format("user = '%s'", userID));
+    } catch (PersistenceException exception) {
+      return error(
+          "There was a problem attempting to retrieve the preferences for user '%s': %s",
+          userID, exception.getMessage());
+    }
+    if (preferencesList.size() != 1) {
+      return error(
+          "There were %d preference entries found for user '%s'!", preferencesList.size(), userID);
+    }
+    final Map<String, Object> preferencesItem = preferencesList.get(0);
+
+    return MapUtils.tryGet(preferencesItem, "preferences_json_bin", byte[].class)
+        .tryMap(
+            json -> {
+              final Map<String, Object> preferences;
+              try {
+                preferences =
+                    JsonFactory.create()
+                        .parser()
+                        .parseMap(new String(json, Charset.defaultCharset()));
+              } catch (JsonException exception) {
+                return error(
+                    "There was an error parsing the preferences for user '%s': %s",
+                    userID, exception.getMessage());
+              }
+
+              return of(preferences);
+            });
+  }
+
+  private Fallible<Pair<String, Map<String, Object>>> getDeliveryInfo(
+      final Map<String, Object> userPreferences, final String deliveryID) {
+    return MapUtils.tryGet(userPreferences, DELIVERY_METHODS_KEY, List.class)
+        .tryMap(
+            userDeliveryMethods -> {
+              final List<Map<String, Object>> matchingDestinations =
+                  ((List<Map<String, Object>>) userDeliveryMethods)
+                      .stream()
+                      .filter(
+                          destination ->
+                              MapUtils.tryGet(destination, DELIVERY_METHOD_ID_KEY, String.class)
+                                  .map(deliveryID::equals)
+                                  .orDo(
+                                      error -> {
+                                        LOGGER.error(
+                                            String.format(
+                                                "There was a problem attempting to retrieve the ID for a destination in the given preferences: %s",
+                                                error));
+                                        return false;
+                                      }))
+                      .collect(Collectors.toList());
+              if (matchingDestinations.size() != 1) {
+                return error(
+                    "There were %d destinations matching the ID \"%s\" in the given preferences; 1 is expected!",
+                    matchingDestinations.size(), deliveryID);
+              }
+              final Map<String, Object> destinationData = matchingDestinations.get(0);
+
+              return MapUtils.tryGetAndRun(
+                  destinationData,
+                  QueryDeliveryService.DELIVERY_TYPE_KEY,
+                  String.class,
+                  DELIVERY_OPTIONS_KEY,
+                  Map.class,
+                  (deliveryType, deliveryOptions) ->
+                      of(ImmutablePair.of(deliveryType, (Map<String, Object>) deliveryOptions)));
+            });
   }
 
   private Fallible<?> deliverAll(
       final Collection<String> scheduleDeliveryIDs,
-      final String scheduleUsername,
+      final String scheduleUserID,
       final Map<String, Object> queryMetacardData,
       final QueryResponse results) {
-    return forEach(
-        scheduleDeliveryIDs,
-        deliveryID ->
-            getDeliveryInfo(scheduleUsername, deliveryID)
-                .prependToError(
-                    "There was a problem retrieving the delivery information with ID \"%s\" for user '%s': ",
-                    deliveryID, scheduleUsername)
-                .tryMap(
-                    deliveryInfo ->
-                        deliver(
-                                deliveryInfo.getLeft(),
-                                queryMetacardData,
-                                results,
-                                scheduleUsername,
-                                deliveryID,
-                                deliveryInfo.getRight())
+    return getUserPreferences(scheduleUserID)
+        .tryMap(
+            userPreferences ->
+                forEach(
+                    scheduleDeliveryIDs,
+                    deliveryID ->
+                        getDeliveryInfo(userPreferences, deliveryID)
                             .prependToError(
-                                "There was a problem delivering query results to delivery info with ID \"%s\" for user '%s': ",
-                                deliveryID, scheduleUsername)));
+                                "There was a problem retrieving the delivery information with ID \"%s\" for user '%s': ",
+                                deliveryID, scheduleUserID)
+                            .tryMap(
+                                deliveryInfo ->
+                                    deliver(
+                                            deliveryInfo.getLeft(),
+                                            queryMetacardData,
+                                            results,
+                                            scheduleUserID,
+                                            deliveryID,
+                                            deliveryInfo.getRight())
+                                        .prependToError(
+                                            "There was a problem delivering query results to delivery info with ID \"%s\" for user '%s': ",
+                                            deliveryID, scheduleUserID))));
   }
 
-  private Fallible<SchedulerFuture<?>> scheduleJob(
+  private Fallible<?> schedule(
       final IgniteScheduler scheduler,
       final Map<String, Object> queryMetacardData,
-      final String queryMetacardId,
+      final String queryMetacardID,
       final String cqlQuery,
-      final String scheduleUsername,
+      final String scheduleUserID,
       final int scheduleInterval,
       final String scheduleUnit,
       final String scheduleStartString,
@@ -345,15 +359,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       return error("A task cannot be executed every %d %s!", scheduleInterval, scheduleUnit);
     }
 
-    DateTime start;
-    DateTime end;
-    try {
-      start = DateTime.parse(scheduleStartString, ISO_8601_DATE_FORMAT);
-    } catch (DateTimeParseException exception) {
-      return error(
-          "The start date attribute of this metacard, \"%s\", could not be parsed: %s",
-          scheduleStartString, exception.getMessage());
-    }
+    final DateTime end;
     try {
       end = DateTime.parse(scheduleEndString, ISO_8601_DATE_FORMAT);
     } catch (DateTimeParseException exception) {
@@ -362,7 +368,16 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
           scheduleStartString, exception.getMessage());
     }
 
-    RepetitionTimeUnit unit;
+    final DateTime start;
+    try {
+      start = DateTime.parse(scheduleStartString, ISO_8601_DATE_FORMAT);
+    } catch (DateTimeParseException exception) {
+      return error(
+          "The start date attribute of this metacard, \"%s\", could not be parsed: %s",
+          scheduleStartString, exception.getMessage());
+    }
+
+    final RepetitionTimeUnit unit;
     try {
       unit = RepetitionTimeUnit.valueOf(scheduleUnit.toUpperCase());
     } catch (IllegalArgumentException exception) {
@@ -382,16 +397,28 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
                 @Override
                 public void run() {
+                  // TODO TEMP
+                  LOGGER.warn(
+                      String.format(
+                          "Acquiring and delivering metacard data for %s...", queryMetacardID));
+
                   final boolean isRunning =
-                      runningQueries
-                          .map(runningQueries -> runningQueries.containsKey(queryMetacardId))
-                          .or(true);
+                      getRunningQueriesCache(false)
+                          .map(runningQueries -> runningQueries.containsKey(queryMetacardID))
+                          .orDo(
+                              error -> {
+                                LOGGER.warn(
+                                    String.format(
+                                        "Running query data could not be found when the query via metacard \"%s\" ran: %s\nForcing assumption that this scheduled query was not cancelled by the user...",
+                                        queryMetacardID, error));
+                                return true;
+                              });
                   if (!isRunning) {
                     return;
                   }
 
                   final DateTime now = DateTime.now();
-                  if (start.compareTo(now) <= 0) {
+                  if (start.compareTo(now) <= 0 && end.compareTo(now) >= 0) {
                     if (unitsPassedSinceStarted < scheduleInterval - 1) {
                       unitsPassedSinceStarted++;
                       return;
@@ -399,12 +426,16 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
                     unitsPassedSinceStarted = 0;
 
+                    // TODO TEMP
+                    LOGGER.warn(
+                        String.format("Running query for query metacard %s...", queryMetacardID));
+
                     runQuery(cqlQuery)
                         .tryMap(
                             results ->
                                 deliverAll(
                                     scheduleDeliveryIDs,
-                                    scheduleUsername,
+                                    scheduleUserID,
                                     queryMetacardData,
                                     results))
                         .elseDo(LOGGER::error);
@@ -415,27 +446,43 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     } catch (IgniteException exception) {
       return error(
           "There was a problem attempting to schedule a job for a query metacard \"%s\": %s",
-          queryMetacardId, exception.getMessage());
+          queryMetacardID, exception.getMessage());
     }
 
-    runningQueries.ifValue(runningQueries -> runningQueries.put(queryMetacardId, 0));
+    final Function<SchedulerFuture<?>, Boolean> hasNextRun =
+        jobFuture ->
+            jobFuture.nextExecutionTime() == 0
+                || end.compareTo(new DateTime(jobFuture.nextExecutionTime(), DateTimeZone.UTC))
+                    >= 0;
+
+    if (!hasNextRun.apply(job)) {
+      job.cancel();
+      return success();
+    }
 
     job.listen(
-        future ->
-            runningQueries.ifValue(
-                runningQueries -> {
-                  if (future instanceof SchedulerFuture) {
-                    final SchedulerFuture<?> jobFuture = (SchedulerFuture<?>) future;
-                    if (jobFuture.nextExecutionTime() == 0
-                        || jobFuture.nextExecutionTime() > end.getMillis()
-                        || !runningQueries.containsKey(queryMetacardId)) {
-                      runningQueries.remove(queryMetacardId);
-                      jobFuture.cancel();
-                    }
-                  }
-                }));
+        a -> {
+          final Fallible<IgniteCache<String, Integer>> runningQueriesOrError =
+              getRunningQueriesCache(false);
 
-    return of(job);
+          final boolean isCancelledByCache =
+              runningQueriesOrError
+                  .map(runningQueries -> !runningQueries.containsKey(queryMetacardID))
+                  .orDo(
+                      error -> {
+                        LOGGER.warn(
+                            String.format(
+                                "Running query data could not be found when the cancellation listener for the query via metacard \"%s\" ran: %s\nForcing assumption that this scheduled query was not cancelled by the user...",
+                                queryMetacardID, error));
+                        return false;
+                      });
+          if (!hasNextRun.apply(job) || isCancelledByCache) {
+            runningQueriesOrError.ifValue(runningQueries -> runningQueries.remove(queryMetacardID));
+            job.cancel();
+          }
+        });
+
+    return success();
   }
 
   private Fallible<?> readScheduleDataAndSchedule(
@@ -453,7 +500,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
               return MapUtils.tryGetAndRun(
                   scheduleData,
-                  ScheduleMetacardTypeImpl.SCHEDULE_USERNAME,
+                  ScheduleMetacardTypeImpl.SCHEDULE_USER_ID,
                   String.class,
                   ScheduleMetacardTypeImpl.SCHEDULE_AMOUNT,
                   Integer.class,
@@ -465,18 +512,18 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                   String.class,
                   ScheduleMetacardTypeImpl.SCHEDULE_DELIVERY_IDS,
                   List.class,
-                  (scheduleUsername,
+                  (scheduleUserID,
                       scheduleInterval,
                       scheduleUnit,
                       scheduleStartString,
                       scheduleEndString,
                       scheduleDeliveries) ->
-                      scheduleJob(
+                      schedule(
                           scheduler,
                           queryMetacardData,
                           queryMetacardId,
                           cqlQuery,
-                          scheduleUsername,
+                          scheduleUserID,
                           scheduleInterval,
                           scheduleUnit,
                           scheduleStartString,
@@ -486,70 +533,55 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   }
 
   private Fallible<?> readQueryMetacardAndSchedule(final Map<String, Object> queryMetacardData) {
-    if (Ignition.state() != IgniteState.STARTED) {
-      return error("Cron queries cannot be scheduled without a running Ignite instance!");
-    }
+    return getRunningQueriesCache(true)
+        .tryMap(
+            runningQueries ->
+                getScheduler()
+                    .tryMap(
+                        scheduler ->
+                            MapUtils.tryGetAndRun(
+                                queryMetacardData,
+                                Metacard.ID,
+                                String.class,
+                                queryMetacardID -> {
+                                  if (runningQueries.containsKey(queryMetacardID)) {
+                                    return error(
+                                        "This query cannot be scheduled because a job is already scheduled for it!");
+                                  }
 
-    final Ignite ignite = Ignition.ignite();
-
-    final IgniteScheduler scheduler =
-        QuerySchedulingPostIngestPlugin.scheduler.orDo(
-            error -> {
-              final IgniteScheduler newScheduler = ignite.scheduler();
-              QuerySchedulingPostIngestPlugin.scheduler = of(newScheduler);
-              return newScheduler;
-            });
-
-    final IgniteCache<String, ?> runningQueries =
-        QuerySchedulingPostIngestPlugin.runningQueries.orDo(
-            error -> {
-              final IgniteCache<String, Integer> newCache =
-                  ignite.getOrCreateCache(QUERIES_CACHE_NAME);
-              QuerySchedulingPostIngestPlugin.runningQueries = of(newCache);
-              return newCache;
-            });
-
-    return MapUtils.tryGetAndRun(
-        queryMetacardData,
-        Metacard.ID,
-        String.class,
-        queryMetacardId -> {
-          if (runningQueries.containsKey(queryMetacardId)) {
-            return error(
-                "This query cannot be scheduled because a job is already scheduled for it!");
-          }
-
-          return MapUtils.tryGetAndRun(
-              queryMetacardData,
-              QueryMetacardTypeImpl.QUERY_CQL,
-              String.class,
-              QueryMetacardTypeImpl.QUERY_SCHEDULES,
-              List.class,
-              (cqlQuery, schedulesData) ->
-                  forEach(
-                      (List<Map<String, Object>>) schedulesData,
-                      scheduleData ->
-                          readScheduleDataAndSchedule(
-                              scheduler,
-                              queryMetacardData,
-                              queryMetacardId,
-                              cqlQuery,
-                              scheduleData)));
-        });
+                                  return MapUtils.tryGetAndRun(
+                                          queryMetacardData,
+                                          QueryMetacardTypeImpl.QUERY_CQL,
+                                          String.class,
+                                          QueryMetacardTypeImpl.QUERY_SCHEDULES,
+                                          List.class,
+                                          (cqlQuery, schedulesData) ->
+                                              forEach(
+                                                  (List<Map<String, Object>>) schedulesData,
+                                                  scheduleData ->
+                                                      readScheduleDataAndSchedule(
+                                                          scheduler,
+                                                          queryMetacardData,
+                                                          queryMetacardID,
+                                                          cqlQuery,
+                                                          scheduleData)))
+                                      .ifValue(status -> runningQueries.put(queryMetacardID, 0));
+                                })));
   }
 
   private static Fallible<?> cancelSchedule(final String queryMetacardId) {
-    return runningQueries.tryMap(
-        runningQueries -> {
-          try {
-            runningQueries.remove(queryMetacardId);
-          } catch (TransactionException exception) {
-            return error(
-                "There was a problem attempting to cancel a job for the query metacard \"%s\": %s",
-                queryMetacardId, exception.getMessage());
-          }
-          return success();
-        });
+    return getRunningQueriesCache(false)
+        .tryMap(
+            runningQueries -> {
+              try {
+                runningQueries.remove(queryMetacardId);
+              } catch (TransactionException exception) {
+                return error(
+                    "There was a problem attempting to cancel a job for the query metacard \"%s\": %s",
+                    queryMetacardId, exception.getMessage());
+              }
+              return success();
+            });
   }
 
   private Fallible<?> readQueryMetacardAndCancelSchedule(
@@ -585,73 +617,41 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                     }));
   }
 
-  private static void throwErrorsIfAny(List<ImmutablePair<Metacard, String>> errors)
-      throws PluginExecutionException {
-    if (!errors.isEmpty()) {
-      throw new PluginExecutionException(
-          errors
-              .stream()
-              .map(
-                  metacardAndError ->
-                      String.format(
-                          "There was an error attempting to modify schedule execution of workspace metacard \"%s\": %s",
-                          metacardAndError.getLeft().getId(), metacardAndError.getRight()))
-              .collect(Collectors.joining("\n")));
-    }
-  }
-
-  private <T extends Response> T processSingularResponse(
-      T response,
-      List<Metacard> metacards,
-      Function<Map<String, Object>, Fallible<?>> metacardAction)
-      throws PluginExecutionException {
-    List<ImmutablePair<Metacard, String>> errors = new ArrayList<>();
-
-    for (Metacard metacard : metacards) {
-      // TODO TEMP
-      LOGGER.debug(
-          String.format("Processing metacard of type %s...", metacard.getMetacardType().getName()));
-      processMetacard(metacard, metacardAction)
-          .elseDo(error -> errors.add(ImmutablePair.of(metacard, error)));
-    }
-
-    throwErrorsIfAny(errors);
-
-    return response;
-  }
-
   @Override
   public CreateResponse process(CreateResponse creation) throws PluginExecutionException {
     // TODO TEMP
     LOGGER.warn("Processing creation...");
-    return processSingularResponse(
-        creation, creation.getCreatedMetacards(), this::readQueryMetacardAndSchedule);
+
+    forEach(
+            creation.getCreatedMetacards(),
+            newMetacard ->
+                processMetacard(newMetacard, this::readQueryMetacardAndSchedule)
+                    .prependToError(
+                        "There was an error attempting to schedule delivery job(s) for the new workspace metacard \"%s\": ",
+                        newMetacard.getId()))
+        .elseThrow(PluginExecutionException::new);
+
+    return creation;
   }
 
   @Override
   public UpdateResponse process(UpdateResponse updates) throws PluginExecutionException {
     // TODO TEMP
     LOGGER.warn("Processing update...");
-    List<ImmutablePair<Metacard, String>> errors = new ArrayList<>();
 
-    for (Update update : updates.getUpdatedMetacards()) {
-      // TODO TEMP
-      LOGGER.warn(
-          String.format(
-              "Processing old metacard of type %s...",
-              update.getOldMetacard().getMetacardType().getName()));
-      processMetacard(update.getOldMetacard(), this::readQueryMetacardAndCancelSchedule)
-          .elseDo(error -> errors.add(ImmutablePair.of(update.getOldMetacard(), error)));
-      // TODO TEMP
-      LOGGER.warn(
-          String.format(
-              "Processing new metacard of type %s...",
-              update.getNewMetacard().getMetacardType().getName()));
-      processMetacard(update.getNewMetacard(), this::readQueryMetacardAndSchedule)
-          .elseDo(error -> errors.add(ImmutablePair.of(update.getNewMetacard(), error)));
-    }
-
-    throwErrorsIfAny(errors);
+    forEach(
+            updates.getUpdatedMetacards(),
+            update ->
+                processMetacard(update.getOldMetacard(), this::readQueryMetacardAndCancelSchedule)
+                    .prependToError(
+                        "There was an error attempting to cancel the scheduled delivery job(s) for the pre-update version of workspace metacard \"%s\": ",
+                        update.getOldMetacard().getId()),
+            update ->
+                processMetacard(update.getNewMetacard(), this::readQueryMetacardAndSchedule)
+                    .prependToError(
+                        "There was an error attempting to schedule delivery job(s) for the post-update version of workspace metacard \"%s\": ",
+                        update.getNewMetacard().getId()))
+        .elseThrow(PluginExecutionException::new);
 
     return updates;
   }
@@ -660,7 +660,16 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   public DeleteResponse process(DeleteResponse deletion) throws PluginExecutionException {
     // TODO TEMP
     LOGGER.warn("Processing deletion...");
-    return processSingularResponse(
-        deletion, deletion.getDeletedMetacards(), this::readQueryMetacardAndCancelSchedule);
+
+    forEach(
+            deletion.getDeletedMetacards(),
+            deletedMetacard ->
+                processMetacard(deletedMetacard, this::readQueryMetacardAndCancelSchedule)
+                    .prependToError(
+                        "There was an error attempting to cancel the scheduled delivery job(s) for the deleted workspace metacard \"%s\": ",
+                        deletedMetacard.getId()))
+        .elseThrow(PluginExecutionException::new);
+
+    return deletion;
   }
 }
