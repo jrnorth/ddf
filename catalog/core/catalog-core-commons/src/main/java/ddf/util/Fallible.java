@@ -14,11 +14,13 @@
 package ddf.util;
 
 import com.sun.istack.internal.Nullable;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Fallible<Value> {
   private String error;
@@ -82,19 +84,46 @@ public class Fallible<Value> {
     return new Fallible<>(String.format(errorFormat, formatParams), null);
   }
 
-  public static <OldElement> Fallible<?> forEach(
-      Collection<OldElement> inputs, Function<OldElement, Fallible<?>> mapper) {
+  /**
+   * Applies the given function(s) to every element in the given {@link Collection} and collects all
+   * error results into one {@link Fallible}. Note that all inputs will be run through the given
+   * function(s) even if one input fails.
+   *
+   * @param inputs the {@link Collection} of inputs to be passed into the {@link Fallible}
+   *     functions.
+   * @param firstMapper the first mapping function to be applied to the given inputs. Note that
+   *     there is no guarantee that this mapping function will be run before the others.
+   * @param moreMappers any additional mapping functions to be applied to the given inputs. Note
+   *     that the order in which they are given does not necessarily reflect the order in which they
+   *     will be applied to the given inputs.
+   * @param <Input> the type of the input elements and the type consumed by the given mapper
+   *     function.
+   * @return a {@link Fallible} containing either a useless value or an error containing all errors
+   *     found after all executions of the given function joined by line breaks (<tt>"\n"</tt>).
+   */
+  @SafeVarargs
+  public static <Input> Fallible<?> forEach(
+      Collection<Input> inputs,
+      Function<Input, Fallible<?>> firstMapper,
+      Function<Input, Fallible<?>>... moreMappers) {
     final String errors =
         inputs
             .stream()
-            .map(input -> mapper.apply(input))
-            .map(fallible -> fallible.mapValue((String) null).orDo(Function.identity()))
+            .flatMap(
+                input ->
+                    Stream.concat(Stream.of(firstMapper), Arrays.stream(moreMappers))
+                        .map(
+                            mapper ->
+                                mapper
+                                    .apply(input)
+                                    .mapValue((String) null)
+                                    .orDo(Function.identity())))
             .filter(Objects::nonNull)
             .collect(Collectors.joining("\n"));
+
     if (errors.isEmpty()) {
       return success();
     }
-
     return error(errors);
   }
 

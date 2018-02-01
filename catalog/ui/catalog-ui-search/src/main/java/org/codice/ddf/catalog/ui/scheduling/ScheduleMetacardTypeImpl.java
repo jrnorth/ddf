@@ -25,8 +25,7 @@ public class ScheduleMetacardTypeImpl extends MetacardTypeImpl {
 
   public static final String SCHEDULE_TYPE_NAME = "metacard.schedule";
 
-  // TODO: change `userId` to `username` when it can be cooridnated with the frontend
-  public static final String SCHEDULE_USERNAME = "userId";
+  public static final String SCHEDULE_USER_ID = "userId";
 
   public static final String IS_SCHEDULED = "isScheduled";
 
@@ -47,7 +46,7 @@ public class ScheduleMetacardTypeImpl extends MetacardTypeImpl {
 
     SCHEDULE_DESCRIPTORS.add(
         new AttributeDescriptorImpl(
-            SCHEDULE_USERNAME,
+            SCHEDULE_USER_ID,
             false /* indexed */,
             true /* stored */,
             false /* tokenized */,
