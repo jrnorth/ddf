@@ -49,7 +49,7 @@ module.exports = Marionette.LayoutView.extend({
         });
     },
     setupDeliveryPicker: function() {
-        let possibleEnumValues = user.get('user').getPreferences().get('deliveryMethods').map(val => ({label: val.userSpecifiedName, value: val.deliveryId, class: ''}));
+        let possibleEnumValues = user.get('user').getPreferences().get('deliveryMethods').map(val => ({label: val.get('name'), value: val.get('deliveryId'), class: ''}));
         this.deliveryPicker.show(new PropertyView({
             model: new Property({
                 enumFiltering: false,
