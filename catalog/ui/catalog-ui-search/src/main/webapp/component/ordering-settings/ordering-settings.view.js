@@ -99,6 +99,7 @@ module.exports = Marionette.LayoutView.extend({
             }
         });
         prefs.addOrderingSetting(config);
+        prefs.savePreferences();
 
         if (Object.getOwnPropertyNames(creds).length !== 0) {
             creds['uuid'] = configUuid;
@@ -121,7 +122,7 @@ module.exports = Marionette.LayoutView.extend({
     },
     updateOrderingSettings: function() {
         this.orderingSettings.empty();
-        let userSettings = user.get('user').getPreferences().get('orderingSettings');
+        let userSettings = user.get('user').getPreferences().get('deliveryMethods');
         this.orderingSettings.show(new OrderingConfigCollectionView(
             {collection: userSettings})
         );
