@@ -71,7 +71,7 @@ module.exports = Marionette.LayoutView.extend({
         this.typeDropdown.currentView.turnOnLimitedWidth();
 
         let nameFieldModel = new Property({
-            label: 'Name',
+            label: 'name',
             value: [''],
             type: 'STRING'
         });
@@ -101,7 +101,7 @@ module.exports = Marionette.LayoutView.extend({
         this.model.set('selectedType', value);
         let strValue = value[0];
         let fieldsToDisplay = this.model.get('availableTypes').find(function (type) {
-            return type.type === strValue;
+            return type.deliveryType === strValue;
         });
 
         this.regionManager.forEach((region) => {

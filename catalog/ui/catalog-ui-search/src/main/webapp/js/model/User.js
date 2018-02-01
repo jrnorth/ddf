@@ -152,7 +152,7 @@ define([
                 animation: true,
                 hoverPreview: true,
                 querySettings: new QuerySettings(),
-                orderingSettings: []
+                deliveryMethods: []
             };
         },
         relations: [
@@ -179,7 +179,7 @@ define([
             },
             {
                 type: Backbone.Many,
-                key: 'orderingSettings',
+                key: 'deliveryMethods',
                 relatedModel: OrderingConfig
             },
             {
