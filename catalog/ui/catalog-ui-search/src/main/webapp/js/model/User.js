@@ -212,7 +212,7 @@ define([
             this.savePreferences();
         },
         addOrderingSetting: function(setting) {
-          this.get('orderingSettings').push(setting);
+          this.get('deliveryMethods').push(setting);
           this.savePreferences();
         },
         addUpload: function(upload){
