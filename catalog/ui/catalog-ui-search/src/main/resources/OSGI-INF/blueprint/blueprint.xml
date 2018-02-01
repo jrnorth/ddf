@@ -361,7 +361,6 @@
 
     <bean id="querySchedulingPostIngestPlugin" class="org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin">
         <argument ref="catalogFramework"/>
-        <argument ref="queryEmailDeliveryService"/>
         <argument ref="persistentStore"/>
         <argument ref="workspaceTransformer"/>
     </bean>
