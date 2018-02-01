@@ -19,7 +19,6 @@ import static ddf.util.Fallible.of;
 import static ddf.util.Fallible.success;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableMap;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.Constants;
 import ddf.catalog.data.Metacard;
@@ -48,12 +47,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.ignite.Ignite;
@@ -65,12 +62,10 @@ import org.apache.ignite.Ignition;
 import org.apache.ignite.scheduler.SchedulerFuture;
 import org.apache.ignite.transactions.TransactionException;
 import org.boon.json.JsonFactory;
-import org.codice.ddf.catalog.ui.metacard.MetacardApplication;
 import org.codice.ddf.catalog.ui.metacard.workspace.QueryMetacardTypeImpl;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceAttributes;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceMetacardImpl;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceTransformer;
-import org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService;
 import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService;
 import org.codice.ddf.persistence.PersistenceException;
 import org.codice.ddf.persistence.PersistentStore;
@@ -109,7 +104,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   private static final Security SECURITY = Security.getInstance();
 
   private final BundleContext bundleContext =
-          FrameworkUtil.getBundle(QuerySchedulingPostIngestPlugin.class).getBundleContext();
+      FrameworkUtil.getBundle(QuerySchedulingPostIngestPlugin.class).getBundleContext();
 
   private static Fallible<IgniteScheduler> scheduler =
       error(
@@ -272,27 +267,41 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     final Stream<QueryDeliveryService> deliveryServices;
     try {
       deliveryServices =
-              bundleContext
-                      .getServiceReferences(QueryDeliveryService.class, filter)
-                      .stream()
-                      .map(bundleContext::getService)
-                      .filter(Objects::nonNull);
+          bundleContext
+              .getServiceReferences(QueryDeliveryService.class, filter)
+              .stream()
+              .map(bundleContext::getService)
+              .filter(Objects::nonNull);
     } catch (InvalidSyntaxException exception) {
-      return error("The filter used to search for query delivery services, \"%s\", was invalid: %s", filter, exception.getMessage());
+      return error(
+          "The filter used to search for query delivery services, \"%s\", was invalid: %s",
+          filter, exception.getMessage());
     }
 
-    final List<QueryDeliveryService> selectedServices = deliveryServices.filter(deliveryService -> deliveryService.getDeliveryType().equals(deliveryType)).collect(Collectors.toList());
+    final List<QueryDeliveryService> selectedServices =
+        deliveryServices
+            .filter(deliveryService -> deliveryService.getDeliveryType().equals(deliveryType))
+            .collect(Collectors.toList());
 
     if (selectedServices.isEmpty()) {
       return error(
           "The delivery method \"%s\" was not recognized; this query scheduling system found the following delivery methods: %s.",
-          deliveryType, deliveryServices.map(QueryDeliveryService::getDeliveryType).collect(Collectors.toList()));
+          deliveryType,
+          deliveryServices.map(QueryDeliveryService::getDeliveryType).collect(Collectors.toList()));
     } else if (selectedServices.size() > 1) {
-      final String selectedServicesString = selectedServices.stream().map(selectedService -> selectedService.getClass().getCanonicalName()).collect(Collectors.joining(", "));
-      return error("%d delivery services were found to handle the delivery type %s: %s.", selectedServices.size(), deliveryType, selectedServicesString);
+      final String selectedServicesString =
+          selectedServices
+              .stream()
+              .map(selectedService -> selectedService.getClass().getCanonicalName())
+              .collect(Collectors.joining(", "));
+      return error(
+          "%d delivery services were found to handle the delivery type %s: %s.",
+          selectedServices.size(), deliveryType, selectedServicesString);
     }
 
-    return selectedServices.get(0).deliver(queryMetacardData, results, username, deliveryID, deliveryParameters);
+    return selectedServices
+        .get(0)
+        .deliver(queryMetacardData, results, username, deliveryID, deliveryParameters);
   }
 
   private Fallible<?> deliverAll(
