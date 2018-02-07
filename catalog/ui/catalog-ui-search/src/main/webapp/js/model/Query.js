@@ -91,13 +91,6 @@ define([
                     isLocal: false,
                     isOutdated: false,
                     schedules: []
-                    // isScheduled: false,
-                    // scheduleAmount: 1,
-                    // scheduleUnit: 'weeks',
-                    // scheduleStart: '',
-                    // scheduleEnd: '',
-                    // subscribedUsers: []
-
                 }, user.getQuerySettings().toJSON());
             },
             resetToDefaults: function() {
@@ -120,6 +113,7 @@ define([
                 this.set('id', this.getId());
                 this.listenTo(user.get('user>preferences'), 'change:resultCount', this.handleChangeResultCount);
                 this.listenTo(this, 'change:cql', () => this.set('isOutdated', true));
+                this.listenTo(this.get('schedules'), 'change add remove update', this.handleSchedulesChange);
             },
             buildSearchData: function () {
                 var data = this.toJSON();
@@ -360,6 +354,9 @@ define([
                 if (this.get('result')) {
                     this.get('result').resetResultCountsBySource();
                 }
+            },
+            handleSchedulesChange: function() {
+                this.trigger('update');
             },
             getResultsRangeLabel: function (resultsCollection) {
                 var results = resultsCollection.fullCollection.length;
