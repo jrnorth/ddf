@@ -347,18 +347,6 @@
         <argument ref="smtpClient"/>
     </bean>
 
-    <bean id="queryEmailDeliveryService"
-          class="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService">
-        <cm:managed-properties
-                persistent-id="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService"
-                update-strategy="container-managed"/>
-
-        <argument value="donotreply@example.com"/>
-        <argument ref="smtpClient"/>
-    </bean>
-
-    <service ref="queryEmailDeliveryService" interface="org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService"/>
-
     <bean id="querySchedulingPostIngestPlugin" class="org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin">
         <argument ref="catalogFramework"/>
         <argument ref="persistentStore"/>

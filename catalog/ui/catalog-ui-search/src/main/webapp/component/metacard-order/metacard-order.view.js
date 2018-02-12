@@ -13,13 +13,14 @@
  *
  **/
 /*global define*/
-var Marionette = require('marionette');
-var $ = require('jquery');
-var PropertyView = require('component/property/property.view');
-var Property = require('component/property/property');
-var user = require('component/singletons/user-instance');
-var template = require('./metacard-order.hbs');
-var CustomElements = require('js/CustomElements');
+const Marionette = require('marionette');
+const $ = require('jquery');
+const PropertyView = require('component/property/property.view');
+const Property = require('component/property/property');
+const user = require('component/singletons/user-instance');
+const template = require('./metacard-order.hbs');
+const CustomElements = require('js/CustomElements');
+const announcement = require('component/announcement');
 
 module.exports = Marionette.LayoutView.extend({
     template: template,
@@ -72,7 +73,6 @@ module.exports = Marionette.LayoutView.extend({
         });
     },
     handleDelivery: function() {
-        console.log(this.model.get('metacardId'));
         $.post({
             url: '/search/catalog/internal/delivery',
             data: JSON.stringify({ 
@@ -80,9 +80,16 @@ module.exports = Marionette.LayoutView.extend({
                 deliveryIds: this.deliveryPicker.currentView.model.getValue()[0],
                 username: user.get('user').get('userid')
             }),
-            success: function() {
-                console.log('POST to /delivery successful');
+            success: () => { console.log('POST to /delivery successful'); },
+            error: () => { 
+                console.log('POST to /delivery unsuccessful');
+                announcement.announce({
+                    title: 'Delivery Failed',
+                    message: 'Please verify your delivery configuration and attempt to deliver again.',
+                    type: 'error'
+                });
             }
         });
+        this.$el.trigger(CustomElements.getNamespace() + 'close-lightbox');
     }
 });
