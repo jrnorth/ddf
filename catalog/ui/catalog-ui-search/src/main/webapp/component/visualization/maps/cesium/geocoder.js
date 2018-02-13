@@ -87,11 +87,11 @@ module.exports = Backbone.Model.extend({
                     }
                 });
             }).otherwise(function(error) {
-                announcement.announce({
-                    title: 'Geocoder Error',
-                    message: String(error),
-                    type: 'error'
-                });
+                //announcement.announce({
+                //    title: 'Geocoder Error',
+                //    message: String(error),
+                //    type: 'error'
+                //});
             });
     }
 });

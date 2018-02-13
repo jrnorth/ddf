@@ -275,11 +275,11 @@ define([
                     return (!properties.isHidden(property)
                     && !metacardDefinitions.isHiddenTypeExceptThumbnail(property));
                 } else {
-                    announcement.announce({
-                        title: 'Missing Attribute Definition',
-                        message: 'Could not find information for '+property+' in definitions.  If this problem persists, contact your Administrator.',
-                        type: 'warn'
-                    });
+                    //announcement.announce({
+                    //    title: 'Missing Attribute Definition',
+                    //    message: 'Could not find information for '+property+' in definitions.  If this problem persists, contact your Administrator.',
+                    //    type: 'warn'
+                    //});
                     return false;
                 }
             });

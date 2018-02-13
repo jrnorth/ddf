@@ -95,11 +95,11 @@ define([
                                 this._annotations = JSON.parse(resp);
                                 this.parseAnnotations();
                             } else {
-                                announcement.announce({
-                                    title: 'Error!',
-                                    message: "There was an error retrieving the annotations for this item!",
-                                    type: 'error'
-                                });
+                                //announcement.announce({
+                                //    title: 'Error!',
+                                //    message: "There was an error retrieving the annotations for this item!",
+                                //    type: 'error'
+                                //});
                             }
                         }
                         LoadingCompanionView.endLoading(this);
@@ -184,11 +184,11 @@ define([
                                 this.addAnnotationField.currentView.revert();
                             }
                         } else {
-                            announcement.announce({
-                                title: 'Error!',
-                                message: resp,
-                                type: 'error'
-                            });
+                            //announcement.announce({
+                            //    title: 'Error!',
+                            //    message: resp,
+                            //    type: 'error'
+                            //});
                         }
                         LoadingCompanionView.endLoading(this);
                         this.checkHasAnnotations();

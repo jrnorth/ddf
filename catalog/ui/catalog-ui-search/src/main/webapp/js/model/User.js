@@ -232,11 +232,11 @@ define([
                     withoutSet: true,
                     customErrorHandling: true,
                     error: function(){
-                        announcement.announce({
-                            title: 'Issue Authorizing Request',
-                            message: 'You appear to have been logged out.  Please sign in again.',
-                            type: 'error'
-                        });
+                        //announcement.announce({
+                        //    title: 'Issue Authorizing Request',
+                        //    message: 'You appear to have been logged out.  Please sign in again.',
+                        //    type: 'error'
+                        //});
                     }.bind(this)
                 });
             }

@@ -171,11 +171,11 @@ define([
                                 }
                             }
                         } else {
-                            announcement.announce({
-                                title: 'Error!',
-                                message: resp,
-                                type: 'error'
-                            });
+                            //announcement.announce({
+                            //    title: 'Error!',
+                            //    message: resp,
+                            //    type: 'error'
+                            //});
                         }
                         LoadingCompanionView.endLoading(this);
                         this.checkHasNotes();

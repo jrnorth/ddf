@@ -38,11 +38,11 @@ function calculateAvailableAttributesFromSelection(selectionInterface) {
         if (metacardDefinitions.metacardTypes[property]) {
             return !metacardDefinitions.metacardTypes[property].hidden;
         } else {
-            announcement.announce({
-                title: 'Missing Attribute Definition',
-                message: 'Could not find information for ' + property + ' in definitions.  If this problem persists, contact your Administrator.',
-                type: 'warn'
-            });
+            //announcement.announce({
+            //    title: 'Missing Attribute Definition',
+            //    message: 'Could not find information for ' + property + ' in definitions.  If this problem persists, contact your Administrator.',
+            //    type: 'warn'
+            //});
             return false;
         }
     }).sort((a, b) => metacardDefinitions.attributeComparator(a, b));
