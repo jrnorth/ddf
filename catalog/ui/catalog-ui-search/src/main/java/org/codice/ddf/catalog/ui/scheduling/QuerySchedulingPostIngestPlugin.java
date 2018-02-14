@@ -91,7 +91,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   public static final String DELIVERY_METHOD_ID_KEY = "deliveryId";
 
-  public static final String DELIVERY_OPTIONS_KEY = "deliveryOptions";
+  public static final String FIELDS_KEY = "fields";
 
   public static final String QUERIES_CACHE_NAME = "scheduled queries";
 
@@ -308,10 +308,18 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                   destinationData,
                   QueryDeliveryService.DELIVERY_TYPE_KEY,
                   String.class,
-                  DELIVERY_OPTIONS_KEY,
-                  Map.class,
+                  FIELDS_KEY,
+                  List.class,
                   (deliveryType, deliveryOptions) ->
-                      of(ImmutablePair.of(deliveryType, (Map<String, Object>) deliveryOptions)));
+                      of(
+                          ImmutablePair.of(
+                              deliveryType,
+                              ((List<Map<String, Object>>) deliveryOptions)
+                                  .stream()
+                                  .collect(
+                                      Collectors.toMap(
+                                          map -> (String) map.get("name"),
+                                          map -> map.get("value"))))));
             });
   }
 

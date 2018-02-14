@@ -20,7 +20,7 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_METHODS_KEY;
 import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_METHOD_ID_KEY;
-import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_OPTIONS_KEY;
+import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.FIELDS_KEY;
 import static org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService.DELIVERY_TYPE_KEY;
 import static spark.Spark.after;
 import static spark.Spark.delete;
@@ -891,7 +891,7 @@ public class MetacardApplication implements SparkApplication {
 
                   Map<String, Object> parameters = new HashMap<>();
                   for (Map<String, Object> map :
-                      (List<Map<String, Object>>) matchingDest.get(DELIVERY_OPTIONS_KEY)) {
+                      (List<Map<String, Object>>) matchingDest.get(FIELDS_KEY)) {
                     parameters.put(
                         (String) map.getOrDefault("name", ""), map.getOrDefault("value", ""));
                   }
