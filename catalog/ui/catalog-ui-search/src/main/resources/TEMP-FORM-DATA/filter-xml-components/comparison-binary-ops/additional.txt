@@ -1,0 +1,6 @@
+<PropertyIsEqualTo>
+<PropertyIsNotEqualTo>
+<PropertyIsLessThan>
+<PropertyIsLessThanOrEqualTo>
+<PropertyIsGreaterThan>
+<PropertyIsGreaterThanOrEqualTo>

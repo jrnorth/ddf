@@ -1,0 +1,36 @@
+@{customElementNamespace}search-form {
+
+    display: inline-block;
+    padding: @minimumSpacing;
+    margin: @minimumSpacing;
+    width: 300px;
+    height: 125px;
+    text-align: left;
+    vertical-align: top;
+
+    .search-form-title {
+        padding-bottom: @minimumSpacing;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .search-form-contents {
+        display: block;
+    }
+
+    .search-form-label {
+        font-weight: bold;
+    }
+}
+
+@{customElementNamespace}search-form.is-static {
+    display: inline-block;
+    padding: @minimumSpacing;
+    margin: @minimumSpacing;
+    width: 300px;
+    height: 125px;
+    text-align: center;
+    vertical-align: middle;
+
+}
