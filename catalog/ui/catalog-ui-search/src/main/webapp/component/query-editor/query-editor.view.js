@@ -17,6 +17,7 @@ var Marionette = require('marionette');
 var template = require('./query-editor.hbs');
 var CustomElements = require('js/CustomElements');
 var QueryBasic = require('component/query-basic/query-basic.view');
+var QueryCustom = require('component/query-custom/query-custom.view');
 var QueryAdvanced = require('component/query-advanced/query-advanced.view');
 var QueryTitle = require('component/query-title/query-title.view');
 var QueryAdhoc = require('component/query-adhoc/query-adhoc.view');
@@ -130,6 +131,7 @@ module.exports = Marionette.LayoutView.extend({
         this.$el.toggleClass('is-text', false);
         this.$el.toggleClass('is-basic', false);
         this.$el.toggleClass('is-advanced', false);
+        this.$el.toggleClass('is-custom', false);
         switch (this.model.get('type')) {
             case 'text':
                 this.$el.toggleClass('is-text', true);
@@ -142,6 +144,10 @@ module.exports = Marionette.LayoutView.extend({
             case 'advanced':
                 this.$el.toggleClass('is-advanced', true);
                 this.showAdvanced();
+                break;
+            case 'custom':
+                this.$el.toggleClass('is-custom', true);
+                this.showCustom();
                 break;
         }
         this.edit();
@@ -163,6 +169,11 @@ module.exports = Marionette.LayoutView.extend({
     },
     showBasic: function () {
         this.queryContent.show(new QueryBasic({
+            model: this.model
+        }));
+    },
+    showCustom: function () {
+        this.queryContent.show(new QueryCustom({
             model: this.model
         }));
     },

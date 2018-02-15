@@ -14,6 +14,7 @@
 package org.codice.ddf.catalog.ui.metacard;
 
 import static ddf.catalog.util.impl.ResultIterable.resultIterable;
+import static java.lang.String.format;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
@@ -411,8 +412,7 @@ public class MetacardApplication implements SparkApplication {
           }
           String id = req.params(":id");
           subscriptions.addEmail(id, email);
-          return ImmutableMap.of(
-              "message", String.format("Successfully subscribed to id = %s.", id));
+          return ImmutableMap.of("message", format("Successfully subscribed to id = %s.", id));
         },
         util::getJson);
 
@@ -425,8 +425,7 @@ public class MetacardApplication implements SparkApplication {
           }
           String id = req.params(":id");
           subscriptions.removeEmail(id, email);
-          return ImmutableMap.of(
-              "message", String.format("Successfully un-subscribed to id = %s.", id));
+          return ImmutableMap.of("message", format("Successfully un-subscribed to id = %s.", id));
         },
         util::getJson);
 
@@ -548,7 +547,7 @@ public class MetacardApplication implements SparkApplication {
     get(
         "/localcatalogid",
         (req, res) -> {
-          return String.format("{\"%s\":\"%s\"}", "local-catalog-id", catalogFramework.getId());
+          return format("{\"%s\":\"%s\"}", "local-catalog-id", catalogFramework.getId());
         });
 
     post(
@@ -595,8 +594,7 @@ public class MetacardApplication implements SparkApplication {
 
           // Respond with content
           res.type("text/csv");
-          String attachment =
-              String.format("attachment;filename=export-%s.csv", Instant.now().toString());
+          String attachment = format("attachment;filename=export-%s.csv", Instant.now().toString());
           res.header("Content-Disposition", attachment);
           if (shouldGzip) {
             res.raw().addHeader("Content-Encoding", "gzip");

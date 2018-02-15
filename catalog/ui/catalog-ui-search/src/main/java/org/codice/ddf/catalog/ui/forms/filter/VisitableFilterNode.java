@@ -1,0 +1,68 @@
+package org.codice.ddf.catalog.ui.forms.filter;
+
+import com.google.common.collect.ImmutableMap;
+import java.util.Map;
+import java.util.function.BiConsumer;
+import javax.xml.bind.JAXBElement;
+import net.opengis.filter.v_2_0.BBOXType;
+import net.opengis.filter.v_2_0.BinaryComparisonOpType;
+import net.opengis.filter.v_2_0.BinaryLogicOpType;
+import net.opengis.filter.v_2_0.BinarySpatialOpType;
+import net.opengis.filter.v_2_0.BinaryTemporalOpType;
+import net.opengis.filter.v_2_0.DistanceBufferType;
+import net.opengis.filter.v_2_0.FilterType;
+import net.opengis.filter.v_2_0.FunctionType;
+import net.opengis.filter.v_2_0.LiteralType;
+import net.opengis.filter.v_2_0.PropertyIsBetweenType;
+import net.opengis.filter.v_2_0.PropertyIsLikeType;
+import net.opengis.filter.v_2_0.PropertyIsNilType;
+import net.opengis.filter.v_2_0.PropertyIsNullType;
+import net.opengis.filter.v_2_0.UnaryLogicOpType;
+
+public class VisitableFilterNode implements VisitableXmlElement {
+  private static final Map<Class, BiConsumer<FilterVisitor2, VisitableXmlElement>> CONSUMER_MAP =
+      ImmutableMap.<Class, BiConsumer<FilterVisitor2, VisitableXmlElement>>builder()
+          .put(FilterType.class, FilterVisitor2::visitFilter)
+          .put(String.class, FilterVisitor2::visitString)
+          .put(LiteralType.class, FilterVisitor2::visitLiteralType)
+          .put(FunctionType.class, FilterVisitor2::visitFunctionType)
+          .put(BinaryLogicOpType.class, FilterVisitor2::visitBinaryLogicType)
+          .put(UnaryLogicOpType.class, FilterVisitor2::visitUnaryLogicType)
+          .put(BinaryTemporalOpType.class, FilterVisitor2::visitBinaryTemporalType)
+          .put(BinarySpatialOpType.class, FilterVisitor2::visitBinarySpatialType)
+          .put(DistanceBufferType.class, FilterVisitor2::visitDistanceBufferType)
+          .put(BBOXType.class, FilterVisitor2::visitBoundingBoxType)
+          .put(BinaryComparisonOpType.class, FilterVisitor2::visitBinaryComparisonType)
+          .put(PropertyIsLikeType.class, FilterVisitor2::visitPropertyIsLikeType)
+          .put(PropertyIsNullType.class, FilterVisitor2::visitPropertyIsNullType)
+          .put(PropertyIsNilType.class, FilterVisitor2::visitPropertyIsNilType)
+          .put(PropertyIsBetweenType.class, FilterVisitor2::visitPropertyIsBetweenType)
+          .build();
+
+  private final JAXBElement element;
+
+  public VisitableFilterNode(final JAXBElement element) {
+    this.element = element;
+  }
+
+  @Override
+  public JAXBElement<?> getElement() {
+    return element;
+  }
+
+  @Override
+  public void accept(FilterVisitor2 visitor) {
+    Class clazz = element.getDeclaredType();
+    BiConsumer<FilterVisitor2, VisitableXmlElement> biConsumer = CONSUMER_MAP.get(clazz);
+    if (biConsumer == null) {
+      throw new IllegalArgumentException(
+          "Could not find mapping to visit method for class " + clazz.getName());
+    }
+    // Actually invoking one of the "visits" on local variable "visitor"
+    biConsumer.accept(visitor, this);
+  }
+
+  public static VisitableXmlElement makeVisitable(JAXBElement element) {
+    return new VisitableFilterNode(element);
+  }
+}
