@@ -107,6 +107,14 @@ define([
             // }));
             this.settingsSchedule.currentView.turnOffEditing();
         },
+        turnOffEditing: function(){
+           this.$el.removeClass('is-editing');
+            this.regionManager.forEach(function(region){
+                if (region.currentView && region.currentView.turnOffEditing){
+                    region.currentView.turnOffEditing();
+                }
+            });
+        },
         turnOnEditing: function(){
            this.$el.addClass('is-editing');
             this.regionManager.forEach(function(region){
