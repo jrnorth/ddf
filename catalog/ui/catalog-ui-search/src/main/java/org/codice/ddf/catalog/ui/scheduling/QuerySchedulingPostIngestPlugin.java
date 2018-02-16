@@ -35,6 +35,7 @@ import ddf.catalog.plugin.PluginExecutionException;
 import ddf.catalog.plugin.PostIngestPlugin;
 import ddf.catalog.source.SourceUnavailableException;
 import ddf.catalog.source.UnsupportedQueryException;
+import ddf.security.Subject;
 import ddf.util.Fallible;
 import ddf.util.MapUtils;
 import java.nio.charset.Charset;
@@ -44,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -64,7 +66,7 @@ import org.codice.ddf.catalog.ui.metacard.workspace.QueryMetacardTypeImpl;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceAttributes;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceMetacardImpl;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceTransformer;
-import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService;
+import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryCourier;
 import org.codice.ddf.persistence.PersistenceException;
 import org.codice.ddf.persistence.PersistentStore;
 import org.codice.ddf.persistence.PersistentStore.PersistenceType;
@@ -91,7 +93,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   public static final String DELIVERY_METHOD_ID_KEY = "deliveryId";
 
-  public static final String FIELDS_KEY = "fields";
+  public static final String DELIVERY_PARAMETERS_KEY = "deliveryParameters";
 
   public static final String QUERIES_CACHE_NAME = "scheduled queries";
 
@@ -156,7 +158,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     return getIgnite().map(Ignite::scheduler);
   }
 
-  private Fallible<QueryResponse> runQuery(final String cqlQuery) {
+  private Fallible<QueryResponse> runQuery(final Subject subject, final String cqlQuery) {
     Filter filter;
     try {
       filter = ECQL.toFilter(cqlQuery);
@@ -170,74 +172,79 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
             filter, 1, Constants.DEFAULT_PAGE_SIZE, SortBy.NATURAL_ORDER, true, QUERY_TIMEOUT_MS);
     final QueryRequest queryRequest = new QueryRequestImpl(query, true);
 
-    return SECURITY
-        .runAsAdmin(SECURITY::getSystemSubject)
-        .execute(
-            () -> {
-              try {
-                return of(catalogFramework.query(queryRequest));
-              } catch (UnsupportedQueryException exception) {
-                return error(
-                    "The query \"%s\" is not supported by the given catalog framework: %s",
-                    cqlQuery, exception.getMessage());
-              } catch (SourceUnavailableException exception) {
-                return error(
-                    "The catalog framework sources were unavailable: %s", exception.getMessage());
-              } catch (FederationException exception) {
-                return error(
-                    "There was a problem with executing a federated search for the query \"%s\": %s",
-                    cqlQuery, exception.getMessage());
-              }
-            });
+    return subject.execute(
+        () -> {
+          try {
+            return of(catalogFramework.query(queryRequest));
+          } catch (UnsupportedQueryException exception) {
+            return error(
+                "The query \"%s\" is not supported by the given catalog framework: %s",
+                cqlQuery, exception.getMessage());
+          } catch (SourceUnavailableException exception) {
+            return error(
+                "The catalog framework sources were unavailable: %s", exception.getMessage());
+          } catch (FederationException exception) {
+            return error(
+                "There was a problem with executing a federated search for the query \"%s\": %s",
+                cqlQuery, exception.getMessage());
+          }
+        });
   }
 
-  private Fallible<?> deliver(
+  private void deliver(
       final String deliveryType,
-      final Map<String, Object> queryMetacardData,
+      final String queryMetacardTitle,
       final QueryResponse results,
       final String userID,
       final String deliveryID,
-      final Map<String, Object> deliveryParameters) {
-    final String filter = String.format("(objectClass=%s)", QueryDeliveryService.class.getName());
+      final Map<String, Object> deliveryParameters,
+      final Consumer<String> err) {
+    final String filter = String.format("(objectClass=%s)", QueryCourier.class.getName());
 
-    final Stream<QueryDeliveryService> deliveryServices;
+    final Stream<QueryCourier> deliveryServices;
     try {
       deliveryServices =
           bundleContext
-              .getServiceReferences(QueryDeliveryService.class, filter)
+              .getServiceReferences(QueryCourier.class, filter)
               .stream()
               .map(bundleContext::getService)
               .filter(Objects::nonNull);
     } catch (InvalidSyntaxException exception) {
-      return error(
-          "The filter used to search for query delivery services, \"%s\", was invalid: %s",
-          filter, exception.getMessage());
+      err.accept(
+          String.format(
+              "The filter used to search for query delivery services, \"%s\", was invalid: %s",
+              filter, exception.getMessage()));
+      return;
     }
 
-    final List<QueryDeliveryService> selectedServices =
+    final List<QueryCourier> selectedServices =
         deliveryServices
             .filter(deliveryService -> deliveryService.getDeliveryType().equals(deliveryType))
             .collect(Collectors.toList());
 
     if (selectedServices.isEmpty()) {
-      return error(
-          "The delivery method \"%s\" was not recognized; this query scheduling system found the following delivery methods: %s.",
-          deliveryType,
-          deliveryServices.map(QueryDeliveryService::getDeliveryType).collect(Collectors.toList()));
+      err.accept(
+          String.format(
+              "The delivery method \"%s\" was not recognized; this query scheduling system found the following delivery methods: %s.",
+              deliveryType,
+              deliveryServices.map(QueryCourier::getDeliveryType).collect(Collectors.toList())));
+      return;
     } else if (selectedServices.size() > 1) {
       final String selectedServicesString =
           selectedServices
               .stream()
               .map(selectedService -> selectedService.getClass().getCanonicalName())
               .collect(Collectors.joining(", "));
-      return error(
-          "%d delivery services were found to handle the delivery type %s: %s.",
-          selectedServices.size(), deliveryType, selectedServicesString);
+      err.accept(
+          String.format(
+              "%d delivery services were found to handle the delivery type %s: %s.",
+              selectedServices.size(), deliveryType, selectedServicesString));
+      return;
     }
 
-    return selectedServices
+    selectedServices
         .get(0)
-        .deliver(queryMetacardData, results, userID, deliveryID, deliveryParameters);
+        .deliver(queryMetacardTitle, results, userID, deliveryID, deliveryParameters, err);
   }
 
   private Fallible<Map<String, Object>> getUserPreferences(final String userID) {
@@ -306,30 +313,23 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
               return MapUtils.tryGetAndRun(
                   destinationData,
-                  QueryDeliveryService.DELIVERY_TYPE_KEY,
+                  QueryCourier.DELIVERY_TYPE_KEY,
                   String.class,
-                  FIELDS_KEY,
-                  List.class,
+                  DELIVERY_PARAMETERS_KEY,
+                  Map.class,
                   (deliveryType, deliveryOptions) ->
-                      of(
-                          ImmutablePair.of(
-                              deliveryType,
-                              ((List<Map<String, Object>>) deliveryOptions)
-                                  .stream()
-                                  .collect(
-                                      Collectors.toMap(
-                                          map -> (String) map.get("name"),
-                                          map -> map.get("value"))))));
+                      of(ImmutablePair.of(deliveryType, (Map<String, Object>) deliveryOptions)));
             });
   }
 
-  private Fallible<?> deliverAll(
+  private void deliverAll(
       final Collection<String> scheduleDeliveryIDs,
       final String scheduleUserID,
-      final Map<String, Object> queryMetacardData,
-      final QueryResponse results) {
-    return getUserPreferences(scheduleUserID)
-        .tryMap(
+      final String queryMetacardTitle,
+      final QueryResponse results,
+      final Consumer<String> err) {
+    getUserPreferences(scheduleUserID)
+        .ifValue(
             userPreferences ->
                 forEach(
                     scheduleDeliveryIDs,
@@ -338,23 +338,25 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                             .prependToError(
                                 "There was a problem retrieving the delivery information with ID \"%s\" for user '%s': ",
                                 deliveryID, scheduleUserID)
-                            .tryMap(
+                            .ifValue(
                                 deliveryInfo ->
                                     deliver(
-                                            deliveryInfo.getLeft(),
-                                            queryMetacardData,
-                                            results,
-                                            scheduleUserID,
-                                            deliveryID,
-                                            deliveryInfo.getRight())
-                                        .prependToError(
-                                            "There was a problem delivering query results to delivery info with ID \"%s\" for user '%s': ",
-                                            deliveryID, scheduleUserID))));
+                                        deliveryInfo.getLeft(),
+                                        queryMetacardTitle,
+                                        results,
+                                        scheduleUserID,
+                                        deliveryID,
+                                        deliveryInfo.getRight(),
+                                        error ->
+                                            err.accept(
+                                                String.format(
+                                                    "There was a problem delivering query results to delivery info with ID \"%s\" for user '%s': %s",
+                                                    deliveryID, scheduleUserID, error))))));
   }
 
   private Fallible<?> schedule(
       final IgniteScheduler scheduler,
-      final Map<String, Object> queryMetacardData,
+      final String queryMetacardTitle,
       final String queryMetacardID,
       final String cqlQuery,
       final String scheduleUserID,
@@ -438,15 +440,15 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                     LOGGER.warn(
                         String.format("Running query for query metacard %s...", queryMetacardID));
 
-                    runQuery(cqlQuery)
-                        .tryMap(
+                    runQuery(SECURITY.getGuestSubject("0.0.0.0"), cqlQuery)
+                        .ifValue(
                             results ->
                                 deliverAll(
                                     scheduleDeliveryIDs,
                                     scheduleUserID,
-                                    queryMetacardData,
-                                    results))
-                        .elseDo(LOGGER::error);
+                                    queryMetacardTitle,
+                                    results,
+                                    LOGGER::error));
                   }
                 }
               },
@@ -495,7 +497,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   private Fallible<?> readScheduleDataAndSchedule(
       final IgniteScheduler scheduler,
-      final Map<String, Object> queryMetacardData,
+      final String queryMetacardTitle,
       final String queryMetacardId,
       final String cqlQuery,
       final Map<String, Object> scheduleData) {
@@ -528,7 +530,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                       scheduleDeliveries) ->
                       schedule(
                           scheduler,
-                          queryMetacardData,
+                          queryMetacardTitle,
                           queryMetacardId,
                           cqlQuery,
                           scheduleUserID,
@@ -551,7 +553,9 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                                 queryMetacardData,
                                 Metacard.ID,
                                 String.class,
-                                queryMetacardID -> {
+                                Metacard.TITLE,
+                                String.class,
+                                (queryMetacardID, queryMetacardTitle) -> {
                                   if (runningQueries.containsKey(queryMetacardID)) {
                                     return error(
                                         "This query cannot be scheduled because a job is already scheduled for it!");
@@ -569,7 +573,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                                                   scheduleData ->
                                                       readScheduleDataAndSchedule(
                                                           scheduler,
-                                                          queryMetacardData,
+                                                          queryMetacardTitle,
                                                           queryMetacardID,
                                                           cqlQuery,
                                                           scheduleData)))

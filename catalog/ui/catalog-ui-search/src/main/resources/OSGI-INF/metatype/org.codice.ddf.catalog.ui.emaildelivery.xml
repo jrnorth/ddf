@@ -17,7 +17,7 @@
 
     <OCD description="A service used to send query results over email"
          name="Email Delivery Service"
-         id="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService">
+         id="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailQueryCourier">
 
         <AD description="Set the email address used to indicate the sender"
             name="Sender Address" id="senderEmail" type="String"
@@ -25,8 +25,8 @@
 
     </OCD>
 
-    <Designate pid="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService">
-        <Object ocdref="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService"/>
+    <Designate pid="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailQueryCourier">
+        <Object ocdref="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailQueryCourier"/>
     </Designate>
 
 </metatype:MetaData>

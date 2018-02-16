@@ -20,8 +20,8 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_METHODS_KEY;
 import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_METHOD_ID_KEY;
-import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.FIELDS_KEY;
-import static org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService.DELIVERY_TYPE_KEY;
+import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_PARAMETERS_KEY;
+import static org.codice.ddf.catalog.ui.scheduling.subscribers.QueryCourier.DELIVERY_TYPE_KEY;
 import static spark.Spark.after;
 import static spark.Spark.delete;
 import static spark.Spark.exception;
@@ -131,8 +131,7 @@ import org.codice.ddf.catalog.ui.metacard.validation.Validator;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceAttributes;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceTransformer;
 import org.codice.ddf.catalog.ui.query.monitor.api.SubscriptionsPersistentStore;
-import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryParameter;
-import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryDeliveryService;
+import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryCourier;
 import org.codice.ddf.catalog.ui.util.EndpointUtil;
 import org.codice.ddf.persistence.PersistentStore;
 import org.codice.ddf.persistence.PersistentStore.PersistenceType;
@@ -750,37 +749,30 @@ public class MetacardApplication implements SparkApplication {
     get(
         "/digorno",
         (req, res) -> {
-          Class<QueryDeliveryService> clazz = QueryDeliveryService.class;
-          String filter = "(objectClass=" + QueryDeliveryService.class.getName() + ")";
+          final String bundleFilter =
+              String.format("(objectClass=%s)", QueryCourier.class.getName());
 
-          List<QueryDeliveryService> deliveryServices =
+          return util.getJson(
               bundleContext
-                  .getServiceReferences(clazz, filter)
+                  .getServiceReferences(QueryCourier.class, bundleFilter)
                   .stream()
-                  .map(bundleContext::getService)
+                  .map(
+                      serviceReference -> {
+                        final QueryCourier service = bundleContext.getService(serviceReference);
+                        if (service == null) {
+                          return null;
+                        }
+
+                        return ImmutableMap.of(
+                            QueryCourier.DELIVERY_TYPE_KEY,
+                            service.getDeliveryType(),
+                            QueryCourier.DISPLAY_NAME_KEY,
+                            service.getDisplayName(),
+                            "requiredFields",
+                            service.getRequiredFields());
+                      })
                   .filter(Objects::nonNull)
-                  .collect(Collectors.toList());
-
-          List<Map<String, Object>> responseMaps = new ArrayList<>();
-          HashMap<String, Object> tempMap = null;
-          for (QueryDeliveryService service : deliveryServices) {
-            tempMap = new HashMap<>();
-            // TODO: Replace with a constant keys somewhere and add a displayName key as well
-            tempMap.put(DELIVERY_TYPE_KEY, service.getDeliveryType());
-            tempMap.put(QueryDeliveryService.DISPLAY_NAME_KEY, service.getDisplayName());
-            List<Map<String, String>> fieldsList = new ArrayList<>();
-            for (QueryDeliveryParameter field : service.getRequiredFields()) {
-              fieldsList.add(
-                  ImmutableMap.<String, String>builder()
-                      .put(QueryDeliveryParameter.NAME_STR, field.getName())
-                      .put(QueryDeliveryParameter.TYPE_STR, field.getType().name())
-                      .build());
-            }
-            tempMap.put("requiredFields", fieldsList);
-            responseMaps.add(new HashMap<>(tempMap));
-          }
-
-          return util.getJson(responseMaps);
+                  .collect(Collectors.toList()));
         });
 
     post(
@@ -872,10 +864,10 @@ public class MetacardApplication implements SparkApplication {
             QueryResponse queryResponse = catalogFramework.query(queryRequest);
 
             // TODO: Perform manual delivery that doesn't route through the scheduling logic
-            Class<QueryDeliveryService> clazz = QueryDeliveryService.class;
-            String osgiFilter = "(objectClass=" + QueryDeliveryService.class.getName() + ")";
+            Class<QueryCourier> clazz = QueryCourier.class;
+            String osgiFilter = "(objectClass=" + QueryCourier.class.getName() + ")";
 
-            List<QueryDeliveryService> deliveryServices =
+            List<QueryCourier> deliveryServices =
                 bundleContext
                     .getServiceReferences(clazz, osgiFilter)
                     .stream()
@@ -883,25 +875,17 @@ public class MetacardApplication implements SparkApplication {
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
-            for (QueryDeliveryService queryDeliveryService : deliveryServices) {
+            for (QueryCourier queryDeliveryService : deliveryServices) {
               for (Map<String, Object> matchingDest : matchingDests) {
                 if (matchingDest
                     .get(DELIVERY_TYPE_KEY)
                     .equals(queryDeliveryService.getDeliveryType())) {
-
-                  Map<String, Object> parameters = new HashMap<>();
-                  for (Map<String, Object> map :
-                      (List<Map<String, Object>>) matchingDest.get(FIELDS_KEY)) {
-                    parameters.put(
-                        (String) map.getOrDefault("name", ""), map.getOrDefault("value", ""));
-                  }
-
                   queryDeliveryService.deliver(
-                      ImmutableMap.<String, Object>builder().put(Core.TITLE, metacardId).build(),
+                      metacardId,
                       queryResponse,
                       username,
                       (String) matchingDest.get(DELIVERY_METHOD_ID_KEY),
-                      parameters);
+                      (Map<String, Object>) matchingDest.get(DELIVERY_PARAMETERS_KEY));
                 }
               }
             }
