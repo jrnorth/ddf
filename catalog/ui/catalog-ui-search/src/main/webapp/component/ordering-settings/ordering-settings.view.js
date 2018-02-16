@@ -68,7 +68,7 @@ module.exports = Marionette.LayoutView.extend({
     
     handleSaveConfig: function () {
         let prefs = user.get('user').getPreferences();
-        let config = {fields: []};
+        let config = {deliveryParameters: {}};
         let creds = {};
         let editorView = this.settingsEditor.currentView;
         let configUuid = uuid();
@@ -88,18 +88,18 @@ module.exports = Marionette.LayoutView.extend({
                         break;
                     case 'Password':
                     case 'password':
-                        config.fields.push({name: prop, value: '********'});
+                        config.deliveryParameters[prop] = '********';
                         creds['credPassword'] = value;
                         break;
                     case 'Username':
                     case 'username':
                     case 'User':
                     case 'user':
-                        config.fields.push({name: prop, value: value});
+                        config.deliveryParameters[prop] = value;
                         creds['credUsername'] = value;
                         break;
                     default:
-                        config.fields.push({name: prop, value: value});
+                        config.deliveryParameters[prop] = value;
                 }
             }
         });

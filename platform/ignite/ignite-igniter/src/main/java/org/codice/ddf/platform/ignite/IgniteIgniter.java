@@ -13,10 +13,12 @@
  */
 package org.codice.ddf.platform.ignite;
 
+import java.io.PrintStream;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.osgi.IgniteAbstractOsgiContextActivator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-// TODO: Make Ignite stop dumping logs into the console on startup.
 /**
  * Begins the process of starting Ignite inside OSGi
  *
@@ -25,6 +27,24 @@ import org.apache.ignite.osgi.IgniteAbstractOsgiContextActivator;
 public class IgniteIgniter extends IgniteAbstractOsgiContextActivator {
   @Override
   public IgniteConfiguration igniteConfiguration() {
+    final PrintStream oldSysOut = System.out;
+    System.setOut(
+        new PrintStream(oldSysOut) {
+          final Logger igniteStdoutLogger = LoggerFactory.getLogger("ignite");
+
+          @Override
+          public void print(String message) {
+            if (Thread.currentThread()
+                .getStackTrace()[2]
+                .getClassName()
+                .startsWith("org.apache.ignite")) {
+              igniteStdoutLogger.info(message);
+            } else {
+              super.print(message);
+            }
+          }
+        });
+
     IgniteConfiguration configuration = new IgniteConfiguration();
     configuration.setMetricsLogFrequency(0);
     return configuration;

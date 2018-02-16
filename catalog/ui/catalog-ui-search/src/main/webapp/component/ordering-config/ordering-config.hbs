@@ -19,13 +19,13 @@
         {{deliveryType}}
     </div>
     <ul>
-        {{#each fields}}
+        {{#each deliveryParameters}}
             <li>
                 <div class="field-name">
-                    {{name}}
+                    {{@key}}
                 </div>
                 <div class="field-value">
-                    {{value}}
+                    {{this}}
                 </div>
             </li>
         {{/each}}

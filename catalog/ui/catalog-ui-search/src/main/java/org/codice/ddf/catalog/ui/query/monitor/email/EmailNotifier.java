@@ -164,7 +164,7 @@ public class EmailNotifier implements QueryUpdateSubscriber {
 
   @Override
   public String toString() {
-    return "EmailDeliveryService{"
+    return "EmailNotifier{"
         + "metacardFormatter="
         + metacardFormatter
         + ", bodyTemplate='"

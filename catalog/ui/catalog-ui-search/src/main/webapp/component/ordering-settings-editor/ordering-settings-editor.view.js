@@ -32,30 +32,30 @@ module.exports = Marionette.LayoutView.extend({
         this.turnOffEditing();
         let availableTypes = this.model.get('availableTypes');
 
-        let types = availableTypes.map(function (type) {
-            return {label: type.displayName, value: type.deliveryType, class: ''};
-        });
+        const types = availableTypes.map(type => ({label: type.displayName, value: type.deliveryType, class: ''}));
 
-        let fields = availableTypes.map(function (type) {return type.requiredFields;});
-        _.union.apply(this, fields).forEach( (field) => {
-            let key = this.getKeyFromName(field.name);
+        const fieldsMap = availableTypes
+            .map(type => type.requiredFields)
+            .reduce((accumulator, next) => Object.assign(accumulator, next), {});
+        for (const [parameterKey, parameterType] of Object.entries(fieldsMap)) {
+            const keyClass = this.toClass(parameterKey);
             this.$el.find('.fields')
-                .append('<div class="field-' + key.toLowerCase() + ' type-' + field.type.toLowerCase() + '"></div>');
-            this.addRegion(key, '.field-' + key.toLowerCase());
+                .append('<div class="field-' + keyClass.toLowerCase() + ' type-' + parameterType.toLowerCase() + '"></div>');
+            this.addRegion(keyClass, '.field-' + keyClass.toLowerCase());
 
             let propertyModel = new Property({
-                label: field.name,
+                label: parameterKey,
                 value: [''],
-                type: field.type.toUpperCase()
+                type: parameterType.toUpperCase()
             });
 
-            this[key].show(new PropertyView({model: propertyModel}));
-            this[key].currentView.turnOnLimitedWidth();
-            if (field.type.match(/password/i)) {
-                this[key].currentView.$el.find('input').attr('type', 'password');
+            this[keyClass].show(new PropertyView({model: propertyModel}));
+            this[keyClass].currentView.turnOnLimitedWidth();
+            if (parameterType.match(/password/i)) {
+                this[keyClass].currentView.$el.find('input').attr('type', 'password');
             }
-            this[key].currentView.$el.toggleClass('is-hidden', true);
-        });
+            this[keyClass].currentView.$el.toggleClass('is-hidden', true);
+        }
 
         this.typeDropdown.show(new PropertyView({
             model: new Property({
@@ -84,14 +84,14 @@ module.exports = Marionette.LayoutView.extend({
     },
     turnOnEditing: function() {
         this.$el.addClass('is-editing');
-        this.regionManager.forEach(function(region) {
+        this.regionManager.forEach(function (region) {
             if (region.currentView) {
                 region.currentView.turnOnEditing();
             }
         });
     },
     turnOffEditing: function() {
-        this.regionManager.forEach(function(region) {
+        this.regionManager.forEach(function (region) {
             if (region.currentView) {
                 region.currentView.turnOffEditing();
             }
@@ -99,27 +99,26 @@ module.exports = Marionette.LayoutView.extend({
     },
     updateFields: function (model, value) {
         this.model.set('selectedType', value);
-        let strValue = value[0];
-        let fieldsToDisplay = this.model.get('availableTypes').find(function (type) {
-            return type.deliveryType === strValue;
-        });
+        const strValue = value[0];
+        let fieldsToDisplay = this.model.get('availableTypes').find(type => type.deliveryType === strValue);
 
         this.regionManager.forEach((region) => {
             region.currentView.$el.toggleClass('is-hidden', true);
         });
 
         fieldsToDisplay = fieldsToDisplay ?
-            fieldsToDisplay.requiredFields.map((field) => this.getKeyFromName(field.name)) : [];
+            Object.keys(fieldsToDisplay.requiredFields).map(this.toClass) : [];
         fieldsToDisplay.push('typeDropdown');
         fieldsToDisplay.push('configName');
 
-        fieldsToDisplay.forEach( (regionName) => {
+        fieldsToDisplay.forEach((regionName) => {
             if (this[regionName]) {
-                this[regionName].currentView.$el.toggleClass('is-hidden', false);}
+                this[regionName].currentView.$el.toggleClass('is-hidden', false);
+            }
         });
     },
 
-    getKeyFromName: function(name) {
+    toClass: function(name) {
         return name.replace(/ /g, '-');
     }
 });
