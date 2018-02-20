@@ -13,7 +13,6 @@ var $ = require('jquery');
 var _ = require('underscore');
 var Backbone = require('backbone');
 var Query = require('js/model/Query');
-var cql = require('js/cql');
 var user = require('component/singletons/user-instance');
 var moment = require('moment');
 require('backboneassociations');
@@ -71,17 +70,17 @@ module.exports = Backbone.Collection.extend({
         }).get('queries').first().startSearch();
     },
     createAdhocWorkspace: function (text) {
-        var cqlQuery;
+        var cql;
         var title = text;
         if (text.length === 0) {
-            cqlQuery = "anyText ILIKE '%'";
+            cql = "anyText ILIKE '*'";
             title = '*';
         } else {
-            cqlQuery = "anyText ILIKE '" + cql.translateUserqlToCql(text) + "'";
+            cql = "anyText ILIKE '" + text + "'";
         }
         var queryForWorkspace = new Query.Model({
             title: title,
-            cql: cqlQuery
+            cql: cql
         });
         this.create({
             title: title,
@@ -95,7 +94,7 @@ module.exports = Backbone.Collection.extend({
             title: 'Example Local',
             federation: 'local',
             excludeUnnecessaryAttributes: false,
-            cql: "anyText ILIKE '%'"
+            cql: "anyText ILIKE '*'"
         });
         this.create({
             title: 'Template Local',
@@ -109,7 +108,7 @@ module.exports = Backbone.Collection.extend({
             title: 'Example Federated',
             federation: 'enterprise',
             excludeUnnecessaryAttributes: false,
-            cql: "anyText ILIKE '%'"
+            cql: "anyText ILIKE '*'"
         });
         this.create({
             title: 'Template Federated',
@@ -122,7 +121,7 @@ module.exports = Backbone.Collection.extend({
         var queryForWorkspace = new Query.Model({
             title: 'Example Location',
             excludeUnnecessaryAttributes: false,
-            cql: "anyText ILIKE '%' AND INTERSECTS(anyGeo, POLYGON((-130.7514 20.6825, -130.7514 44.5780, -65.1230 44.5780, -65.1230 20.6825, -130.7514 20.6825)))"
+            cql: "anyText ILIKE '*' AND INTERSECTS(anyGeo, POLYGON((-130.7514 20.6825, -130.7514 44.5780, -65.1230 44.5780, -65.1230 20.6825, -130.7514 20.6825)))"
         });
         this.create({
             title: 'Template Location',
@@ -135,7 +134,7 @@ module.exports = Backbone.Collection.extend({
         var queryForWorkspace = new Query.Model({
             title: 'Example Temporal',
             excludeUnnecessaryAttributes: false,
-            cql: 'anyText ILIKE \'%\' AND ("created" AFTER ' + moment().subtract(1, 'days').toISOString() + ')'
+            cql: 'anyText ILIKE \'*\' AND ("created" AFTER ' + moment().subtract(1, 'days').toISOString() + ')'
         });
         this.create({
             title: 'Template Temporal',

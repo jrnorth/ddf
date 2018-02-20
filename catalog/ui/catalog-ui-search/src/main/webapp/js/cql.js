@@ -345,7 +345,7 @@ define([
                 case "VALUE":
                     var match = tok.text.match(/^'(.*)'$/);
                     if (match) {
-                        return translateCqlToUserql(match[1].replace(/''/g, "'"));
+                        return match[1].replace(/''/g, "'");
                     } else {
                         return Number(tok.text);
                     }
@@ -532,7 +532,7 @@ define([
                     }).join(",") + ")";
                 }
                 else if (typeof filter === "string") {
-                    return translateUserqlToCql("'" + filter.replace(/'/g, "''") + "'");
+                    return "'" + filter.replace(/'/g, "''") + "'";
                 } else if (typeof filter === "number") {
                     return String(filter);
                 } else if (typeof filter === "boolean") {

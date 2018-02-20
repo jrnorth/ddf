@@ -67,8 +67,8 @@ define([
                 self.resizeButton();
             };
             if (this.model.getValue() && this.model.getValue().constructor === String) {
-                img.src = Common.getImageSrc(this.model.getValue());
-                lnk.attr('href', Common.getResourceUrlFromThumbUrl(img.src));
+                img.src = this.model.getValue();
+                lnk.attr('href', img.src);
             }
             this.handleEmpty();
         },
