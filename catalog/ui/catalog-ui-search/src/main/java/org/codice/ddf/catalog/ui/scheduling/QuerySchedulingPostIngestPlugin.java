@@ -20,7 +20,6 @@ import static ddf.util.Fallible.ofNullable;
 import static ddf.util.Fallible.success;
 
 import ddf.catalog.CatalogFramework;
-import ddf.catalog.Constants;
 import ddf.catalog.data.Metacard;
 import ddf.catalog.federation.FederationException;
 import ddf.catalog.operation.CreateResponse;
@@ -39,6 +38,7 @@ import ddf.util.Fallible;
 import ddf.util.MapUtils;
 import java.nio.charset.Charset;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -156,8 +156,10 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     return getIgnite().map(Ignite::scheduler);
   }
 
-  private Fallible<QueryResponse> runQuery(final String cqlQuery) {
+  private Fallible<QueryResponse> runQuery(final Map<String, Object> queryMetacardData) {
     Filter filter;
+    final String cqlQuery =
+        (String) queryMetacardData.getOrDefault(QueryMetacardTypeImpl.QUERY_CQL, "");
     try {
       filter = ECQL.toFilter(cqlQuery);
     } catch (CQLException exception) {
@@ -165,10 +167,31 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
           "There was a problem reading the given query expression: " + exception.getMessage());
     }
 
-    final Query query =
-        new QueryImpl(
-            filter, 1, Constants.DEFAULT_PAGE_SIZE, SortBy.NATURAL_ORDER, true, QUERY_TIMEOUT_MS);
-    final QueryRequest queryRequest = new QueryRequestImpl(query, true);
+    SortBy sortBy =
+        queryMetacardData
+                .getOrDefault(QueryMetacardTypeImpl.QUERY_SORT_ORDER, "ascending")
+                .equals("ascending")
+            ? SortBy.NATURAL_ORDER
+            : SortBy.REVERSE_ORDER;
+    List<String> sources = (List<String>) queryMetacardData.getOrDefault("src", new ArrayList<>());
+    int pageSize = 250;
+
+    LOGGER.trace(
+        "Performing scheduled query. CqlQuery: {}, SortBy: {}, Sources: {}, Page Size: {}",
+        cqlQuery,
+        sortBy,
+        sources,
+        pageSize);
+
+    final Query query = new QueryImpl(filter, 1, pageSize, sortBy, true, QUERY_TIMEOUT_MS);
+    final QueryRequest queryRequest;
+    if (sources.isEmpty()) {
+      LOGGER.trace("Performing enterprise query...");
+      queryRequest = new QueryRequestImpl(query, true);
+    } else {
+      LOGGER.trace("Performing query on specified sources: {}", sources);
+      queryRequest = new QueryRequestImpl(query, sources);
+    }
 
     return SECURITY
         .runAsAdmin(SECURITY::getSystemSubject)
@@ -356,7 +379,6 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       final IgniteScheduler scheduler,
       final Map<String, Object> queryMetacardData,
       final String queryMetacardID,
-      final String cqlQuery,
       final String scheduleUserID,
       final int scheduleInterval,
       final String scheduleUnit,
@@ -438,7 +460,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                     LOGGER.warn(
                         String.format("Running query for query metacard %s...", queryMetacardID));
 
-                    runQuery(cqlQuery)
+                    runQuery(queryMetacardData)
                         .tryMap(
                             results ->
                                 deliverAll(
@@ -497,7 +519,6 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       final IgniteScheduler scheduler,
       final Map<String, Object> queryMetacardData,
       final String queryMetacardId,
-      final String cqlQuery,
       final Map<String, Object> scheduleData) {
     return MapUtils.tryGet(scheduleData, ScheduleMetacardTypeImpl.IS_SCHEDULED, Boolean.class)
         .tryMap(
@@ -530,7 +551,6 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                           scheduler,
                           queryMetacardData,
                           queryMetacardId,
-                          cqlQuery,
                           scheduleUserID,
                           scheduleInterval,
                           scheduleUnit,
@@ -559,11 +579,9 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
                                   return MapUtils.tryGetAndRun(
                                           queryMetacardData,
-                                          QueryMetacardTypeImpl.QUERY_CQL,
-                                          String.class,
                                           QueryMetacardTypeImpl.QUERY_SCHEDULES,
                                           List.class,
-                                          (cqlQuery, schedulesData) ->
+                                          (schedulesData) ->
                                               forEach(
                                                   (List<Map<String, Object>>) schedulesData,
                                                   scheduleData ->
@@ -571,7 +589,6 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                                                           scheduler,
                                                           queryMetacardData,
                                                           queryMetacardID,
-                                                          cqlQuery,
                                                           scheduleData)))
                                       .ifValue(status -> runningQueries.put(queryMetacardID, 0));
                                 })));
@@ -628,7 +645,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   @Override
   public CreateResponse process(CreateResponse creation) throws PluginExecutionException {
     // TODO TEMP
-    LOGGER.warn("Processing creation...");
+    LOGGER.trace("Processing creation...");
 
     forEach(
             creation.getCreatedMetacards(),
@@ -645,7 +662,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   @Override
   public UpdateResponse process(UpdateResponse updates) throws PluginExecutionException {
     // TODO TEMP
-    LOGGER.warn("Processing update...");
+    LOGGER.trace("Processing update...");
 
     forEach(
             updates.getUpdatedMetacards(),
@@ -667,7 +684,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   @Override
   public DeleteResponse process(DeleteResponse deletion) throws PluginExecutionException {
     // TODO TEMP
-    LOGGER.warn("Processing deletion...");
+    LOGGER.trace("Processing deletion...");
 
     forEach(
             deletion.getDeletedMetacards(),
