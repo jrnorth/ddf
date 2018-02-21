@@ -39,6 +39,7 @@ import ddf.util.Fallible;
 import ddf.util.MapUtils;
 import java.nio.charset.Charset;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -170,7 +171,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
     private final String queryMetacardTitle;
 
-    private final String cqlQuery;
+    private final Map<String, Object> queryMetacardData;
 
     private final Collection<String> scheduleDeliveryIDs;
 
@@ -190,7 +191,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
         QuerySchedulingPostIngestPlugin plugin,
         String queryMetacardID,
         String queryMetacardTitle,
-        String cqlQuery,
+        Map<String, Object> queryMetacardData,
         Collection<String> scheduleDeliveryIDs,
         String scheduleUserID,
         int scheduleInterval,
@@ -199,7 +200,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       this.plugin = plugin;
       this.queryMetacardID = queryMetacardID;
       this.queryMetacardTitle = queryMetacardTitle;
-      this.cqlQuery = cqlQuery;
+      this.queryMetacardData = queryMetacardData;
       this.scheduleDeliveryIDs = scheduleDeliveryIDs;
       this.scheduleUserID = scheduleUserID;
       this.scheduleInterval = scheduleInterval;
@@ -211,8 +212,11 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       unitsPassedSinceStarted = scheduleInterval;
     }
 
-    private Fallible<QueryResponse> runQuery(final Subject subject, final String cqlQuery) {
-      Filter filter;
+    private Fallible<QueryResponse> runQuery(final Subject subject, final Map<String, Object> queryMetacardData) {
+
+      final Filter filter;
+      final String cqlQuery =
+          (String) queryMetacardData.getOrDefault(QueryMetacardTypeImpl.QUERY_CQL, "");
       try {
         filter = ECQL.toFilter(cqlQuery);
       } catch (CQLException exception) {
@@ -220,9 +224,34 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
             "There was a problem reading the given query expression: " + exception.getMessage());
       }
 
-      final Query query =
-          new QueryImpl(filter, 1, DEFAULT_PAGE_SIZE, SortBy.NATURAL_ORDER, true, QUERY_TIMEOUT_MS);
-      final QueryRequest queryRequest = new QueryRequestImpl(query, true);
+      final SortBy sortBy =
+          queryMetacardData
+              .getOrDefault(QueryMetacardTypeImpl.QUERY_SORT_ORDER, "ascending")
+              .equals("ascending")
+              ? SortBy.NATURAL_ORDER
+              : SortBy.REVERSE_ORDER;
+      final List<String> sources =
+          (List<String>) queryMetacardData.getOrDefault("src", new ArrayList<>());
+
+      //TODO Swap this out with the one defined in the Metatype for Catalog UI Search somehow
+      final int pageSize = 250;
+
+      LOGGER.trace(
+          "Performing scheduled query. CqlQuery: {}, SortBy: {}, Sources: {}, Page Size: {}",
+          cqlQuery,
+          sortBy,
+          sources,
+          pageSize);
+
+      final Query query = new QueryImpl(filter, 1, pageSize, sortBy, true, QUERY_TIMEOUT_MS);
+      final QueryRequest queryRequest;
+      if (sources.isEmpty()) {
+        LOGGER.trace("Performing enterprise query...");
+        queryRequest = new QueryRequestImpl(query, true);
+      } else {
+        LOGGER.trace("Performing query on specified sources: {}", sources);
+        queryRequest = new QueryRequestImpl(query, sources);
+      }
 
       return subject.execute(
           () -> {
@@ -472,7 +501,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
         // TODO TEMP
         LOGGER.warn(String.format("Running query for query metacard %s...", queryMetacardID));
 
-        runQuery(SECURITY.getGuestSubject("0.0.0.0"), cqlQuery)
+        runQuery(SECURITY.getGuestSubject("0.0.0.0"), queryMetacardData)
             .ifValue(
                 results ->
                     deliverAll(
@@ -503,7 +532,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       final IgniteScheduler scheduler,
       final String queryMetacardTitle,
       final String queryMetacardID,
-      final String cqlQuery,
+      final Map<String, Object> queryMetacardData,
       final String scheduleUserID,
       final int scheduleInterval,
       final String scheduleUnit,
@@ -546,13 +575,14 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
             this,
             queryMetacardID,
             queryMetacardTitle,
-            cqlQuery,
+            queryMetacardData,
             scheduleDeliveryIDs,
             scheduleUserID,
             scheduleInterval,
             start,
             end);
     final SchedulerFuture<?> job;
+
     synchronized (this) {
       try {
         job = scheduler.scheduleLocal(deliveryExecutor, unit.makeCronToRunEachUnit(start));
@@ -587,7 +617,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       final IgniteScheduler scheduler,
       final String queryMetacardTitle,
       final String queryMetacardId,
-      final String cqlQuery,
+      final Map<String, Object> queryMetacardData,
       final Map<String, Object> scheduleData) {
     return MapUtils.tryGet(scheduleData, ScheduleMetacardTypeImpl.IS_SCHEDULED, Boolean.class)
         .tryMap(
@@ -620,7 +650,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                           scheduler,
                           queryMetacardTitle,
                           queryMetacardId,
-                          cqlQuery,
+                          queryMetacardData,
                           scheduleUserID,
                           scheduleInterval,
                           scheduleUnit,
@@ -640,11 +670,9 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                     String.class,
                     Metacard.TITLE,
                     String.class,
-                    QueryMetacardTypeImpl.QUERY_CQL,
-                    String.class,
                     QueryMetacardTypeImpl.QUERY_SCHEDULES,
                     List.class,
-                    (queryMetacardID, queryMetacardTitle, cqlQuery, schedulesData) ->
+                    (queryMetacardID, queryMetacardTitle, schedulesData) ->
                         forEach(
                             (List<Map<String, Object>>) schedulesData,
                             scheduleData ->
@@ -652,7 +680,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                                     scheduler,
                                     queryMetacardTitle,
                                     queryMetacardID,
-                                    cqlQuery,
+                                    queryMetacardData,
                                     scheduleData))));
   }
 
@@ -709,8 +737,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   @Override
   public CreateResponse process(CreateResponse creation) throws PluginExecutionException {
-    // TODO TEMP
-    LOGGER.warn("Processing creation...");
+    LOGGER.trace("Processing creation...");
 
     forEach(
             creation.getCreatedMetacards(),
@@ -726,8 +753,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   @Override
   public UpdateResponse process(UpdateResponse updates) throws PluginExecutionException {
-    // TODO TEMP
-    LOGGER.warn("Processing update...");
+    LOGGER.trace("Processing update...");
 
     forEach(
             updates.getUpdatedMetacards(),
@@ -748,8 +774,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   @Override
   public DeleteResponse process(DeleteResponse deletion) throws PluginExecutionException {
-    // TODO TEMP
-    LOGGER.warn("Processing deletion...");
+    LOGGER.trace("Processing deletion...");
 
     forEach(
             deletion.getDeletedMetacards(),
