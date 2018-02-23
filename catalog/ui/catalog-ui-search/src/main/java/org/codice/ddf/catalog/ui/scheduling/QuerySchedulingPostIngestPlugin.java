@@ -413,7 +413,8 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       getRunningQueriesCache(false)
           .ifValue(
               runningQueries -> {
-                if (runningQueries.containsKey(queryMetacardID) && (job == null || runningQueries.get(queryMetacardID).equals(job.id()))) {
+                if (runningQueries.containsKey(queryMetacardID)
+                    && (job == null || runningQueries.get(queryMetacardID).equals(job.id()))) {
                   runningQueries.remove(queryMetacardID);
                 }
               })

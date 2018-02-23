@@ -347,7 +347,7 @@
         <argument ref="smtpClient"/>
     </bean>
 
-    <bean id="queryEmailDeliveryService"
+    <bean id="emailQueryCourier"
           class="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailQueryCourier">
         <cm:managed-properties
                 persistent-id="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailQueryCourier"
@@ -357,7 +357,7 @@
         <argument ref="smtpClient"/>
     </bean>
 
-    <service ref="queryEmailDeliveryService" interface="org.codice.ddf.catalog.ui.scheduling.subscribers.QueryCourier"/>
+    <service ref="emailQueryCourier" interface="org.codice.ddf.catalog.ui.scheduling.subscribers.QueryCourier"/>
 
     <bean id="querySchedulingPostIngestPlugin" class="org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin">
         <argument ref="catalogFramework"/>
