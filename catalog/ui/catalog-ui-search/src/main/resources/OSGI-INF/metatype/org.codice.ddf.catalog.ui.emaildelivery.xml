@@ -16,7 +16,7 @@
 <metatype:MetaData xmlns:metatype="http://www.osgi.org/xmlns/metatype/v1.0.0">
 
     <OCD description="A service used to send query results over email"
-         name="Email Delivery Service"
+         name="Email Query Courier"
          id="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailQueryCourier">
 
         <AD description="Set the email address used to indicate the sender"
