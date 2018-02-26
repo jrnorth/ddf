@@ -36,7 +36,8 @@ define([
             propertySearchSettings: '.property-search-settings'
         },
         events: {
-            'click > .editor-properties > .editor-save': 'triggerSave'
+            'click > .editor-properties > .editor-btn-group > .editor-save': 'triggerSave',
+            'click > .editor-properties > .editor-btn-group > .editor-cancel': 'cancel'
         },
         initialize: function() {
             this.showSave();
@@ -97,6 +98,9 @@ define([
             this.updateSearchSettings();
             user.savePreferences();
             this.$el.trigger('closeDropdown.'+CustomElements.getNamespace());
+        },
+        cancel: function() {
+          this.$el.trigger('closeDropdown.'+CustomElements.getNamespace());
         }
     });
 });
