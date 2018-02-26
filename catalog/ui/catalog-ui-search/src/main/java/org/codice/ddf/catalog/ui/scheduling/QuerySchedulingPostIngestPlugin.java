@@ -161,6 +161,8 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   }
 
   private static final class QueryDeliveryExecutor implements Runnable {
+    public static final int DEFAULT_PAGE_SIZE = 100;
+
     private final QuerySchedulingPostIngestPlugin plugin;
 
     private final String queryMetacardID;
@@ -219,7 +221,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
       final Query query =
           new QueryImpl(
-              filter, 1, Constants.DEFAULT_PAGE_SIZE, SortBy.NATURAL_ORDER, true, QUERY_TIMEOUT_MS);
+              filter, 1, DEFAULT_PAGE_SIZE, SortBy.NATURAL_ORDER, true, QUERY_TIMEOUT_MS);
       final QueryRequest queryRequest = new QueryRequestImpl(query, true);
 
       return subject.execute(
