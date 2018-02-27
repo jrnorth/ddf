@@ -37,7 +37,7 @@ define([
         },
         events: {
             'click > .editor-properties > .editor-btn-group > .editor-save': 'triggerSave',
-            'click > .editor-properties > .editor-btn-group > .editor-cancel': 'cancel'
+            'click > .editor-properties > .editor-btn-group > .editor-cancel': 'triggerCancel'
         },
         initialize: function() {
             this.showCancel();
@@ -47,12 +47,14 @@ define([
             this.$el.toggleClass('show-save', this.options.showSave === true);
         },
         showCancel: function() {
-            this.$el.toggleClass('save-cancel', this.options.showCancel !== false);
+            this.$el.toggleClass('save-cancel', this.options.showFooter === true);
         },
         onBeforeShow: function () {
             this.setupResultCount();
             this.setupSearchSettings();
-            this.listenToOnce(this.regionManager, 'before:remove:region', this.save);
+            if (this.options.showSave !== true) {
+                this.listenToOnce(this.regionManager, 'before:remove:region', this.save);
+           }
         },
         setupSearchSettings: function() {
             this.propertySearchSettings.show(new QuerySettingsView({
@@ -102,9 +104,11 @@ define([
             this.updateSearchSettings();
             user.savePreferences();
             this.$el.trigger('closeDropdown.'+CustomElements.getNamespace());
+            this.onBeforeShow();
         },
-        cancel: function() {
+        triggerCancel: function() {
           this.$el.trigger('closeDropdown.'+CustomElements.getNamespace());
+          this.onBeforeShow();
         }
     });
 });
