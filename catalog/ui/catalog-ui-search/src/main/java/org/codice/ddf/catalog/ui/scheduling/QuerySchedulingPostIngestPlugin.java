@@ -20,7 +20,6 @@ import static ddf.util.Fallible.ofNullable;
 import static ddf.util.Fallible.success;
 
 import ddf.catalog.CatalogFramework;
-import ddf.catalog.Constants;
 import ddf.catalog.data.Metacard;
 import ddf.catalog.federation.FederationException;
 import ddf.catalog.operation.CreateResponse;
@@ -41,6 +40,7 @@ import ddf.util.MapUtils;
 import java.nio.charset.Charset;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -136,7 +136,8 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     return of(Ignition.ignite());
   }
 
-  private static Fallible<IgniteCache<String, String>> getRunningQueriesCache(boolean create) {
+  private static Fallible<IgniteCache<String, HashSet<String>>> getRunningQueriesCache(
+      boolean create) {
     return getIgnite()
         .tryMap(
             ignite -> {
@@ -220,8 +221,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       }
 
       final Query query =
-          new QueryImpl(
-              filter, 1, DEFAULT_PAGE_SIZE, SortBy.NATURAL_ORDER, true, QUERY_TIMEOUT_MS);
+          new QueryImpl(filter, 1, DEFAULT_PAGE_SIZE, SortBy.NATURAL_ORDER, true, QUERY_TIMEOUT_MS);
       final QueryRequest queryRequest = new QueryRequestImpl(query, true);
 
       return subject.execute(
@@ -446,7 +446,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                       !runningQueries.containsKey(queryMetacardID)
                           // If jobID is null, then the job is being run very immediately after
                           // creation, so assume that it is not cancelled.
-                          || job != null && !runningQueries.get(queryMetacardID).equals(job.id()))
+                          || job != null && !runningQueries.get(queryMetacardID).contains(job.id()))
               .orDo(
                   error -> {
                     LOGGER.warn(
@@ -563,7 +563,21 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       }
       deliveryExecutor.setJob(job);
       getRunningQueriesCache(true)
-          .ifValue(runningQueries -> runningQueries.put(queryMetacardID, job.id()));
+          .ifValue(
+              runningQueries -> {
+                final HashSet<String> runningJobIDsForQuery;
+                if (runningQueries.containsKey(queryMetacardID)) {
+                  runningJobIDsForQuery = runningQueries.get(queryMetacardID);
+                } else {
+                  runningJobIDsForQuery = new HashSet<>();
+                }
+
+                runningJobIDsForQuery.add(job.id());
+
+                // Because JCache implementations, including IgniteCache, are intended to return copies of any requested
+                // data items instead of mutable references, the modified map must be replaced in the cache.
+                runningQueries.put(queryMetacardID, runningJobIDsForQuery);
+              });
     }
 
     return success();
@@ -617,41 +631,29 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
   }
 
   private Fallible<?> readQueryMetacardAndSchedule(final Map<String, Object> queryMetacardData) {
-    return getRunningQueriesCache(true)
+    return getScheduler()
         .tryMap(
-            runningQueries ->
-                getScheduler()
-                    .tryMap(
-                        scheduler ->
-                            MapUtils.tryGetAndRun(
-                                queryMetacardData,
-                                Metacard.ID,
-                                String.class,
-                                Metacard.TITLE,
-                                String.class,
-                                (queryMetacardID, queryMetacardTitle) -> {
-                                  if (runningQueries.containsKey(queryMetacardID)) {
-                                    return error(
-                                        "This query cannot be scheduled because a job is already scheduled for it!");
-                                  }
-
-                                  return MapUtils.tryGetAndRun(
-                                      queryMetacardData,
-                                      QueryMetacardTypeImpl.QUERY_CQL,
-                                      String.class,
-                                      QueryMetacardTypeImpl.QUERY_SCHEDULES,
-                                      List.class,
-                                      (cqlQuery, schedulesData) ->
-                                          forEach(
-                                              (List<Map<String, Object>>) schedulesData,
-                                              scheduleData ->
-                                                  readScheduleDataAndSchedule(
-                                                      scheduler,
-                                                      queryMetacardTitle,
-                                                      queryMetacardID,
-                                                      cqlQuery,
-                                                      scheduleData)));
-                                })));
+            scheduler ->
+                MapUtils.tryGetAndRun(
+                    queryMetacardData,
+                    Metacard.ID,
+                    String.class,
+                    Metacard.TITLE,
+                    String.class,
+                    QueryMetacardTypeImpl.QUERY_CQL,
+                    String.class,
+                    QueryMetacardTypeImpl.QUERY_SCHEDULES,
+                    List.class,
+                    (queryMetacardID, queryMetacardTitle, cqlQuery, schedulesData) ->
+                        forEach(
+                            (List<Map<String, Object>>) schedulesData,
+                            scheduleData ->
+                                readScheduleDataAndSchedule(
+                                    scheduler,
+                                    queryMetacardTitle,
+                                    queryMetacardID,
+                                    cqlQuery,
+                                    scheduleData))));
   }
 
   private static Fallible<?> cancelSchedule(final String queryMetacardId) {
@@ -671,8 +673,11 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
   private Fallible<?> readQueryMetacardAndCancelSchedule(
       final Map<String, Object> queryMetacardData) {
-    return MapUtils.tryGet(queryMetacardData, Metacard.ID, String.class)
-        .tryMap(QuerySchedulingPostIngestPlugin::cancelSchedule);
+    return MapUtils.tryGetAndRun(
+        queryMetacardData,
+        Metacard.ID,
+        String.class,
+        QuerySchedulingPostIngestPlugin::cancelSchedule);
   }
 
   private Fallible<?> processMetacard(
