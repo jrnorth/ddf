@@ -40,10 +40,14 @@ define([
             'click > .editor-properties > .editor-btn-group > .editor-cancel': 'cancel'
         },
         initialize: function() {
+            this.showCancel();
             this.showSave();
         },
         showSave: function() {
             this.$el.toggleClass('show-save', this.options.showSave === true);
+        },
+        showCancel: function() {
+            this.$el.toggleClass('save-cancel', this.options.showCancel !== false);
         },
         onBeforeShow: function () {
             this.setupResultCount();

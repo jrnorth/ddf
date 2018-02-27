@@ -54,7 +54,7 @@ module.exports = Marionette.LayoutView.extend({
         this.$el.toggleClass('is-navigated', true);
     },
     handleNavigateToSearch: function(){
-        this.settingsContent.show(new SearchSettings());
+        this.settingsContent.show(new SearchSettings({showCancel: false, showSave: true}));
     },
     handleNavigateToMap: function(){
         this.settingsContent.show(new MapSettings());

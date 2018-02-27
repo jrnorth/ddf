@@ -7,12 +7,6 @@
     margin-bottom: @largeSpacing;
   }
 
-  .query-settings-footer {
-    float: left;
-    width: 50%;
-    position: relative;
-  }
-
   @{customElementNamespace}query-settings {
     .editor-header,
     .editor-footer {
@@ -37,14 +31,23 @@
     }
   }
 
-  > .editor-properties > button {
+  > .editor-properties > .editor-btn-group > button {
     display: none;
     width: 100%;
   }
 }
 
 @{customElementNamespace}search-settings.show-save {
-  > .editor-properties > button {
+  > .editor-properties > .editor-btn-group > .editor-save {
+    display: block;
+  }
+}
+
+@{customElementNamespace}search-settings.save-cancel {
+  > .editor-properties > .editor-btn-group > button {
+    float: left;
+    width: 50%;
+    position: relative;
     display: block;
   }
 }
