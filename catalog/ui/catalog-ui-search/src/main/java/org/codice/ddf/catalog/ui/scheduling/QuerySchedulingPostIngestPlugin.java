@@ -124,8 +124,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     this.persistentStore = persistentStore;
     this.workspaceTransformer = workspaceTransformer;
 
-    // TODO TEMP
-    LOGGER.warn("Query scheduling plugin created!");
+    LOGGER.trace("Query scheduling plugin created!");
   }
 
   private static Fallible<Ignite> getIgnite() {
@@ -212,7 +211,8 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
       unitsPassedSinceStarted = scheduleInterval;
     }
 
-    private Fallible<QueryResponse> runQuery(final Subject subject, final Map<String, Object> queryMetacardData) {
+    private Fallible<QueryResponse> runQuery(
+        final Subject subject, final Map<String, Object> queryMetacardData) {
 
       final Filter filter;
       final String cqlQuery =
@@ -226,14 +226,14 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
       final SortBy sortBy =
           queryMetacardData
-              .getOrDefault(QueryMetacardTypeImpl.QUERY_SORT_ORDER, "ascending")
-              .equals("ascending")
+                  .getOrDefault(QueryMetacardTypeImpl.QUERY_SORT_ORDER, "ascending")
+                  .equals("ascending")
               ? SortBy.NATURAL_ORDER
               : SortBy.REVERSE_ORDER;
       final List<String> sources =
           (List<String>) queryMetacardData.getOrDefault("src", new ArrayList<>());
 
-      //TODO Swap this out with the one defined in the Metatype for Catalog UI Search somehow
+      // TODO Swap this out with the one defined in the Metatype for Catalog UI Search somehow
       final int pageSize = 250;
 
       LOGGER.trace(
@@ -462,9 +462,9 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
     @Override
     public void run() {
-      // TODO TEMP
-      LOGGER.warn(
-          String.format("Acquiring and delivering metacard data for %s...", queryMetacardID));
+      LOGGER.debug(
+          "Entering QueryDeliveryExecutor.run(). Acquiring and delivering metacard data for {}...",
+          queryMetacardID);
 
       // Jobs can be cancelled before their end by removing their (queryMetacardId,
       // jobID) key-value pair from the cache.
@@ -498,8 +498,10 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
         unitsPassedSinceStarted = 0;
 
-        // TODO TEMP
-        LOGGER.warn(String.format("Running query for query metacard %s...", queryMetacardID));
+        LOGGER.debug(
+            "Running query for query metacard with id: {} and title: {}...",
+            queryMetacardID,
+            queryMetacardTitle);
 
         runQuery(SECURITY.getGuestSubject("0.0.0.0"), queryMetacardData)
             .ifValue(
@@ -604,8 +606,10 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
                 runningJobIDsForQuery.add(job.id());
 
-                // Because JCache implementations, including IgniteCache, are intended to return copies of any requested
-                // data items instead of mutable references, the modified map must be replaced in the cache.
+                // Because JCache implementations, including IgniteCache, are intended to return
+                // copies of any requested
+                // data items instead of mutable references, the modified map must be replaced in
+                // the cache.
                 runningQueries.put(queryMetacardID, runningJobIDsForQuery);
               });
     }
