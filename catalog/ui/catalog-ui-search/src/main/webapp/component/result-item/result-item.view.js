@@ -53,7 +53,8 @@ define([
         events: {
             'click .result-save': 'handleSave',
             'click .result-unsave': 'handleUnsave',
-            'click .result-download': 'triggerDownload'
+            'click .result-download': 'triggerDownload',
+            'click .result-stream': 'triggerStream'
         },
         regions: {
             resultActions: '.result-actions',
@@ -106,6 +107,7 @@ define([
             this.checkIsInWorkspace();
             this.checkIfBlacklisted();
             this.checkIfDownloadable();
+            this.checkIfStreamable();
         },
         onBeforeShow: function(){
             this.resultActions.show(new MetacardInteractionsDropdownView({
@@ -207,6 +209,9 @@ define([
         checkIfDownloadable: function() {
             this.$el.toggleClass('is-downloadable', this.model.get('metacard').get('properties').get('resource-download-url') !== undefined);
         },
+        checkIfStreamable: function() {
+            this.$el.toggleClass('is-streamable', this.model.get('metacard').get('properties').get('ext.jpip-streaming-url') !== undefined);
+        },
         checkIfSaved: function(){
             var currentWorkspace = store.getCurrentWorkspace();
             if (currentWorkspace){
@@ -237,6 +242,9 @@ define([
         },
         triggerDownload: function(e) {
             window.open(this.model.get('metacard').get('properties').get('resource-download-url'));
+        },
+        triggerStream: function(e) {
+            window.open(this.model.get('metacard').get('properties').get('ext.jpip-streaming-url'));
         },
         handleSave: function(e){
             e.preventDefault();
