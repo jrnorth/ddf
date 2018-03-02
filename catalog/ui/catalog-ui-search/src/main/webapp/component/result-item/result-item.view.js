@@ -74,6 +74,7 @@ define([
             this.checkIfSaved();
             this.checkIsInWorkspace();
             this.checkIfDownloadable();
+            this.checkIfStreamable();
             this.checkIfBlacklisted();
             var currentWorkspace = store.getCurrentWorkspace();
             if (currentWorkspace) {
