@@ -21,6 +21,7 @@ import static ddf.util.Fallible.success;
 
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.data.Metacard;
+import ddf.catalog.data.impl.QueryMetacardTypeImpl;
 import ddf.catalog.federation.FederationException;
 import ddf.catalog.operation.CreateResponse;
 import ddf.catalog.operation.DeleteResponse;
@@ -65,7 +66,6 @@ import org.apache.ignite.scheduler.SchedulerFuture;
 import org.apache.ignite.transactions.TransactionException;
 import org.boon.json.JsonException;
 import org.boon.json.JsonFactory;
-import org.codice.ddf.catalog.ui.metacard.workspace.QueryMetacardTypeImpl;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceAttributes;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceMetacardImpl;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceTransformer;
