@@ -31,15 +31,17 @@
     }
   }
 
-  > .editor-properties > .editor-btn-group > button {
+ > .editor-footer {
     display: none;
-    width: 100%;
+    button {
+      display: inline-block;
+      width: 50%;
+    }
   }
 }
 
-@{customElementNamespace}search-settings.display-footer{
-  > .editor-properties > .editor-btn-group > .show-footer {
-    width: 50%;
-    display: inline-block;
+@{customElementNamespace}search-settings.show-footer{
+ > .editor-footer {
+    display: block;
   }
 }

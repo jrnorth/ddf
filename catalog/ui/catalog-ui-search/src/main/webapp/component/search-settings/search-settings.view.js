@@ -36,14 +36,14 @@ define([
             propertySearchSettings: '.property-search-settings'
         },
         events: {
-            'click > .editor-properties > .editor-btn-group > .editor-save': 'triggerSave',
-            'click > .editor-properties > .editor-btn-group > .editor-cancel': 'triggerCancel'
+            'click > .editor-footer .editor-save': 'triggerSave',
+            'click > .editor-footer .editor-cancel': 'triggerCancel'
         },
         initialize: function() {
             this.showFooter();
         },
         showFooter: function() {
-            this.$el.toggleClass('display-footer', this.options.showFooter === true);
+            this.$el.toggleClass('show-footer', this.options.showFooter === true);
         },
         onBeforeShow: function () {
             this.setupResultCount();
