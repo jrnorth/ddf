@@ -40,14 +40,10 @@ define([
             'click > .editor-properties > .editor-btn-group > .editor-cancel': 'triggerCancel'
         },
         initialize: function() {
-            this.showCancel();
-            this.showSave();
+            this.showFooter();
         },
-        showSave: function() {
-            this.$el.toggleClass('show-save', this.options.showSave === true);
-        },
-        showCancel: function() {
-            this.$el.toggleClass('save-cancel', this.options.showFooter === true);
+        showFooter: function() {
+            this.$el.toggleClass('display-footer', this.options.showFooter === true);
         },
         onBeforeShow: function () {
             this.setupResultCount();
