@@ -40,11 +40,11 @@
     </div>
 </div>
 {{#each actions}}
-<div class="interaction interaction-action" title="{{title}}" data-help="{{description}}">
-  <div class="interaction-icon fa fa-list">
-  </div>
-  <a class="interaction-text" style="text-decoration:none;" target="_blank" href="{{{url}}}&listId={{../id}}">
-    {{title}}
-  </a>
+<div class="interaction interaction-action" title="{{title}}" data-help="{{description}}" data-url="{{{url}}}&listId={{../id}}">
+    <div class="interaction-icon fa fa-list">
+    </div>
+    <div class="interaction-text">
+        {{title}}
+    </div>
 </div>
 {{/each}}

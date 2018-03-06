@@ -1226,7 +1226,9 @@ public class MetacardApplication implements SparkApplication {
   private void addListActions(Metacard workspaceMetacard, Map<String, Object> workspaceAsMap) {
     final List<Map<String, Object>> listActions = getListActions(workspaceMetacard);
     final List<Map<String, Object>> lists = (List<Map<String, Object>>) workspaceAsMap.get("lists");
-    lists.forEach(list -> list.put("actions", listActions));
+    if (lists != null) {
+      lists.forEach(list -> list.put("actions", listActions));
+    }
   }
 
   private List<Map<String, Object>> getListActions(Metacard workspaceMetacard) {
