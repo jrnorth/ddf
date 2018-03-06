@@ -15,6 +15,7 @@ package org.codice.ddf.catalog.ui.metacard;
 
 import static ddf.catalog.util.impl.ResultIterable.resultIterable;
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
@@ -36,6 +37,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.ByteSource;
+import ddf.action.ActionRegistry;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.content.data.ContentItem;
 import ddf.catalog.content.data.impl.ContentItemImpl;
@@ -191,8 +193,7 @@ public class MetacardApplication implements SparkApplication {
 
   private final NoteUtil noteUtil;
 
-  private final BundleContext bundleContext =
-      FrameworkUtil.getBundle(MetacardApplication.class).getBundleContext();
+  private final ActionRegistry actionRegistry;
 
   public MetacardApplication(
       CatalogFramework catalogFramework,
@@ -208,7 +209,8 @@ public class MetacardApplication implements SparkApplication {
       QueryResponseTransformer csvQueryResponseTransformer,
       AttributeRegistry attributeRegistry,
       ConfigurationApplication configuration,
-      NoteUtil noteUtil) {
+      NoteUtil noteUtil,
+      ActionRegistry actionRegistry) {
     this.catalogFramework = catalogFramework;
     this.filterBuilder = filterBuilder;
     this.util = endpointUtil;
@@ -223,6 +225,7 @@ public class MetacardApplication implements SparkApplication {
     this.attributeRegistry = attributeRegistry;
     this.configuration = configuration;
     this.noteUtil = noteUtil;
+    this.actionRegistry = actionRegistry;
   }
 
   private String getSubjectEmail() {
@@ -440,8 +443,10 @@ public class MetacardApplication implements SparkApplication {
           boolean isSubscribed =
               !isEmpty(email) && subscriptions.getEmails(metacard.getId()).contains(email);
 
+          Map<String, Object> workspaceAsMap = transformer.transform(metacard);
+          addListActions(metacard, workspaceAsMap);
           return ImmutableMap.builder()
-              .putAll(transformer.transform(metacard))
+              .putAll(workspaceAsMap)
               .put("subscribed", isSubscribed)
               .build();
         },
@@ -467,8 +472,10 @@ public class MetacardApplication implements SparkApplication {
                   metacard -> {
                     boolean isSubscribed = ids.contains(metacard.getId());
                     try {
+                      Map<String, Object> workspaceAsMap = transformer.transform(metacard);
+                      addListActions(metacard, workspaceAsMap);
                       return ImmutableMap.builder()
-                          .putAll(transformer.transform(metacard))
+                          .putAll(workspaceAsMap)
                           .put("subscribed", isSubscribed)
                           .build();
                     } catch (RuntimeException e) {
@@ -496,7 +503,7 @@ public class MetacardApplication implements SparkApplication {
                   .parseMap(util.safeGetBody(req));
           Metacard saved = saveMetacard(transformer.transform(incoming));
           Map<String, Object> response = transformer.transform(saved);
-
+          addListActions(saved, response);
           res.status(201);
           return util.getJson(response);
         });
@@ -517,7 +524,9 @@ public class MetacardApplication implements SparkApplication {
           metacard.setAttribute(new AttributeImpl(Metacard.ID, id));
 
           Metacard updated = updateMetacard(id, metacard);
-          return util.getJson(transformer.transform(updated));
+          Map<String, Object> response = transformer.transform(updated);
+          addListActions(updated, response);
+          return util.getJson(response);
         });
 
     delete(
@@ -1212,5 +1221,28 @@ public class MetacardApplication implements SparkApplication {
     public InputStream openStream() throws IOException {
       return supplier.get();
     }
+  }
+
+  private void addListActions(Metacard workspaceMetacard, Map<String, Object> workspaceAsMap) {
+    final List<Map<String, Object>> listActions = getListActions(workspaceMetacard);
+    final List<Map<String, Object>> lists = (List<Map<String, Object>>) workspaceAsMap.get("lists");
+    lists.forEach(list -> list.put("actions", listActions));
+  }
+
+  private List<Map<String, Object>> getListActions(Metacard workspaceMetacard) {
+    return actionRegistry
+        .list(workspaceMetacard)
+        .stream()
+        .filter(action -> action.getId().startsWith("catalog.data.metacard.list"))
+        .map(
+            action -> {
+              final Map<String, Object> actionMap = new HashMap<>();
+              actionMap.put("id", action.getId());
+              actionMap.put("url", action.getUrl());
+              actionMap.put("title", action.getTitle());
+              actionMap.put("description", action.getDescription());
+              return actionMap;
+            })
+        .collect(toList());
   }
 }

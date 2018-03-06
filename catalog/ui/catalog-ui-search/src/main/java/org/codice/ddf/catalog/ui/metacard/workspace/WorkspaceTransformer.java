@@ -153,12 +153,7 @@ public class WorkspaceTransformer {
               return lists
                   .stream()
                   .map(this::toMetacardFromXml)
-                  .map(
-                      listMetacard -> {
-                        final Map<String, Object> metacardAsMap = transform(listMetacard);
-                        addListActions(listMetacard, metacardAsMap);
-                        return metacardAsMap;
-                      })
+                  .map(this::transform)
                   .collect(toList());
             }));
     jsonToMetacardEntryMapper.put(
@@ -247,6 +242,8 @@ public class WorkspaceTransformer {
   }
 
   public Map<String, Object> transform(Metacard metacard) {
+    // TODO could move the list action stuff here?
+    // Yes but only if the metacard is a workspace, I think.
     return Optional.of(metacard)
         .map(Metacard::getMetacardType)
         .map(MetacardType::getAttributeDescriptors)
@@ -284,24 +281,5 @@ public class WorkspaceTransformer {
     }
 
     return null;
-  }
-
-  private void addListActions(Metacard listMetacard, Map<String, Object> metacardAsMap) {
-    final List<Map<String, Object>> actions =
-        actionRegistry
-            .list(listMetacard)
-            .stream()
-            .filter(action -> action.getId().startsWith("catalog.data.metacard.list"))
-            .map(
-                action -> {
-                  final Map<String, Object> actionMap = new HashMap<>();
-                  actionMap.put("id", action.getId());
-                  actionMap.put("url", action.getUrl());
-                  actionMap.put("title", action.getTitle());
-                  actionMap.put("description", action.getDescription());
-                  return actionMap;
-                })
-            .collect(toList());
-    metacardAsMap.put("actions", actions);
   }
 }
