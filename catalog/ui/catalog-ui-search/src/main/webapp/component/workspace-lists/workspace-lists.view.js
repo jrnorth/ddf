@@ -29,6 +29,7 @@ var selectedListId;
 module.exports = Marionette.LayoutView.extend({
     setDefaultModel: function(){
         this.model = store.getCurrentWorkspace().get('lists');
+        console.log(store.getCurrentWorkspace());
     },
     template: template,
     tagName: CustomElements.register('workspace-lists'),

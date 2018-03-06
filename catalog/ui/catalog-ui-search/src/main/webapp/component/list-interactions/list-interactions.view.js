@@ -21,6 +21,15 @@ var Decorators = require('decorator/Decorators');
 
 module.exports = Marionette.ItemView.extend(Decorators.decorate({
     template: template,
+    templateContext: function() {
+      console.log(this);
+      return {
+        workspaceId: function() {
+          console.log(this);
+          return this.collection.parents[0].id;
+        }
+      };
+    },
     tagName: CustomElements.register('list-interactions'),
     className: 'is-action-list',
     events: {

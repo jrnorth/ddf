@@ -39,3 +39,12 @@
         Duplicate
     </div>
 </div>
+{{#each actions}}
+<div class="interaction interaction-action" title="{{title}}" data-help="{{description}}">
+  <div class="interaction-icon fa fa-list">
+  </div>
+  <a class="interaction-text" style="text-decoration:none;" target="_blank" href="{{{url}}}&workspaceId={{../workspaceId}}">
+    {{title}}
+  </a>
+</div>
+{{/each}}

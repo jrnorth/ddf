@@ -13,6 +13,9 @@
  */
 package org.codice.ddf.catalog.ui.metacard.workspace;
 
+import static java.util.stream.Collectors.toList;
+
+import ddf.action.ActionRegistry;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.data.AttributeDescriptor;
 import ddf.catalog.data.Metacard;
@@ -50,6 +53,8 @@ public class WorkspaceTransformer {
 
   private final EndpointUtil endpointUtil;
 
+  private final ActionRegistry actionRegistry;
+
   private final Map<String, Function<Map.Entry<String, Object>, Map.Entry<String, Object>>>
       metacardToJsonEntryMapper = new HashMap<>();
 
@@ -79,7 +84,7 @@ public class WorkspaceTransformer {
                   .stream()
                   .map(query -> transformIntoMetacard(new QueryMetacardImpl()).apply(query))
                   .map(this::toMetacardXml)
-                  .collect(Collectors.toList());
+                  .collect(toList());
             }));
     metacardToJsonEntryMapper.put(
         WorkspaceAttributes.WORKSPACE_LISTS,
@@ -88,9 +93,10 @@ public class WorkspaceTransformer {
               List<Map<String, Object>> content = (List) value;
               return content
                   .stream()
+                  .peek(m -> m.remove("actions"))
                   .map(transformIntoMetacard(new ListMetacardImpl()))
                   .map(this::toMetacardXml)
-                  .collect(Collectors.toList());
+                  .collect(toList());
             }));
     metacardToJsonEntryMapper.put(
         QueryMetacardTypeImpl.QUERY_SCHEDULES,
@@ -136,7 +142,7 @@ public class WorkspaceTransformer {
                   .stream()
                   .map(this::toMetacardFromXml)
                   .map(this::transform)
-                  .collect(Collectors.toList());
+                  .collect(toList());
             }));
     jsonToMetacardEntryMapper.put(
         WorkspaceAttributes.WORKSPACE_LISTS,
@@ -147,8 +153,13 @@ public class WorkspaceTransformer {
               return lists
                   .stream()
                   .map(this::toMetacardFromXml)
-                  .map(this::transform)
-                  .collect(Collectors.toList());
+                  .map(
+                      listMetacard -> {
+                        final Map<String, Object> metacardAsMap = transform(listMetacard);
+                        addListActions(listMetacard, metacardAsMap);
+                        return metacardAsMap;
+                      })
+                  .collect(toList());
             }));
     jsonToMetacardEntryMapper.put(
         QueryMetacardTypeImpl.QUERY_SCHEDULES,
@@ -167,10 +178,12 @@ public class WorkspaceTransformer {
   public WorkspaceTransformer(
       CatalogFramework catalogFramework,
       InputTransformer inputTransformer,
-      EndpointUtil endpointUtil) {
+      EndpointUtil endpointUtil,
+      ActionRegistry actionRegistry) {
     this.catalogFramework = catalogFramework;
     this.inputTransformer = inputTransformer;
     this.endpointUtil = endpointUtil;
+    this.actionRegistry = actionRegistry;
     setupMetacardMappers();
     setupJsonMappers();
   }
@@ -247,7 +260,7 @@ public class WorkspaceTransformer {
   }
 
   public List<Map<String, Object>> transform(List<Metacard> metacards) {
-    return metacards.stream().map(this::transform).collect(Collectors.toList());
+    return metacards.stream().map(this::transform).collect(toList());
   }
 
   public String toMetacardXml(Metacard m) {
@@ -271,5 +284,24 @@ public class WorkspaceTransformer {
     }
 
     return null;
+  }
+
+  private void addListActions(Metacard listMetacard, Map<String, Object> metacardAsMap) {
+    final List<Map<String, Object>> actions =
+        actionRegistry
+            .list(listMetacard)
+            .stream()
+            .filter(action -> action.getId().startsWith("catalog.data.metacard.list"))
+            .map(
+                action -> {
+                  final Map<String, Object> actionMap = new HashMap<>();
+                  actionMap.put("id", action.getId());
+                  actionMap.put("url", action.getUrl());
+                  actionMap.put("title", action.getTitle());
+                  actionMap.put("description", action.getDescription());
+                  return actionMap;
+                })
+            .collect(toList());
+    metacardAsMap.put("actions", actions);
   }
 }
