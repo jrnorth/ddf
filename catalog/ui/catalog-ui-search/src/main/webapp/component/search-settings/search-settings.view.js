@@ -48,7 +48,7 @@ define([
         onBeforeShow: function () {
             this.setupResultCount();
             this.setupSearchSettings();
-            if (this.options.showSave !== true) {
+            if (this.options.showFooter !== true) {
                 this.listenToOnce(this.regionManager, 'before:remove:region', this.save);
            }
         },
