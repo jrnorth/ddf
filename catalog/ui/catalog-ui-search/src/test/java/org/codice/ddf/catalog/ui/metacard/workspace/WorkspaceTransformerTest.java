@@ -13,7 +13,11 @@
  */
 package org.codice.ddf.catalog.ui.metacard.workspace;
 
+import static com.google.common.collect.Lists.newArrayList;
+import static java.util.Collections.emptyList;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Matchers.any;
@@ -21,15 +25,27 @@ import static org.mockito.Mockito.doReturn;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import ddf.action.Action;
+import ddf.action.ActionRegistry;
+import ddf.action.impl.ActionImpl;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.data.Metacard;
 import ddf.catalog.data.impl.BinaryContentImpl;
 import ddf.catalog.data.types.Core;
 import ddf.catalog.transform.InputTransformer;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.IOUtils;
 import org.codice.ddf.catalog.ui.util.EndpointUtil;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
+import org.hamcrest.TypeSafeDiagnosingMatcher;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -45,6 +61,8 @@ public class WorkspaceTransformerTest {
 
   private EndpointUtil ut;
 
+  private ActionRegistry actionRegistry;
+
   @Before
   public void setup() throws Exception {
     cf = Mockito.mock(CatalogFramework.class);
@@ -59,7 +77,11 @@ public class WorkspaceTransformerTest {
 
     ut = Mockito.mock(EndpointUtil.class);
 
-    wt = new WorkspaceTransformer(cf, it, ut);
+    actionRegistry = Mockito.mock(ActionRegistry.class);
+
+    doReturn(emptyList()).when(actionRegistry).list(any());
+
+    wt = new WorkspaceTransformer(cf, it, ut, actionRegistry);
   }
 
   // test metacard -> map
@@ -126,5 +148,80 @@ public class WorkspaceTransformerTest {
             ImmutableList.of(ImmutableMap.of("title", "my query")));
     WorkspaceMetacardImpl workspace = (WorkspaceMetacardImpl) wt.transform(map);
     assertThat(workspace.getQueries(), is(ImmutableList.of("<xml></xml>")));
+  }
+
+  @Test
+  public void testAddListActions() throws MalformedURLException {
+    final WorkspaceMetacardImpl workspaceMetacard = new WorkspaceMetacardImpl();
+    final Action action1 =
+        new ActionImpl(
+            "catalog.data.metacard.list.export",
+            "Title1",
+            "Description1",
+            new URL("http://localhost:1"));
+    final Action action2 =
+        new ActionImpl(
+            "catalog.data.metacard.xml", "Title2", "Description2", new URL("http://localhost:2"));
+    final Action action3 =
+        new ActionImpl(
+            "catalog.data.metacard.list.transform",
+            "Title3",
+            "Description3",
+            new URL("http://localhost:3"));
+    doReturn(newArrayList(action1, action2, action3)).when(actionRegistry).list(workspaceMetacard);
+
+    final Map<String, Object> workspaceAsMap = new HashMap<>();
+    final List<Map<String, Object>> workspaceLists = new ArrayList<>();
+    final Map<String, Object> list1AsMap = new HashMap<>();
+    final Map<String, Object> list2AsMap = new HashMap<>();
+    workspaceLists.add(list1AsMap);
+    workspaceLists.add(list2AsMap);
+    workspaceAsMap.put(WorkspaceAttributes.WORKSPACE_LISTS, workspaceLists);
+
+    wt.addListActions(workspaceMetacard, workspaceAsMap);
+
+    final List<Map<String, Object>> list1Actions =
+        (List<Map<String, Object>>) list1AsMap.get("actions");
+    assertThat(list1Actions, containsInAnyOrder(action(action1), action(action3)));
+
+    final List<Map<String, Object>> list2Actions =
+        (List<Map<String, Object>>) list2AsMap.get("actions");
+    assertThat(list2Actions, containsInAnyOrder(action(action1), action(action3)));
+  }
+
+  private static Matcher<Map<String, Object>> action(Action action) {
+    return new ActionMatcher(action);
+  }
+
+  private static class ActionMatcher extends TypeSafeDiagnosingMatcher<Map<String, Object>> {
+    private final Matcher<Map<String, Object>> matcher;
+
+    private ActionMatcher(Action action) {
+      this(action.getId(), action.getTitle(), action.getDescription(), action.getUrl());
+    }
+
+    private ActionMatcher(String id, String title, String description, URL url) {
+      final Matcher<Map<? extends String, ?>> idMatcher = hasEntry("id", id);
+      final Matcher<Map<? extends String, ?>> titleMatcher = hasEntry("title", title);
+      final Matcher<Map<? extends String, ?>> descriptionMatcher =
+          hasEntry("description", description);
+      final Matcher<Map<? extends String, ?>> urlMatcher = hasEntry("url", url);
+      matcher = Matchers.allOf(idMatcher, titleMatcher, descriptionMatcher, urlMatcher);
+    }
+
+    @Override
+    protected boolean matchesSafely(Map<String, Object> map, Description description) {
+      if (!matcher.matches(map)) {
+        matcher.describeMismatch(map, description);
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public void describeTo(Description description) {
+      matcher.describeTo(description);
+    }
   }
 }

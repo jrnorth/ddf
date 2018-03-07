@@ -170,6 +170,7 @@
         <argument ref="catalogFramework"/>
         <argument ref="inputTransformer"/>
         <argument ref="endpointUtil"/>
+        <argument ref="metacardActionRegistry"/>
     </bean>
 
     <bean id="validator" class="org.codice.ddf.catalog.ui.metacard.validation.Validator">
@@ -241,7 +242,6 @@
         <argument ref="attributeRegistry" />
         <argument ref="configurationApplication" />
         <argument ref="noteUtil" />
-        <argument ref="metacardActionRegistry"/>
     </bean>
 
     <bean id="queryApplication" class="org.codice.ddf.catalog.ui.query.QueryApplication">

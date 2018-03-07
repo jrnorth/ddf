@@ -13,6 +13,10 @@
  */
 package org.codice.ddf.catalog.ui.metacard.workspace;
 
+import static java.util.stream.Collectors.toList;
+
+import com.google.common.collect.Sets;
+import ddf.action.ActionRegistry;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.data.AttributeDescriptor;
 import ddf.catalog.data.Metacard;
@@ -34,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -44,11 +49,17 @@ import org.codice.ddf.catalog.ui.util.EndpointUtil;
 
 public class WorkspaceTransformer {
 
+  private static final String ACTIONS_KEY = "actions";
+
+  private static final Set<String> EXTERNAL_LIST_ATTRIBUTES = Sets.newHashSet(ACTIONS_KEY);
+
   private final CatalogFramework catalogFramework;
 
   private final InputTransformer inputTransformer;
 
   private final EndpointUtil endpointUtil;
+
+  private final ActionRegistry actionRegistry;
 
   private final Map<String, Function<Map.Entry<String, Object>, Map.Entry<String, Object>>>
       metacardToJsonEntryMapper = new HashMap<>();
@@ -88,7 +99,7 @@ public class WorkspaceTransformer {
               List<Map<String, Object>> content = (List) value;
               return content
                   .stream()
-                  .peek(m -> m.remove("actions"))
+                  .peek(this::removeExternalListAttributes)
                   .map(transformIntoMetacard(new ListMetacardImpl()))
                   .map(this::toMetacardXml)
                   .collect(Collectors.toList());
@@ -168,10 +179,12 @@ public class WorkspaceTransformer {
   public WorkspaceTransformer(
       CatalogFramework catalogFramework,
       InputTransformer inputTransformer,
-      EndpointUtil endpointUtil) {
+      EndpointUtil endpointUtil,
+      ActionRegistry actionRegistry) {
     this.catalogFramework = catalogFramework;
     this.inputTransformer = inputTransformer;
     this.endpointUtil = endpointUtil;
+    this.actionRegistry = actionRegistry;
     setupMetacardMappers();
     setupJsonMappers();
   }
@@ -235,7 +248,6 @@ public class WorkspaceTransformer {
   }
 
   public Map<String, Object> transform(Metacard metacard) {
-    // TODO could move the list action stuff here?
     return Optional.of(metacard)
         .map(Metacard::getMetacardType)
         .map(MetacardType::getAttributeDescriptors)
@@ -273,5 +285,35 @@ public class WorkspaceTransformer {
     }
 
     return null;
+  }
+
+  public void addListActions(Metacard workspaceMetacard, Map<String, Object> workspaceAsMap) {
+    final List<Map<String, Object>> listActions = getListActions(workspaceMetacard);
+    final List<Map<String, Object>> lists =
+        (List<Map<String, Object>>) workspaceAsMap.get(WorkspaceAttributes.WORKSPACE_LISTS);
+    if (lists != null) {
+      lists.forEach(list -> list.put(ACTIONS_KEY, listActions));
+    }
+  }
+
+  private List<Map<String, Object>> getListActions(Metacard workspaceMetacard) {
+    return actionRegistry
+        .list(workspaceMetacard)
+        .stream()
+        .filter(action -> action.getId().startsWith("catalog.data.metacard.list"))
+        .map(
+            action -> {
+              final Map<String, Object> actionMap = new HashMap<>();
+              actionMap.put("id", action.getId());
+              actionMap.put("url", action.getUrl());
+              actionMap.put("title", action.getTitle());
+              actionMap.put("description", action.getDescription());
+              return actionMap;
+            })
+        .collect(toList());
+  }
+
+  private void removeExternalListAttributes(Map<String, Object> listAsMap) {
+    EXTERNAL_LIST_ATTRIBUTES.forEach(listAsMap::remove);
   }
 }

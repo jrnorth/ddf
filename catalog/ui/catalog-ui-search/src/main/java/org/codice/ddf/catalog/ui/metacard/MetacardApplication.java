@@ -37,7 +37,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.ByteSource;
-import ddf.action.ActionRegistry;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.content.data.ContentItem;
 import ddf.catalog.content.data.impl.ContentItemImpl;
@@ -193,8 +192,6 @@ public class MetacardApplication implements SparkApplication {
 
   private final NoteUtil noteUtil;
 
-  private final ActionRegistry actionRegistry;
-
   public MetacardApplication(
       CatalogFramework catalogFramework,
       FilterBuilder filterBuilder,
@@ -209,8 +206,7 @@ public class MetacardApplication implements SparkApplication {
       QueryResponseTransformer csvQueryResponseTransformer,
       AttributeRegistry attributeRegistry,
       ConfigurationApplication configuration,
-      NoteUtil noteUtil,
-      ActionRegistry actionRegistry) {
+      NoteUtil noteUtil) {
     this.catalogFramework = catalogFramework;
     this.filterBuilder = filterBuilder;
     this.util = endpointUtil;
@@ -225,7 +221,6 @@ public class MetacardApplication implements SparkApplication {
     this.attributeRegistry = attributeRegistry;
     this.configuration = configuration;
     this.noteUtil = noteUtil;
-    this.actionRegistry = actionRegistry;
   }
 
   private String getSubjectEmail() {
@@ -444,7 +439,7 @@ public class MetacardApplication implements SparkApplication {
               !isEmpty(email) && subscriptions.getEmails(metacard.getId()).contains(email);
 
           Map<String, Object> workspaceAsMap = transformer.transform(metacard);
-          addListActions(metacard, workspaceAsMap);
+          transformer.addListActions(metacard, workspaceAsMap);
           return ImmutableMap.builder()
               .putAll(workspaceAsMap)
               .put("subscribed", isSubscribed)
@@ -473,7 +468,7 @@ public class MetacardApplication implements SparkApplication {
                     boolean isSubscribed = ids.contains(metacard.getId());
                     try {
                       Map<String, Object> workspaceAsMap = transformer.transform(metacard);
-                      addListActions(metacard, workspaceAsMap);
+                      transformer.addListActions(metacard, workspaceAsMap);
                       return ImmutableMap.builder()
                           .putAll(workspaceAsMap)
                           .put("subscribed", isSubscribed)
@@ -503,7 +498,7 @@ public class MetacardApplication implements SparkApplication {
                   .parseMap(util.safeGetBody(req));
           Metacard saved = saveMetacard(transformer.transform(incoming));
           Map<String, Object> response = transformer.transform(saved);
-          addListActions(saved, response);
+          transformer.addListActions(saved, response);
           res.status(201);
           return util.getJson(response);
         });
@@ -525,7 +520,7 @@ public class MetacardApplication implements SparkApplication {
 
           Metacard updated = updateMetacard(id, metacard);
           Map<String, Object> response = transformer.transform(updated);
-          addListActions(updated, response);
+          transformer.addListActions(updated, response);
           return util.getJson(response);
         });
 
@@ -1221,30 +1216,5 @@ public class MetacardApplication implements SparkApplication {
     public InputStream openStream() throws IOException {
       return supplier.get();
     }
-  }
-
-  private void addListActions(Metacard workspaceMetacard, Map<String, Object> workspaceAsMap) {
-    final List<Map<String, Object>> listActions = getListActions(workspaceMetacard);
-    final List<Map<String, Object>> lists = (List<Map<String, Object>>) workspaceAsMap.get("lists");
-    if (lists != null) {
-      lists.forEach(list -> list.put("actions", listActions));
-    }
-  }
-
-  private List<Map<String, Object>> getListActions(Metacard workspaceMetacard) {
-    return actionRegistry
-        .list(workspaceMetacard)
-        .stream()
-        .filter(action -> action.getId().startsWith("catalog.data.metacard.list"))
-        .map(
-            action -> {
-              final Map<String, Object> actionMap = new HashMap<>();
-              actionMap.put("id", action.getId());
-              actionMap.put("url", action.getUrl());
-              actionMap.put("title", action.getTitle());
-              actionMap.put("description", action.getDescription());
-              return actionMap;
-            })
-        .collect(toList());
   }
 }
