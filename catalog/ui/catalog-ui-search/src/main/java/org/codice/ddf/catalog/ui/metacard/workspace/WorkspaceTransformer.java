@@ -13,9 +13,6 @@
  */
 package org.codice.ddf.catalog.ui.metacard.workspace;
 
-import static java.util.stream.Collectors.toList;
-
-import ddf.action.ActionRegistry;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.data.AttributeDescriptor;
 import ddf.catalog.data.Metacard;
@@ -53,8 +50,6 @@ public class WorkspaceTransformer {
 
   private final EndpointUtil endpointUtil;
 
-  private final ActionRegistry actionRegistry;
-
   private final Map<String, Function<Map.Entry<String, Object>, Map.Entry<String, Object>>>
       metacardToJsonEntryMapper = new HashMap<>();
 
@@ -84,7 +79,7 @@ public class WorkspaceTransformer {
                   .stream()
                   .map(query -> transformIntoMetacard(new QueryMetacardImpl()).apply(query))
                   .map(this::toMetacardXml)
-                  .collect(toList());
+                  .collect(Collectors.toList());
             }));
     metacardToJsonEntryMapper.put(
         WorkspaceAttributes.WORKSPACE_LISTS,
@@ -96,7 +91,7 @@ public class WorkspaceTransformer {
                   .peek(m -> m.remove("actions"))
                   .map(transformIntoMetacard(new ListMetacardImpl()))
                   .map(this::toMetacardXml)
-                  .collect(toList());
+                  .collect(Collectors.toList());
             }));
     metacardToJsonEntryMapper.put(
         QueryMetacardTypeImpl.QUERY_SCHEDULES,
@@ -142,7 +137,7 @@ public class WorkspaceTransformer {
                   .stream()
                   .map(this::toMetacardFromXml)
                   .map(this::transform)
-                  .collect(toList());
+                  .collect(Collectors.toList());
             }));
     jsonToMetacardEntryMapper.put(
         WorkspaceAttributes.WORKSPACE_LISTS,
@@ -154,7 +149,7 @@ public class WorkspaceTransformer {
                   .stream()
                   .map(this::toMetacardFromXml)
                   .map(this::transform)
-                  .collect(toList());
+                  .collect(Collectors.toList());
             }));
     jsonToMetacardEntryMapper.put(
         QueryMetacardTypeImpl.QUERY_SCHEDULES,
@@ -173,12 +168,10 @@ public class WorkspaceTransformer {
   public WorkspaceTransformer(
       CatalogFramework catalogFramework,
       InputTransformer inputTransformer,
-      EndpointUtil endpointUtil,
-      ActionRegistry actionRegistry) {
+      EndpointUtil endpointUtil) {
     this.catalogFramework = catalogFramework;
     this.inputTransformer = inputTransformer;
     this.endpointUtil = endpointUtil;
-    this.actionRegistry = actionRegistry;
     setupMetacardMappers();
     setupJsonMappers();
   }
@@ -243,7 +236,6 @@ public class WorkspaceTransformer {
 
   public Map<String, Object> transform(Metacard metacard) {
     // TODO could move the list action stuff here?
-    // Yes but only if the metacard is a workspace, I think.
     return Optional.of(metacard)
         .map(Metacard::getMetacardType)
         .map(MetacardType::getAttributeDescriptors)
@@ -257,7 +249,7 @@ public class WorkspaceTransformer {
   }
 
   public List<Map<String, Object>> transform(List<Metacard> metacards) {
-    return metacards.stream().map(this::transform).collect(toList());
+    return metacards.stream().map(this::transform).collect(Collectors.toList());
   }
 
   public String toMetacardXml(Metacard m) {

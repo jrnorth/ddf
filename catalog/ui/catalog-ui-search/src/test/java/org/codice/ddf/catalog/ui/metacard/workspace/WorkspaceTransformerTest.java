@@ -21,7 +21,6 @@ import static org.mockito.Mockito.doReturn;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import ddf.action.ActionRegistry;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.data.Metacard;
 import ddf.catalog.data.impl.BinaryContentImpl;
@@ -46,8 +45,6 @@ public class WorkspaceTransformerTest {
 
   private EndpointUtil ut;
 
-  private ActionRegistry actionRegistry;
-
   @Before
   public void setup() throws Exception {
     cf = Mockito.mock(CatalogFramework.class);
@@ -62,9 +59,7 @@ public class WorkspaceTransformerTest {
 
     ut = Mockito.mock(EndpointUtil.class);
 
-    actionRegistry = Mockito.mock(ActionRegistry.class);
-
-    wt = new WorkspaceTransformer(cf, it, ut, actionRegistry);
+    wt = new WorkspaceTransformer(cf, it, ut);
   }
 
   // test metacard -> map
