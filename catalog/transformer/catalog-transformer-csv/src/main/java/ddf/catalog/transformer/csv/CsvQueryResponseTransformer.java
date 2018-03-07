@@ -91,7 +91,8 @@ public class CsvQueryResponseTransformer implements QueryResponseTransformer {
             .orElse(Collections.emptyMap());
 
     Set<AttributeDescriptor> allAttributeDescriptors =
-        getAllRequestedAttributes(upstreamResponse.getResults(), hiddenFields);
+        getAllRequestedAttributes(
+            upstreamResponse.getResults(), hiddenFields, new HashSet<String>(attributeOrder));
 
     List<AttributeDescriptor> sortedAttributeDescriptors =
         sortAttributes(allAttributeDescriptors, attributeOrder);
@@ -169,7 +170,7 @@ public class CsvQueryResponseTransformer implements QueryResponseTransformer {
   }
 
   private Set<AttributeDescriptor> getAllRequestedAttributes(
-      final List<Result> results, final Set<String> hiddenFields) {
+      final List<Result> results, final Set<String> hiddenFields, HashSet<String> requestedFields) {
 
     Set<AttributeDescriptor> allAttributes = new HashSet<>();
 
@@ -191,7 +192,13 @@ public class CsvQueryResponseTransformer implements QueryResponseTransformer {
                             !AttributeType.AttributeFormat.OBJECT.equals(
                                 desc.getType().getAttributeFormat()))
                     .filter(desc -> !hiddenFields.contains(desc.getName()))
-                    .forEach(allAttributes::add));
+                    .forEach(
+                        desc -> {
+                          if (requestedFields.isEmpty()
+                              || requestedFields.contains(desc.getName())) {
+                            allAttributes.add(desc);
+                          }
+                        }));
 
     return allAttributes;
   }
