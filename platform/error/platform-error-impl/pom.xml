@@ -126,7 +126,7 @@
                             <goal>unpack-dependencies</goal>
                         </goals>
                         <configuration>
-                            <includeGroupIds>org.webjars,org.codice.webjars</includeGroupIds>
+                            <includeGroupIds>org.webjars,org.codice.webjars,ddf.distribution.webjars</includeGroupIds>
                             <outputDirectory>${project.build.directory}</outputDirectory>
                         </configuration>
                     </execution>
