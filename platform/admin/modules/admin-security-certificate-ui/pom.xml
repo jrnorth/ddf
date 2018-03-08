@@ -64,7 +64,7 @@
             <version>1.1.0</version>
         </dependency>
         <dependency>
-            <groupId>ddf.distribution.webjars.theme</groupId>
+            <groupId>ddf.distribution.theme</groupId>
             <artifactId>ddf-theme</artifactId>
             <version>2.12.0-SNAPSHOT</version>
             <scope>compile</scope>
@@ -179,8 +179,19 @@
                             <goal>unpack-dependencies</goal>
                         </goals>
                         <configuration>
-                            <includeGroupIds>org.webjars,org.codice.webjars,ddf.distribution.webjars</includeGroupIds>
+                            <includeGroupIds>org.webjars,org.codice.webjars</includeGroupIds>
                             <outputDirectory>${project.build.directory}</outputDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>unpack ddf.distribution.theme</id>
+                        <goals>
+                            <goal>unpack-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeArtifactIds>ddf-theme</includeArtifactIds>
+                            <includeGroupIds>ddf.distribution.theme</includeGroupIds>
+                            <outputDirectory>${project.build.directory}/ddf-theme</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -200,7 +211,7 @@
                         </Embed-Dependency>
                         <Web-ContextPath>/admin/certificate</Web-ContextPath>
                         <_wab>
-                            src/main/webapp,${project.build.directory}/webapp,${project.build.directory}/META-INF/resources/webjars
+                            src/main/webapp,${project.build.directory}/webapp,${project.build.directory}/META-INF/resources/webjars,${project.build.directory}/ddf-theme/webapp
                         </_wab>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Export-Package/>

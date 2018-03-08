@@ -92,39 +92,16 @@ module.exports = function (grunt) {
                     script: './server.js'
                 }
             }
-        },
-        replace: {
-            dist: {
-                options: {
-                    patterns: [
-                        {
-                            match: /@import url\("\/\/fonts\.googleapis\.com\/css\?family=Lato:400,700,400italic"\);/g,
-                            replace: ''
-                        }
-                    ]
-                },
-                files: [
-                    {
-                        expand: true,
-                        flatten: true,
-                        src: 'target/META-INF/resources/webjars/bootswatch/3.2.0/flatly/*',
-                        dest: 'target/META-INF/resources/webjars/bootswatch/3.2.0/flatly'
-                    }
-                ]
-            }
         }
     });
 
-    grunt.loadNpmTasks('grunt-bower-task');
     grunt.loadNpmTasks('grunt-contrib-cssmin');
     grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-contrib-jshint');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-express-server');
-    grunt.loadNpmTasks('grunt-casperjs');
-    grunt.loadNpmTasks('grunt-replace');
 
-    var buildTasks = ['clean', 'replace', 'cssmin', 'jshint'];
+    var buildTasks = ['clean', 'cssmin', 'jshint'];
 
     grunt.registerTask('build', buildTasks);
     grunt.registerTask('default', ['build', 'express:server', 'watch']);
