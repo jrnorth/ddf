@@ -324,7 +324,7 @@
 
         <AD id="theme" 
             name="Theme" 
-            description="Specifies the default theme.  Custom requires filling out the colors below."
+            description="Specifies the default webapp.  Custom requires filling out the colors below."
             required="true" 
             type="String"
             default="dark">
