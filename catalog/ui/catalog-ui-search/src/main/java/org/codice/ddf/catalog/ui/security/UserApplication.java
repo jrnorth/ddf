@@ -48,7 +48,7 @@ public class UserApplication implements SparkApplication {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UserApplication.class);
 
-  private final EndpointUtil util;
+  private final EndpointUtil endpointUtil;
 
   private final PersistentStore persistentStore;
 
@@ -56,7 +56,7 @@ public class UserApplication implements SparkApplication {
 
   public UserApplication(
       EndpointUtil util, PersistentStore persistentStore, SubjectIdentity subjectIdentity) {
-    this.util = util;
+    this.endpointUtil = util;
     this.persistentStore = persistentStore;
     this.subjectIdentity = subjectIdentity;
   }
@@ -70,7 +70,7 @@ public class UserApplication implements SparkApplication {
           res.type(APPLICATION_JSON);
           return getSubjectAttributes(subject);
         },
-        util::getJson);
+        endpointUtil::getJson);
 
     put(
         "/user/preferences",
@@ -84,7 +84,7 @@ public class UserApplication implements SparkApplication {
           }
 
           Map<String, Object> preferences =
-              JsonFactory.create().parser().parseMap(util.safeGetBody(req));
+              JsonFactory.create().parser().parseMap(endpointUtil.safeGetBody(req));
 
           if (preferences == null) {
             preferences = new HashMap<>();
@@ -94,13 +94,13 @@ public class UserApplication implements SparkApplication {
 
           return preferences;
         },
-        util::getJson);
+        endpointUtil::getJson);
 
-    exception(EntityTooLargeException.class, util::handleEntityTooLargeException);
+    exception(EntityTooLargeException.class, endpointUtil::handleEntityTooLargeException);
 
-    exception(IOException.class, util::handleIOException);
+    exception(IOException.class, endpointUtil::handleIOException);
 
-    exception(RuntimeException.class, util::handleRuntimeException);
+    exception(RuntimeException.class, endpointUtil::handleRuntimeException);
   }
 
   private void setUserPreferences(Subject subject, Map<String, Object> preferences) {

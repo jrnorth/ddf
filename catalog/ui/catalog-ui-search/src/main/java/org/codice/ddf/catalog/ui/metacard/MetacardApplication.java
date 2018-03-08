@@ -18,6 +18,10 @@ import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_METHODS_KEY;
+import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_METHOD_ID_KEY;
+import static org.codice.ddf.catalog.ui.scheduling.QuerySchedulingPostIngestPlugin.DELIVERY_PARAMETERS_KEY;
+import static org.codice.ddf.catalog.ui.scheduling.subscribers.QueryCourier.DELIVERY_TYPE_KEY;
 import static spark.Spark.after;
 import static spark.Spark.delete;
 import static spark.Spark.exception;
@@ -55,6 +59,8 @@ import ddf.catalog.data.types.Core;
 import ddf.catalog.federation.FederationException;
 import ddf.catalog.filter.FilterBuilder;
 import ddf.catalog.operation.DeleteResponse;
+import ddf.catalog.operation.Query;
+import ddf.catalog.operation.QueryRequest;
 import ddf.catalog.operation.QueryResponse;
 import ddf.catalog.operation.ResourceResponse;
 import ddf.catalog.operation.UpdateResponse;
@@ -72,13 +78,16 @@ import ddf.catalog.source.SourceUnavailableException;
 import ddf.catalog.source.UnsupportedQueryException;
 import ddf.catalog.transform.QueryResponseTransformer;
 import ddf.catalog.util.impl.ResultIterable;
+import ddf.security.Credentials;
 import ddf.security.Subject;
 import ddf.security.SubjectUtils;
+import ddf.security.UserCredential;
 import ddf.security.common.audit.SecurityLogger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -122,10 +131,15 @@ import org.codice.ddf.catalog.ui.metacard.validation.Validator;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceAttributes;
 import org.codice.ddf.catalog.ui.metacard.workspace.WorkspaceTransformer;
 import org.codice.ddf.catalog.ui.query.monitor.api.SubscriptionsPersistentStore;
+import org.codice.ddf.catalog.ui.scheduling.subscribers.QueryCourier;
 import org.codice.ddf.catalog.ui.util.EndpointUtil;
+import org.codice.ddf.persistence.PersistentStore;
+import org.codice.ddf.persistence.PersistentStore.PersistenceType;
 import org.codice.ddf.security.common.Security;
 import org.opengis.filter.Filter;
 import org.opengis.filter.sort.SortBy;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.servlet.SparkApplication;
@@ -165,6 +179,7 @@ public class MetacardApplication implements SparkApplication {
   private final WorkspaceTransformer transformer;
   private final ExperimentalEnumerationExtractor enumExtractor;
   private final SubscriptionsPersistentStore subscriptions;
+  private final PersistentStore persistentStore;
   private final List<MetacardType> types;
   private final Associated associated;
   private final QueryResponseTransformer csvQueryResponseTransformer;
@@ -175,6 +190,9 @@ public class MetacardApplication implements SparkApplication {
 
   private final NoteUtil noteUtil;
 
+  private final BundleContext bundleContext =
+      FrameworkUtil.getBundle(MetacardApplication.class).getBundleContext();
+
   public MetacardApplication(
       CatalogFramework catalogFramework,
       FilterBuilder filterBuilder,
@@ -183,6 +201,7 @@ public class MetacardApplication implements SparkApplication {
       WorkspaceTransformer transformer,
       ExperimentalEnumerationExtractor enumExtractor,
       SubscriptionsPersistentStore subscriptions,
+      PersistentStore persistentStore,
       List<MetacardType> types,
       Associated associated,
       QueryResponseTransformer csvQueryResponseTransformer,
@@ -196,6 +215,7 @@ public class MetacardApplication implements SparkApplication {
     this.transformer = transformer;
     this.enumExtractor = enumExtractor;
     this.subscriptions = subscriptions;
+    this.persistentStore = persistentStore;
     this.types = types;
     this.associated = associated;
     this.csvQueryResponseTransformer = csvQueryResponseTransformer;
@@ -471,7 +491,10 @@ public class MetacardApplication implements SparkApplication {
         APPLICATION_JSON,
         (req, res) -> {
           Map<String, Object> incoming =
-              JsonFactory.create().parser().parseMap(util.safeGetBody(req));
+              new JsonParserFactory()
+                  .setCheckDates(false)
+                  .createFastParser()
+                  .parseMap(util.safeGetBody(req));
           Metacard saved = saveMetacard(transformer.transform(incoming));
           Map<String, Object> response = transformer.transform(saved);
 
@@ -486,7 +509,10 @@ public class MetacardApplication implements SparkApplication {
           String id = req.params(":id");
 
           Map<String, Object> workspace =
-              JsonFactory.create().parser().parseMap(util.safeGetBody(req));
+              new JsonParserFactory()
+                  .setCheckDates(false)
+                  .createFastParser()
+                  .parseMap(util.safeGetBody(req));
 
           Metacard metacard = transformer.transform(workspace);
           metacard.setAttribute(new AttributeImpl(Metacard.ID, id));
@@ -594,8 +620,7 @@ public class MetacardApplication implements SparkApplication {
     post(
         "/annotations",
         (req, res) -> {
-          Map<String, Object> incoming =
-              JsonFactory.create().parser().parseMap(util.safeGetBody(req));
+          Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
           String workspaceId = incoming.get("workspace").toString();
           String queryId = incoming.get("parent").toString();
           String annotation = incoming.get("note").toString();
@@ -663,8 +688,7 @@ public class MetacardApplication implements SparkApplication {
         "/annotations/:id",
         APPLICATION_JSON,
         (req, res) -> {
-          Map<String, Object> incoming =
-              JsonFactory.create().parser().parseMap(util.safeGetBody(req));
+          Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
           String noteMetacardId = req.params(":id");
           String note = incoming.get("note").toString();
           Metacard metacard;
@@ -720,6 +744,159 @@ public class MetacardApplication implements SparkApplication {
           }
           res.status(500);
           return util.getResponseWrapper(ERROR_RESPONSE_TYPE, "Could not delete note metacard!");
+        });
+
+    get(
+        "/digorno",
+        (req, res) -> {
+          final String bundleFilter =
+              String.format("(objectClass=%s)", QueryCourier.class.getName());
+
+          return util.getJson(
+              bundleContext
+                  .getServiceReferences(QueryCourier.class, bundleFilter)
+                  .stream()
+                  .map(
+                      serviceReference -> {
+                        final QueryCourier service = bundleContext.getService(serviceReference);
+                        if (service == null) {
+                          return null;
+                        }
+
+                        return ImmutableMap.of(
+                            QueryCourier.DELIVERY_TYPE_KEY,
+                            service.getDeliveryType(),
+                            QueryCourier.DISPLAY_NAME_KEY,
+                            service.getDisplayName(),
+                            "requiredFields",
+                            service.getRequiredFields());
+                      })
+                  .filter(Objects::nonNull)
+                  .collect(Collectors.toList()));
+        });
+
+    post(
+        "/credentials",
+        (req, res) -> {
+          Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
+
+          Class<Credentials> clazz = Credentials.class;
+          String filter = "(objectClass=" + Credentials.class.getName() + ")";
+
+          Optional<Credentials> credentialImpl =
+              bundleContext
+                  .getServiceReferences(clazz, filter)
+                  .stream()
+                  .map(bundleContext::getService)
+                  .filter(Objects::nonNull)
+                  .findFirst();
+
+          if (credentialImpl.isPresent()) {
+            if (incoming.containsKey("ddfUsername")
+                && incoming.containsKey("credUsername")
+                && incoming.containsKey("credPassword")
+                && incoming.containsKey("uuid")) {
+              UserCredential newCred =
+                  new UserCredential(
+                      (String) incoming.get("credUsername"),
+                      (String) incoming.get("uuid"),
+                      ((String) incoming.get("credPassword")).toCharArray());
+
+              credentialImpl.get().storeCredential((String) incoming.get("ddfUsername"), newCred);
+            }
+          }
+
+          return util.getResponseWrapper(SUCCESS_RESPONSE_TYPE, "");
+        });
+
+    post(
+        "/delivery",
+        (req, res) -> {
+          Map<String, Object> incoming = mapper.parser().parseMap(util.safeGetBody(req));
+
+          if (incoming.containsKey("metacardId")
+              && incoming.containsKey("deliveryIds")
+              && incoming.containsKey("username")) {
+
+            String username = (String) incoming.get("username");
+            String metacardId = (String) incoming.get("metacardId");
+
+            List<Map<String, Object>> preferencesList =
+                persistentStore.get(
+                    PersistenceType.PREFERENCES_TYPE.toString(),
+                    String.format("user = '%s'", username));
+
+            final Map<String, Object> preferences = preferencesList.get(0);
+
+            final Map<String, Object> userPrefs =
+                JsonFactory.create()
+                    .parser()
+                    .parseMap(
+                        new String(
+                            (byte[]) preferences.get("preferences_json_bin"),
+                            Charset.defaultCharset()));
+
+            List<Map<String, Object>> matchingDests = new ArrayList<>();
+            if (userPrefs.containsKey(DELIVERY_METHODS_KEY)) {
+              List<Map<String, Object>> userDests = (List) userPrefs.get(DELIVERY_METHODS_KEY);
+              List<String> deliveryIds = (List<String>) incoming.get("deliveryIds");
+
+              for (Map<String, Object> userDest : userDests) {
+                for (String deliveryId : deliveryIds) {
+                  if (userDest.containsKey(DELIVERY_METHOD_ID_KEY)
+                      && userDest.get(DELIVERY_METHOD_ID_KEY).equals(deliveryId)) {
+                    if (!matchingDests.contains(userDest)) {
+                      matchingDests.add(userDest);
+                    }
+                  }
+                }
+              }
+            } else {
+              util.getResponseWrapper(
+                  SUCCESS_RESPONSE_TYPE, "No delivery methods specified. Nothing to do.");
+            }
+
+            Filter queryFilter = filterBuilder.attribute(Core.ID).is().like().text(metacardId);
+
+            Query query = new QueryImpl(queryFilter);
+            QueryRequest queryRequest = new QueryRequestImpl(query);
+
+            QueryResponse queryResponse = catalogFramework.query(queryRequest);
+
+            // TODO: Perform manual delivery that doesn't route through the scheduling logic
+            Class<QueryCourier> clazz = QueryCourier.class;
+            String osgiFilter = "(objectClass=" + QueryCourier.class.getName() + ")";
+
+            List<QueryCourier> deliveryServices =
+                bundleContext
+                    .getServiceReferences(clazz, osgiFilter)
+                    .stream()
+                    .map(bundleContext::getService)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            for (QueryCourier queryDeliveryService : deliveryServices) {
+              for (Map<String, Object> matchingDest : matchingDests) {
+                if (matchingDest
+                    .get(DELIVERY_TYPE_KEY)
+                    .equals(queryDeliveryService.getDeliveryType())) {
+                  queryDeliveryService.deliver(
+                      metacardId,
+                      queryResponse,
+                      username,
+                      (String) matchingDest.get(DELIVERY_METHOD_ID_KEY),
+                      (Map<String, Object>) matchingDest.get(DELIVERY_PARAMETERS_KEY));
+                }
+              }
+            }
+
+            return util.getResponseWrapper(
+                SUCCESS_RESPONSE_TYPE, "All deliveries processed. Everything went swimmingly.");
+          }
+
+          return util.getResponseWrapper(
+              ERROR_RESPONSE_TYPE,
+              "Metacard id, username, and all desired delivery ids must be supplied with request.");
         });
 
     after(

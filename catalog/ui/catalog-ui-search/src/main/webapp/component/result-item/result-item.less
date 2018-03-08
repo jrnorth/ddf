@@ -27,6 +27,10 @@
       display: none;
     }
 
+    > .result-stream {
+      display: none;
+    }
+
     > .result-actions, .result-validation {
       display: inline-block;
     }
@@ -152,6 +156,14 @@
 @{customElementNamespace}result-item.is-downloadable {
   .content-footer {
     > .result-download {
+      display: inline-block;
+    }
+  }
+}
+
+@{customElementNamespace}result-item.is-streamable {
+  .content-footer {
+    > .result-stream {
       display: inline-block;
     }
   }
