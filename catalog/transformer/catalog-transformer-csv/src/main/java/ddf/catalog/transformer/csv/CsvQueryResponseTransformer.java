@@ -192,13 +192,10 @@ public class CsvQueryResponseTransformer implements QueryResponseTransformer {
                             !AttributeType.AttributeFormat.OBJECT.equals(
                                 desc.getType().getAttributeFormat()))
                     .filter(desc -> !hiddenFields.contains(desc.getName()))
-                    .forEach(
-                        desc -> {
-                          if (requestedFields.isEmpty()
-                              || requestedFields.contains(desc.getName())) {
-                            allAttributes.add(desc);
-                          }
-                        }));
+                    .filter(
+                        desc ->
+                            requestedFields.isEmpty() || requestedFields.contains(desc.getName()))
+                    .forEach(desc -> allAttributes.add(desc)));
 
     return allAttributes;
   }
