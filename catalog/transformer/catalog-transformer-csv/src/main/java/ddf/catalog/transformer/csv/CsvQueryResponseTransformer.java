@@ -195,7 +195,7 @@ public class CsvQueryResponseTransformer implements QueryResponseTransformer {
                     .filter(
                         desc ->
                             requestedFields.isEmpty() || requestedFields.contains(desc.getName()))
-                    .forEach(desc -> allAttributes.add(desc)));
+                    .forEach(allAttributes::add));
 
     return allAttributes;
   }
