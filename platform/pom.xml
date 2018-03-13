@@ -392,5 +392,6 @@
         <module>platform-app</module>
         <module>osgi</module>
         <module>ignite</module>
+        <module>ddf-theme</module>
     </modules>
 </project>
