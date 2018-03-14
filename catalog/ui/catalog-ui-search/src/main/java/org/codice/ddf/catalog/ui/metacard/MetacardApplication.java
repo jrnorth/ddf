@@ -193,7 +193,7 @@ public class MetacardApplication implements SparkApplication {
 
   private final BundleContext bundleContext =
       FrameworkUtil.getBundle(MetacardApplication.class).getBundleContext();
-  
+
   public MetacardApplication(
       CatalogFramework catalogFramework,
       FilterBuilder filterBuilder,
