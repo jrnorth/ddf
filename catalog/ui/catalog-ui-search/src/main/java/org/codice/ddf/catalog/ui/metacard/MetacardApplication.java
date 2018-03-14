@@ -139,6 +139,8 @@ import org.codice.ddf.persistence.PersistentStore.PersistenceType;
 import org.codice.ddf.security.common.Security;
 import org.opengis.filter.Filter;
 import org.opengis.filter.sort.SortBy;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.servlet.SparkApplication;
@@ -189,6 +191,9 @@ public class MetacardApplication implements SparkApplication {
 
   private final NoteUtil noteUtil;
 
+  private final BundleContext bundleContext =
+      FrameworkUtil.getBundle(MetacardApplication.class).getBundleContext();
+  
   public MetacardApplication(
       CatalogFramework catalogFramework,
       FilterBuilder filterBuilder,
