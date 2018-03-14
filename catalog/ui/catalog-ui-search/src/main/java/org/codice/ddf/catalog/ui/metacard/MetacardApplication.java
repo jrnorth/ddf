@@ -15,7 +15,6 @@ package org.codice.ddf.catalog.ui.metacard;
 
 import static ddf.catalog.util.impl.ResultIterable.resultIterable;
 import static java.lang.String.format;
-import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
@@ -140,8 +139,6 @@ import org.codice.ddf.persistence.PersistentStore.PersistenceType;
 import org.codice.ddf.security.common.Security;
 import org.opengis.filter.Filter;
 import org.opengis.filter.sort.SortBy;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.servlet.SparkApplication;
