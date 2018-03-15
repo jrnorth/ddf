@@ -12,8 +12,13 @@
  * <http://www.gnu.org/licenses/lgpl.html>.
  *
  **/
+
 /*global define*/
 define([
+    'openlayers',
+    'js/model/Layer.js',
+    'js/controllers/ol.layerCollection.controller',
+    'wreqr',
     'backbone',
     'marionette',
     'underscore',
@@ -36,9 +41,10 @@ define([
     'component/result-add/result-add.view',
     'component/dropdown/popout/dropdown.popout.view',
     'behaviors/button.behavior'
-], function (Backbone, Marionette, _, $, template, CustomElements, IconHelper, store, Common, DropdownModel,
-             MetacardInteractionsDropdownView, ResultIndicatorView, properties, router, user,
-             metacardDefinitions, moment, sources, HoverPreviewDropdown, ResultAddView, PopoutView) {
+], function (ol, Layer, LayerCollectionController, wreqr, Backbone, Marionette, _, $, template,
+             CustomElements, IconHelper, store, Common, DropdownModel, MetacardInteractionsDropdownView, 
+             ResultIndicatorView, properties, router, user, metacardDefinitions, moment, sources, 
+             HoverPreviewDropdown, ResultAddView, PopoutView) {
 
     return Marionette.LayoutView.extend({
         template: template,
@@ -54,6 +60,7 @@ define([
             'click .result-save': 'handleSave',
             'click .result-unsave': 'handleUnsave',
             'click .result-download': 'triggerDownload',
+            'click .result-wm': 'triggerWMLayer',
             'click .result-stream': 'triggerStream'
         },
         regions: {
@@ -76,6 +83,7 @@ define([
             this.checkIfDownloadable();
             this.checkIfStreamable();
             this.checkIfBlacklisted();
+            this.checkWMStreamable();
             var currentWorkspace = store.getCurrentWorkspace();
             if (currentWorkspace) {
                 this.listenTo(currentWorkspace, 'change:metacards', this.checkIfSaved);
@@ -234,6 +242,9 @@ define([
                     break;
             }
         },
+        checkWMStreamable: function() {
+            this.$el.toggleClass('is-wm-capable', this.model.get('metacard').get('properties').get('ext.wms-streaming-url') !== undefined);
+        },
         checkTags: function(){
             this.$el.toggleClass('is-workspace', this.model.isWorkspace());
             this.$el.toggleClass('is-resource', this.model.isResource());
@@ -246,6 +257,48 @@ define([
         },
         triggerStream: function(e) {
             window.open(this.model.get('metacard').get('properties').get('ext.jpip-streaming-url'));
+        },
+        triggerWMLayer: function(e) {
+            var map = wreqr.reqres.request('map:retrieval');
+
+            if (map) {
+                // var url = this.model.get('metacard').get('properties').get('ext.wms-streaming-url');
+
+                // These don't currently exist
+                // var params = this.model.get('metacard').get('properties').get('ext.wm-params')
+                // var type = this.model.get('metacard').get('properties').get('ext.wm-type')
+
+                // var wmLayer = new Layer({
+                //     map: map,
+                //     type: type,
+                //     parameters: params,
+                //     url: url 
+                // });
+
+                /**
+                 * WMS/WMT Example Objects to Verify Streaming Functionality
+                 * UNCOMMENTED TO RUN FOR DEMO FUNCTIONALITY
+                 */
+                // WMS Test Object
+                // Note: May not be able to load below URL over SSL since coming from insecure connection
+                // var wmLayer = new Layer({
+                //     map: map,
+                //     type: "WMS",
+                //     parameters: {layers: "GVP_forests_national-parks_reservations_Ghana"},
+                //     url: "http://131.220.109.2:80/geoserver/ows"
+                // });
+                // wreqr.vent.trigger('addLayer:wm', wmLayer.toJSON());
+                
+                // // WMT Test Object
+                wmLayer = new Layer({
+                    map: map,
+                    type: "WMT",
+                    parameters: {layers: 'layer-7328', matrixSet: 'EPSG:3857'},
+                    url: "https://openlayers.org/en/v3.19.1/examples/data/WMTSCapabilities.xml"
+                });
+                wreqr.vent.trigger('addLayer:wm', wmLayer.toJSON());
+            }
+
         },
         handleSave: function(e){
             e.preventDefault();

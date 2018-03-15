@@ -12,13 +12,17 @@
 /*global define*/
 /*jshint newcap: false, bitwise: false */
 
-define(['underscore',
+define([
+    'wreqr',
+    'underscore',
     'jquery',
     'marionette',
     'openlayers',
     'properties',
+    'component/singletons/user-instance',
+    'js/model/user',
     'js/controllers/common.layerCollection.controller'
-], function (_, $, Marionette, ol, properties, CommonLayerController) {
+], function (wreqr, _, $, Marionette, ol, properties, user, User, CommonLayerController) {
     "use strict";
 
     var imageryProviderTypes = {
@@ -76,6 +80,7 @@ define(['underscore',
         initialize: function () {
             // there is no automatic chaining of initialize.
             CommonLayerController.prototype.initialize.apply(this, arguments);
+            this.listenTo(wreqr.vent, 'addLayer:wm', this.attachWMLayer)
         },
         makeMap: function (options) {
             var layers = [];
@@ -104,13 +109,58 @@ define(['underscore',
 
             this.map = new ol.Map(mapConfig);
             this.isMapCreated = true;
+
+            if (user.get('user').isGuestUser()) {
+                this.loadLayersFromStorage();
+            } 
+
             return this.map;
+        },
+        loadLayersFromStorage() {
+            var that = this;
+            var layerPrefs = user.get('user>preferences>mapLayers');
+            var localStorageLayers = JSON.parse(window.localStorage.getItem('preferences'))['mapLayers'];
+
+            // Retrieve layers from local-storage that aren't loaded into preferences
+            var result = _.filter(localStorageLayers, (localLayer) => {
+                return !_.some(layerPrefs.models, (layerPref) => {
+                    return _.isEqual(layerPref.attributes, localLayer)
+                })
+            });
+
+            // Add local storage layer into the prefs and map 
+            _.each(result, (customLayer) => {
+                this.attachWMLayer(customLayer);
+            })
         },
         onDestroy: function () {
             if (this.isMapCreated) {
                 this.map.setTarget(null);
                 this.map = null;
             }
+        },
+        attachWMLayer: function(newLayer) {
+            var _this = this;
+            var layerPrefs = user.get('user>preferences>mapLayers');
+            var layerModel = new User.MapLayer(newLayer, {parse: true});
+
+            if (layerModel.get('type') === 'WMT') {
+                return this.addWMTLayer(layerModel)
+                .then((data) => {
+                    _this.layerForCid[layerModel.id] = data;
+                    _this.map.addLayer(data);
+                    this.savePreferences(layerPrefs, layerModel);
+                });
+            } else if (layerModel.get('type') === 'WMS') {
+                var widgetLayer = this.makeWidgetLayer(layerModel);
+                this.layerForCid[layerModel.id] = widgetLayer;
+                this.map.addLayer(widgetLayer);
+                this.savePreferences(layerPrefs, layerModel);
+            }
+        },
+        savePreferences: function(layerPrefs, layerModel) {
+            layerPrefs.add(layerModel);
+            layerPrefs.savePreferences();
         },
         setAlpha: function (model) {
             var layer = this.layerForCid[model.id];
@@ -125,6 +175,31 @@ define(['underscore',
                 var widgetLayer = this.layerForCid[model.id];
                 widgetLayer.setZIndex(-(index + 1));
             }, this);
+        },
+        addWMTLayer: function(model) {
+            var parser = new ol.format.WMTSCapabilities();
+            var initObj = _.omit(model.attributes, 'type', 'label', 'index', 'show', 'alpha', 'modelCid');
+            var layerData;
+        
+            var wmtLayer = fetch(initObj.url)
+                .then(function(response) {
+                    return response.text();
+                })
+                .then(function(text) {
+                    var result = parser.read(text);
+                    var options = ol.source.WMTS.optionsFromCapabilities(
+                        result,
+                        {layer: initObj.parameters.layers, matrixSet: initObj.parameters.matrixSet}
+                    );
+
+                    layerData = new ol.layer.Tile({
+                        preload: Infinity,
+                        opacity: .8,
+                        source: new ol.source.WMTS(options)
+                    });
+                    return layerData;
+                });
+            return wmtLayer;
         },
         makeWidgetLayer: function (model) {
             var typeStr = model.get('type');
@@ -169,31 +244,31 @@ define(['underscore',
                 initObj.tileGrid = mockTileGrid;
 
                 $.ajax({
-                  url : initObj.url + '?request=GetCapabilities',
-                  success : function(data)  {
-                      var parser = new ol.format.WMTSCapabilities();
-                      var result = parser.read(data);
-                      var options = ol.source.WMTS.optionsFromCapabilities(result, {layer: initObj.layer, matrixSet: initObj.matrixSet});
-                      /* Replace URL with Proxy URL */
-                      options.urls = [initObj.url];
-                      initObj = options;
-                      var layer = new layerType({
-                            visible: model.shouldShowLayer(),
-                            preload: Infinity,
-                            opacity: model.get('alpha'),
-                            source: new type(initObj)
-                        });
-                      var olMapLayers = this.map.getLayers();
-                      olMapLayers.forEach(function(existingLayer, index){
-                        if (existingLayer === this.layerForCid[model.id]){
-                            this.layerForCid[model.id] = layer;
-                            olMapLayers.setAt(index, this.layerForCid[model.id]);
-                        }
-                      }.bind(this));
-                  }.bind(this)
+                    url : initObj.url + '?request=GetCapabilities',
+                    success : function(data)  {
+                        var parser = new ol.format.WMTSCapabilities();
+                        var result = parser.read(data);
+                        var options = ol.source.WMTS.optionsFromCapabilities(result, {layer: initObj.layer, matrixSet: initObj.matrixSet});
+                        /* Replace URL with Proxy URL */
+                        options.urls = [initObj.url];
+                        initObj = options;
+                        var layer = new layerType({
+                                visible: model.shouldShowLayer(),
+                                preload: Infinity,
+                                opacity: model.get('alpha'),
+                                source: new type(initObj)
+                            });
+                        var olMapLayers = this.map.getLayers();
+                        olMapLayers.forEach(function(existingLayer, index){
+                            if (existingLayer === this.layerForCid[model.id]){
+                                this.layerForCid[model.id] = layer;
+                                olMapLayers.setAt(index, this.layerForCid[model.id]);
+                            }
+                        }.bind(this));
+                    }.bind(this)
                 });
             }
-
+            
             return new layerType({
                 visible: model.shouldShowLayer(),
                 preload: Infinity,

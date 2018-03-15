@@ -14,6 +14,7 @@
  **/
 /* global define*/
 define([
+    'wreqr',
     'application',
     'underscore',
     'marionette',
@@ -29,7 +30,7 @@ define([
     'component/singletons/user-instance',
     'js/CustomElements',
     'sortablejs'
-], function (Application, _, Marionette, Backbone, $, properties, maptype,
+], function (wreqr, Application, _, Marionette, Backbone, $, properties, maptype,
              preferencesModalTemplate, layerPrefsTabTemplate, layerListTemplate,
              layerPickerTemplate, preferenceButtonsTemplate, user, CustomElements,
              Sortable) {
@@ -125,8 +126,8 @@ define([
         }
     });
     /*
-         * using CompositeView because it supports table header in template.
-         */
+     * using CompositeView because it supports table header in template.
+    */
     PrefsModalView.LayerPickerTable = Marionette.CompositeView.extend({
         template: layerListTemplate,
         childViewContainer: '#pickerList',
@@ -153,6 +154,7 @@ define([
         initialize: function () {
             this.modelBinder = new Backbone.ModelBinder();
             this.listenTo(this.model, 'change:show', this.changeShow);
+            this.listenTo(this.model, 'change:removal', this.changeRemove);
         },
         onRender: function () {
             var layerBindings = Backbone.ModelBinder.createDefaultBindings(this.el, 'name');
@@ -160,11 +162,47 @@ define([
             this.changeShow();
         },
         changeShow: function () {
+            if (!this.model.attributes.customLayer) {
+                this.$el.find('#layerRemoval').remove();
+            }
             this.$el.toggleClass('is-disabled', !this.model.get('show'));
             this.ui.range.prop('disabled', !this.model.get('show'));
         },
         onDestroy: function () {
             this.modelBinder.unbind();
+        },
+        changeRemove: function() {
+            if (this.model.attributes.customLayer) {
+                var that = this;
+                var map = wreqr.reqres.request('map:retrieval');
+                var mapCID = wreqr.reqres.request('map:layerRetrieval');
+                var localStorageLayers = window.localStorage.getItem('preferences');
+
+                if (localStorageLayers != null && JSON.parse(localStorageLayers)['mapLayers'] != null) {
+                    if (user.get('user').isGuestUser()) {
+                        this.removeFromLocalStorageAndUpdate(JSON.parse(localStorageLayers));
+                    } 
+                }
+
+                user.get('user>preferences>mapLayers')
+                    .remove(this.model.id);
+
+                var key = _.findKey(mapCID, function(value, key) {
+                    return key.indexOf(that.model.id) >= 0;
+                });
+
+                map.removeLayer(mapCID[key]);
+            }
+        },
+        removeFromLocalStorageAndUpdate(localStorageLayers) {
+            var that = this;
+
+            var updatedMapLayers = _.without(localStorageLayers.mapLayers, _.findWhere(localStorageLayers.mapLayers, {
+                id: that.model.id
+            }));
+
+            localStorageLayers.mapLayers = updatedMapLayers
+            window.localStorage.setItem('preferences',(JSON.stringify(localStorageLayers)))
         }
     });
     return PrefsModalView;

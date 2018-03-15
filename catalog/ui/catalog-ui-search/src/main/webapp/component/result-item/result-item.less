@@ -31,9 +31,14 @@
       display: none;
     }
 
+    > .result-wm {
+      display: none;
+    }
+
     > .result-actions, .result-validation {
       display: inline-block;
     }
+
     > div, > button {
       text-align: center;
       vertical-align: top;
@@ -164,6 +169,14 @@
 @{customElementNamespace}result-item.is-streamable {
   .content-footer {
     > .result-stream {
+      display: inline-block;
+    }
+  }
+}
+
+@{customElementNamespace}result-item.is-wm-capable {
+  .content-footer {
+    > .result-wm{
       display: inline-block;
     }
   }

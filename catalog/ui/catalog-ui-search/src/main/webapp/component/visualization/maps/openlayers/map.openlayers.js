@@ -84,6 +84,7 @@ module.exports = function OpenlayersMap(insertionElement, selectionInterface, no
     var shapes = [];
     var map = createMap(insertionElement);
     listenToResize();
+    listenToMapRequest(map);
     setupTooltip(map);
     var drawingTools = setupDrawingTools(map);
   
@@ -120,6 +121,12 @@ module.exports = function OpenlayersMap(insertionElement, selectionInterface, no
 
     function resizeMap() {
         map.updateSize();
+    }
+
+    function listenToMapRequest(map) {
+        wreqr.reqres.setHandler('map:retrieval', () => {
+            return map;
+        })
     }
 
     function listenToResize() {

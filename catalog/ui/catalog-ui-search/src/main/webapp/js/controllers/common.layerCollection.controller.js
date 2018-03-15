@@ -13,8 +13,9 @@
 /*jshint newcap: false, bitwise: false */
 
 define([
+    'wreqr',
     'marionette'
-], function (Marionette) {
+], function (wreqr, Marionette) {
     "use strict";
 
     var Controller = Marionette.Object.extend({
@@ -27,6 +28,10 @@ define([
 
             // subclasses must implement reIndexLayers()
             this.listenTo(this.collection, 'sort', this.reIndexLayers);
+
+            wreqr.reqres.setHandler('map:layerRetrieval', () => {
+                return this.layerForCid;
+            })
         }
     });
 
