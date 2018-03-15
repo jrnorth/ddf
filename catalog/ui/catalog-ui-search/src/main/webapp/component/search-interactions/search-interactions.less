@@ -34,6 +34,12 @@
   .interaction-revert {
     display: none;
   }
+
+  .interaction-form {
+    margin: 0 @minimumButtonSize;
+    padding: 0 @minimumButtonSize;
+  }
+
   .interaction-form > .interaction-text .fa-level-up {
     transform: rotate(90deg);
     font-size: @mediumFontSize;
@@ -44,5 +50,23 @@
 @{customElementNamespace}search-interactions.allow-revert {
   .interaction-revert {
     display: block;
+  }
+}
+
+@{customElementNamespace}search-interactions.is-text {
+  .interaction-type-text {
+    display: none;
+  }
+}
+
+@{customElementNamespace}search-interactions.is-basic {
+  .interaction-type-basic {
+    display: none;
+  }
+}
+
+@{customElementNamespace}search-interactions.is-advanced {
+  .interaction-type-advanced {
+    display: none;
   }
 }

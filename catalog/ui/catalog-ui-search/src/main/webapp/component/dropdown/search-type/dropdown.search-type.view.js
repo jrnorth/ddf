@@ -19,14 +19,14 @@ define([
     'jquery',
     '../dropdown.view',
     './dropdown.search-type.hbs',
-    'component/search-form-selector/search-forms-selector.view',
+    'component/search-type/search-type.view',
     'js/store'
-], function (Marionette, _, $, DropdownView, template, SearchForms, store) {
+], function (Marionette, _, $, DropdownView, template, ComponentView, store) {
 
     return DropdownView.extend({
         template: template,
         className: 'is-search-type',
-        componentToShow: SearchForms,
+        componentToShow: ComponentView,
         initialize: function(){
             DropdownView.prototype.initialize.call(this);
             this.handleSchedule();

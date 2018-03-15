@@ -67,12 +67,10 @@ define([
             case 'DWITHIN':
                 break;
             default:
-               if (value[0] == null) {
-                    value[0] = "";
-               } else if (value[0].constructor === Object) {
+                if (value[0].constructor === Object) {
                     value[0] = value[0].value;
-               }
-               break;
+                }
+                break;
         }
         return value;
     };

@@ -94,7 +94,12 @@ public class WorkspaceMetacardImpl extends MetacardImpl {
    */
   public static boolean isWorkspaceMetacard(Metacard metacard) {
     if (metacard != null) {
-      return metacard.getTags().stream().anyMatch(WorkspaceAttributes.WORKSPACE_TAG::equals);
+      return metacard
+          .getTags()
+          .stream()
+          .filter(WorkspaceAttributes.WORKSPACE_TAG::equals)
+          .findFirst()
+          .isPresent();
     }
 
     return false;
