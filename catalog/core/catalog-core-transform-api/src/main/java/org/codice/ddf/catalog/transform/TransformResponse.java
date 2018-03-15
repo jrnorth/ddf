@@ -18,7 +18,7 @@ import ddf.catalog.data.Metacard;
 import java.util.List;
 import java.util.Optional;
 
-public interface TransformResponse {
+public interface TransformResponse extends AutoCloseable {
 
   /** The returned metacard represents the entire input stream sent to the transformer. */
   Optional<Metacard> getParentMetacard();
@@ -34,4 +34,7 @@ public interface TransformResponse {
    * a resource.
    */
   List<ContentItem> getDerivedContentItems();
+
+  /** Close the InputStream objects in the derived ContentItem objects. */
+  void close();
 }

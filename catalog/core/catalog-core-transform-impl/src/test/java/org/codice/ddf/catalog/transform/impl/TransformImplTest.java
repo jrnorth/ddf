@@ -168,19 +168,20 @@ public class TransformImplTest {
     when(transformerLocator.findMultiInputTransformers(eq("xyz")))
         .thenReturn(Collections.singletonList(transformer));
 
-    TransformResponse transformResponseActual =
+    try (TransformResponse transformResponseActual =
         transform.transform(
             new MimeType("text/xml"),
             "1",
             idSupplier,
             new ByteArrayInputStream("<xml></xml>".getBytes()),
             "xyz",
-            Collections.emptyMap());
+            Collections.emptyMap())) {
 
-    assertThat(transformResponseActual.getParentMetacard().isPresent(), is(true));
-    assertThat(transformResponseActual.getParentMetacard().get(), is(metacard));
-    assertThat(transformResponseActual.getDerivedContentItems(), hasSize(0));
-    assertThat(transformResponseActual.getDerivedMetacards(), hasSize(0));
+      assertThat(transformResponseActual.getParentMetacard().isPresent(), is(true));
+      assertThat(transformResponseActual.getParentMetacard().get(), is(metacard));
+      assertThat(transformResponseActual.getDerivedContentItems(), hasSize(0));
+      assertThat(transformResponseActual.getDerivedMetacards(), hasSize(0));
+    }
   }
 
   @Test
@@ -199,17 +200,18 @@ public class TransformImplTest {
             argThat(isMimeType(new MimeType("text/xml")))))
         .thenReturn(Collections.singletonList(transformer));
 
-    TransformResponse transformResponseActual =
+    try (TransformResponse transformResponseActual =
         transform.transform(
             new MimeType("text/xml"),
             "1",
             idSupplier,
             new ByteArrayInputStream("<xml></xml>".getBytes()),
             null,
-            Collections.emptyMap());
+            Collections.emptyMap())) {
 
-    assertThat(transformResponseActual.getParentMetacard().isPresent(), is(true));
-    assertThat(transformResponseActual.getParentMetacard().get(), is(metacard));
+      assertThat(transformResponseActual.getParentMetacard().isPresent(), is(true));
+      assertThat(transformResponseActual.getParentMetacard().get(), is(metacard));
+    }
   }
 
   @Test(expected = MetacardCreationException.class)
@@ -228,13 +230,15 @@ public class TransformImplTest {
     when(transformerLocator.findMultiInputTransformers(eq("xyz")))
         .thenReturn(Arrays.asList(transformer1, transformer2));
 
-    transform.transform(
-        new MimeType("text/xml"),
-        "1",
-        idSupplier,
-        new ByteArrayInputStream("<xml></xml>".getBytes()),
-        "xyz",
-        Collections.emptyMap());
+    TransformResponse transformResponse =
+        transform.transform(
+            new MimeType("text/xml"),
+            "1",
+            idSupplier,
+            new ByteArrayInputStream("<xml></xml>".getBytes()),
+            "xyz",
+            Collections.emptyMap());
+    transformResponse.close();
   }
 
   @Test(expected = MetacardCreationException.class)
@@ -255,8 +259,10 @@ public class TransformImplTest {
     InputStream inputStream = mock(InputStream.class);
     when(inputStream.read(any())).thenThrow(IOException.class);
 
-    transform.transform(
-        new MimeType("text/xml"), "1", idSupplier, inputStream, "xyz", Collections.emptyMap());
+    TransformResponse transformResponseActual =
+        transform.transform(
+            new MimeType("text/xml"), "1", idSupplier, inputStream, "xyz", Collections.emptyMap());
+    transformResponseActual.close();
   }
 
   @Test

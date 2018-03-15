@@ -105,12 +105,14 @@ public class InputTransformerProducer extends TransformerProducer {
       throws MetacardCreationException {
     LOGGER.trace("ENTERING: generateMetacard");
 
-    TransformResponse transformResponse =
-        transform.transform(mimeType, null, null, message, null, Collections.emptyMap());
+    try (TransformResponse transformResponse =
+        transform.transform(mimeType, null, null, message, null, Collections.emptyMap())) {
 
-    Optional<Metacard> optionalMetacard = transformResponse.getParentMetacard();
+      Optional<Metacard> optionalMetacard = transformResponse.getParentMetacard();
 
-    return optionalMetacard.orElseThrow(
-        () -> new MetacardCreationException("Could not create metacard with mimeType " + mimeType));
+      return optionalMetacard.orElseThrow(
+          () ->
+              new MetacardCreationException("Could not create metacard with mimeType " + mimeType));
+    }
   }
 }

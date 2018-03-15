@@ -15,12 +15,18 @@ package org.codice.ddf.catalog.transform.impl;
 
 import ddf.catalog.content.data.ContentItem;
 import ddf.catalog.data.Metacard;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import javax.annotation.Nullable;
+import org.apache.commons.io.IOUtils;
 import org.codice.ddf.catalog.transform.TransformResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TransformResponseImpl implements TransformResponse {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TransformResponseImpl.class);
 
   private final Metacard parentMetacard;
 
@@ -50,5 +56,18 @@ public class TransformResponseImpl implements TransformResponse {
   @Override
   public Optional<Metacard> getParentMetacard() {
     return Optional.ofNullable(parentMetacard);
+  }
+
+  @Override
+  public void close() {
+    getDerivedContentItems()
+        .forEach(
+            contentItem -> {
+              try {
+                IOUtils.closeQuietly(contentItem.getInputStream());
+              } catch (IOException e) {
+                LOGGER.debug("Failed to get input stream from content item.", e);
+              }
+            });
   }
 }

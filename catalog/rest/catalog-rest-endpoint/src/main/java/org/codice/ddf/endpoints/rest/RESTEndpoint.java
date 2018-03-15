@@ -656,7 +656,7 @@ public class RESTEndpoint implements RESTService {
     }
 
     try {
-      TransformResponse transformResponse =
+      try (TransformResponse transformResponse =
           getTransform()
               .transform(
                   mimeType,
@@ -664,26 +664,29 @@ public class RESTEndpoint implements RESTService {
                   () -> "assigned-when-ingested",
                   stream,
                   null,
-                  Collections.emptyMap());
+                  Collections.emptyMap())) {
 
-      if (!transformResponse.getParentMetacard().isPresent()) {
-        return createBadRequestResponse("Unable to create metacard");
+        if (!transformResponse.getParentMetacard().isPresent()) {
+          return createBadRequestResponse("Unable to create metacard");
+        }
+
+        Metacard metacard = transformResponse.getParentMetacard().get();
+        String metacardId = metacard.getId();
+        LOGGER.debug("Metacard {} created", metacardId);
+        LOGGER.debug(
+            "Transforming metacard {} to {} to be able to return it to client",
+            metacardId,
+            transformer);
+        final BinaryContent content = catalogFramework.transform(metacard, transformer, null);
+        LOGGER.debug(
+            "Metacard to {} transform complete for {}, preparing response.",
+            transformer,
+            metacardId);
+
+        Response.ResponseBuilder responseBuilder =
+            Response.ok(content.getInputStream(), content.getMimeTypeValue());
+        response = responseBuilder.build();
       }
-
-      Metacard metacard = transformResponse.getParentMetacard().get();
-      String metacardId = metacard.getId();
-      LOGGER.debug("Metacard {} created", metacardId);
-      LOGGER.debug(
-          "Transforming metacard {} to {} to be able to return it to client",
-          metacardId,
-          transformer);
-      final BinaryContent content = catalogFramework.transform(metacard, transformer, null);
-      LOGGER.debug(
-          "Metacard to {} transform complete for {}, preparing response.", transformer, metacardId);
-
-      Response.ResponseBuilder responseBuilder =
-          Response.ok(content.getInputStream(), content.getMimeTypeValue());
-      response = responseBuilder.build();
     } catch (MetacardCreationException | CatalogTransformerException e) {
       return createBadRequestResponse("Unable to create metacard");
     }
@@ -748,15 +751,18 @@ public class RESTEndpoint implements RESTService {
         }
 
         if (createInfo == null) {
-          TransformResponse transformResponse =
+          try (TransformResponse transformResponse =
               getTransform()
-                  .transform(mimeType, id, null, message, transformerParam, Collections.emptyMap());
-          if (!transformResponse.getParentMetacard().isPresent()) {
-            throw new MetacardCreationException("Unable to transform message into a metacard.");
+                  .transform(
+                      mimeType, id, null, message, transformerParam, Collections.emptyMap())) {
+            if (!transformResponse.getParentMetacard().isPresent()) {
+              throw new MetacardCreationException("Unable to transform message into a metacard.");
+            }
+            UpdateRequest updateRequest =
+                new UpdateRequestImpl(id, transformResponse.getParentMetacard().get());
+            catalogFramework.update(updateRequest);
           }
-          UpdateRequest updateRequest =
-              new UpdateRequestImpl(id, transformResponse.getParentMetacard().get());
-          catalogFramework.update(updateRequest);
+
         } else {
           UpdateStorageRequest streamUpdateRequest =
               new UpdateStorageRequestImpl(
@@ -843,34 +849,35 @@ public class RESTEndpoint implements RESTService {
         CreateResponse createResponse;
         if (createInfo == null) {
 
-          TransformResponse transformResponse =
+          try (TransformResponse transformResponse =
               getTransform()
                   .transform(
-                      mimeType, null, null, message, transformerParam, Collections.emptyMap());
+                      mimeType, null, null, message, transformerParam, Collections.emptyMap())) {
 
-          if (transformResponse.getParentMetacard().isPresent()) {
-            CreateRequest createRequest =
-                new CreateRequestImpl(transformResponse.getParentMetacard().get());
-            createResponse = catalogFramework.create(createRequest);
-            if (createResponse == null
-                || CollectionUtils.isEmpty(createResponse.getCreatedMetacards())) {
-              String errorMessage = "Cannot create at least one catalog entry.";
-              LOGGER.info(errorMessage);
-              return createBadRequestResponse(errorMessage);
+            if (transformResponse.getParentMetacard().isPresent()) {
+              CreateRequest createRequest =
+                  new CreateRequestImpl(transformResponse.getParentMetacard().get());
+              createResponse = catalogFramework.create(createRequest);
+              if (createResponse == null
+                  || CollectionUtils.isEmpty(createResponse.getCreatedMetacards())) {
+                String errorMessage = "Cannot create at least one catalog entry.";
+                LOGGER.info(errorMessage);
+                return createBadRequestResponse(errorMessage);
+              }
+              id = createResponse.getCreatedMetacards().get(0).getId();
             }
-            id = createResponse.getCreatedMetacards().get(0).getId();
-          }
 
-          if (CollectionUtils.isNotEmpty(transformResponse.getDerivedMetacards())) {
-            CreateRequest createRequest =
-                new CreateRequestImpl(transformResponse.getDerivedMetacards());
-            catalogFramework.create(createRequest);
-          }
+            if (CollectionUtils.isNotEmpty(transformResponse.getDerivedMetacards())) {
+              CreateRequest createRequest =
+                  new CreateRequestImpl(transformResponse.getDerivedMetacards());
+              catalogFramework.create(createRequest);
+            }
 
-          if (CollectionUtils.isNotEmpty(transformResponse.getDerivedContentItems())) {
-            CreateStorageRequest streamCreateRequest =
-                new CreateStorageRequestImpl(transformResponse.getDerivedContentItems(), null);
-            catalogFramework.create(streamCreateRequest);
+            if (CollectionUtils.isNotEmpty(transformResponse.getDerivedContentItems())) {
+              CreateStorageRequest streamCreateRequest =
+                  new CreateStorageRequestImpl(transformResponse.getDerivedContentItems(), null);
+              catalogFramework.create(streamCreateRequest);
+            }
           }
 
         } else {
@@ -1069,7 +1076,7 @@ public class RESTEndpoint implements RESTService {
     }
     try {
       MimeType mimeType = new MimeType(attachment.getContentType().toString());
-      TransformResponse transformResponse =
+      try (TransformResponse transformResponse =
           getTransform()
               .transform(
                   mimeType,
@@ -1077,10 +1084,11 @@ public class RESTEndpoint implements RESTService {
                   () -> "assigned-when-ingested",
                   inputStream,
                   transformer,
-                  Collections.emptyMap());
+                  Collections.emptyMap())) {
 
-      if (transformResponse.getParentMetacard().isPresent()) {
-        return transformResponse.getParentMetacard().get();
+        if (transformResponse.getParentMetacard().isPresent()) {
+          return transformResponse.getParentMetacard().get();
+        }
       }
 
       return null;
