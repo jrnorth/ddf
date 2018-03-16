@@ -59,6 +59,15 @@
         </service-properties>
     </service>
 
+  <service ref="kmlTransformerImpl" interface="org.codice.ddf.catalog.transform.MultiMetacardTransformer">
+    <service-properties>
+      <entry key="id" value="kml"/>
+      <entry key="title" value="View List as KML..."/>
+      <entry key="description"
+        value="Transforms a List of Metacards to KML for use with Google Earth and other visualization tools."/>
+    </service-properties>
+  </service>
+
 
     <cm:managed-service-factory id="KmlStyleMappingFactory"
                                 factory-pid="org.codice.ddf.spatial.kml.style"

@@ -13,6 +13,8 @@
  */
 package org.codice.ddf.spatial.kml.transformer;
 
+import static org.custommonkey.xmlunit.XMLAssert.assertXpathEvaluatesTo;
+import static org.custommonkey.xmlunit.XMLAssert.assertXpathExists;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -34,15 +36,26 @@ import de.micromata.opengis.kml.v_2_2_0.Point;
 import de.micromata.opengis.kml.v_2_2_0.Polygon;
 import de.micromata.opengis.kml.v_2_2_0.TimeSpan;
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 import org.apache.commons.io.IOUtils;
+import org.custommonkey.xmlunit.NamespaceContext;
+import org.custommonkey.xmlunit.SimpleNamespaceContext;
+import org.custommonkey.xmlunit.XMLUnit;
+import org.custommonkey.xmlunit.exceptions.XpathException;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.xml.sax.SAXException;
 
 public class KMLTransformerImplTest {
 
@@ -92,6 +105,14 @@ public class KMLTransformerImplTest {
     kmlTransformer =
         new KMLTransformerImpl(
             mockContext, DEFAULT_STYLE_LOCATION, new KmlStyleMap(), mockActionProvider);
+  }
+
+  @Before
+  public void setupXpath() {
+    Map<String, String> m = new HashMap<String, String>();
+    m.put("m", "http://www.opengis.net/kml/2.2");
+    NamespaceContext ctx = new SimpleNamespaceContext(m);
+    XMLUnit.setXpathNamespaceContext(ctx);
   }
 
   @Test(expected = CatalogTransformerException.class)
@@ -248,6 +269,46 @@ public class KMLTransformerImplTest {
     BinaryContent content = kmlTransformer.transform(metacard, null);
     assertThat(content.getMimeTypeValue(), is(KMLTransformerImpl.KML_MIMETYPE.toString()));
     IOUtils.toString(content.getInputStream());
+  }
+
+  @Test
+  public void testTransformMetacardList()
+      throws CatalogTransformerException, IOException, XpathException, SAXException {
+    List<Metacard> metacardList = new ArrayList<>();
+
+    MetacardImpl metacard1 = createMockMetacard();
+    metacard1.setId("UUID-1");
+    metacard1.setTitle("ASU");
+    metacard1.setLocation("POINT (-111.9281 33.4242)");
+    metacardList.add(metacard1);
+
+    MetacardImpl metacard2 = createMockMetacard();
+    metacard2.setId("UUID-2");
+    metacard2.setTitle("Cardinals Stadium");
+    metacard2.setLocation("POINT (-112.2626 33.5276)");
+    metacardList.add(metacard2);
+
+    Map<String, Serializable> args = new HashMap<>();
+    args.put("docName", "KML Metacard Export");
+
+    List<BinaryContent> bc = kmlTransformer.transform(metacardList, args);
+    assertThat(bc.size(), is(1));
+
+    BinaryContent file = bc.get(0);
+    assertThat(file.getMimeTypeValue(), is(KMLTransformerImpl.KML_MIMETYPE.toString()));
+
+    String outputKml = new String(file.getByteArray());
+
+    // Prefixing with a single slash indicates root. Two slashes means a PathExpression can match
+    // anywhere no matter what the prefix is. For kml Xpath testing, the xmlns attribute of a kml
+    // document must be set in the prefix map as 'm' in the @Before method and you must reference
+    // fields in the document with that prefix like so.
+
+    assertXpathExists("/m:kml", outputKml);
+    assertXpathExists("//m:Document", outputKml);
+    assertXpathEvaluatesTo("KML Metacard Export", "//m:Document/m:name", outputKml);
+    assertXpathExists("//m:Placemark[@id='Placemark-UUID-1']/m:name", outputKml);
+    assertXpathExists("//m:Placemark[@id='Placemark-UUID-2']/m:name", outputKml);
   }
 
   private MetacardImpl createMockMetacard() {
