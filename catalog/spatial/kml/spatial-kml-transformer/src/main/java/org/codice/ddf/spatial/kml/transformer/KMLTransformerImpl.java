@@ -443,7 +443,7 @@ public class KMLTransformerImpl implements KMLTransformer {
       List<Metacard> metacards, Map<String, Serializable> arguments)
       throws CatalogTransformerException {
 
-    if (CollectionUtils.isEmpty(metacards))
+    if (CollectionUtils.isEmpty(metacards)) {
       throw new CatalogTransformerException("Must provide at least one Metacard to transform.");
     }
 
