@@ -31,6 +31,7 @@ import ddf.action.impl.ActionImpl;
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.data.Metacard;
 import ddf.catalog.data.impl.BinaryContentImpl;
+import ddf.catalog.data.impl.QueryMetacardImpl;
 import ddf.catalog.data.types.Core;
 import ddf.catalog.transform.InputTransformer;
 import java.io.InputStream;
