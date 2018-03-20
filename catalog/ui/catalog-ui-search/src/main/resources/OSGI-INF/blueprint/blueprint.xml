@@ -366,6 +366,9 @@
                 persistent-id="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailDeliveryService"
                 update-strategy="container-managed"/>
 
+        <argument
+                value="The query '%[attribute=title]' contains up to %[hitCount] results. Log in to see results at https://localhost:8993/search/catalog."/>
+        <argument value="Scheduled query results for '%[attribute=title]'"/>
         <argument value="donotreply@example.com"/>
         <argument ref="smtpClient"/>
     </bean>

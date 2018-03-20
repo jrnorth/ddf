@@ -15,6 +15,7 @@ package org.codice.ddf.catalog.ui.scheduling.subscribers;
 
 import static ddf.util.Fallible.error;
 import static ddf.util.Fallible.success;
+import static org.apache.commons.lang3.Validate.notNull;
 
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableSet;
@@ -30,11 +31,15 @@ import javax.mail.Session;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import org.apache.commons.lang.text.StrLookup;
+import org.apache.commons.lang.text.StrSubstitutor;
 import org.codice.ddf.platform.email.SmtpClient;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class EmailDeliveryService implements QueryDeliveryService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(EmailDeliveryService.class);
+
   public static final String DELIVERY_TYPE = "email";
 
   public static final String DELIVERY_TYPE_DISPLAY_NAME = "Email";
@@ -44,20 +49,30 @@ public class EmailDeliveryService implements QueryDeliveryService {
   public static final Pattern EMAIL_ADDRESS_PATTERN =
       Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$", Pattern.CASE_INSENSITIVE);
 
-  public static final DateTimeFormatter EMAIL_DATE_TIME_FORMATTER =
-      DateTimeFormat.forPattern("MM/dd/yyyy HH:mm");
-
   public static final ImmutableSet<QueryDeliveryParameter> PROPERTIES =
       ImmutableSet.of(
           new QueryDeliveryParameter(EMAIL_PARAMETER_KEY, QueryDeliveryDatumType.EMAIL));
 
+  private String bodyTemplate;
+
+  private String subjectTemplate;
+
   private String senderEmail;
 
-  private final SmtpClient smtpClient;
+  private SmtpClient smtpClient;
 
-  public EmailDeliveryService(String senderEmail, SmtpClient smtpClient) {
+  public EmailDeliveryService(
+      String bodyTemplate, String subjectTemplate, String senderEmail, SmtpClient smtpClient) {
+    this.bodyTemplate = bodyTemplate;
+    this.subjectTemplate = subjectTemplate;
     this.senderEmail = senderEmail;
     this.smtpClient = smtpClient;
+  }
+
+  private static final class MetacardFormatException extends RuntimeException {
+    MetacardFormatException(String message) {
+      super(message);
+    }
   }
 
   @Override
@@ -82,11 +97,41 @@ public class EmailDeliveryService implements QueryDeliveryService {
       String username,
       String deliveryID,
       final Map<String, Object> parameters) {
+    LOGGER.trace("Entering EmailDeliveryService.deliver...");
+
+    final StrSubstitutor queryMetacardFormatter =
+        new StrSubstitutor(
+            new StrLookup() {
+              @Override
+              public String lookup(String key) {
+                if (key.equals("hitCount")) {
+                  return String.valueOf(queryResults.getHits());
+                } else if (key.startsWith("attribute=")) {
+                  final String attributeKey = key.substring(10 /* length of "attribute=" */);
+                  if (queryMetacardData.containsKey(attributeKey)) {
+                    return String.valueOf(queryMetacardData.get(attributeKey));
+                  } else {
+                    throw new MetacardFormatException(
+                        String.format(
+                            "The query metacard does not contain the key \"%s\"!", attributeKey));
+                  }
+                } else {
+                  throw new MetacardFormatException(
+                      String.format("The format parameter name \"%s\" is not recognized!", key));
+                }
+              }
+            },
+            "%[",
+            "]",
+            '$');
+
     return MapUtils.tryGetAndRun(
         parameters,
         EMAIL_PARAMETER_KEY,
         String.class,
         email -> {
+          LOGGER.debug("Attempting to send query results over email...");
+
           if (!EMAIL_ADDRESS_PATTERN.matcher(email).matches()) {
             return error("The email address \"%s\" is not a valid email address!", email);
           }
@@ -96,7 +141,7 @@ public class EmailDeliveryService implements QueryDeliveryService {
             senderAddress = new InternetAddress(senderEmail);
           } catch (AddressException exception) {
             return error(
-                "There was a problem preparing the email sender address to send query results : %s",
+                "There was a problem preparing the email sender address to send query results: %s",
                 exception.getMessage());
           }
 
@@ -105,7 +150,7 @@ public class EmailDeliveryService implements QueryDeliveryService {
             destinationAddress = new InternetAddress(email);
           } catch (AddressException exception) {
             return error(
-                "There was a problem preparing the email destination address to send query results : %s",
+                "There was a problem preparing the email destination address to send query results: %s",
                 exception.getMessage());
           }
 
@@ -114,10 +159,28 @@ public class EmailDeliveryService implements QueryDeliveryService {
               Metacard.TITLE,
               String.class,
               queryMetacardTitle -> {
-                final String emailBody =
+                LOGGER.debug(
                     String.format(
-                        "The query \"%s\" contains up to %d results. Log in to see results at https://localhost:8993/search/catalog.",
-                        queryMetacardTitle, queryResults.getHits());
+                        "Constructing email to %s for %d results of query \"%s\"...",
+                        email, queryResults.getHits(), queryMetacardTitle));
+
+                final String emailSubject;
+                try {
+                  emailSubject = queryMetacardFormatter.replace(subjectTemplate);
+                } catch (MetacardFormatException exception) {
+                  return error(
+                      "The configured email subject template contained an unrecognized substitution: %s",
+                      exception.getMessage());
+                }
+
+                final String emailBody;
+                try {
+                  emailBody = queryMetacardFormatter.replace(bodyTemplate);
+                } catch (MetacardFormatException exception) {
+                  return error(
+                      "The configured email body template contained an unrecognized substitution: %s",
+                      exception.getMessage());
+                }
 
                 final Session smtpSession = smtpClient.createSession();
                 final MimeMessage message = new MimeMessage(smtpSession);
@@ -125,8 +188,7 @@ public class EmailDeliveryService implements QueryDeliveryService {
                 try {
                   message.setFrom(senderAddress);
                   message.addRecipient(Message.RecipientType.TO, destinationAddress);
-                  message.setSubject(
-                      String.format("Scheduled query results for \"%s\"", queryMetacardTitle));
+                  message.setSubject(emailSubject);
                   message.setText(emailBody);
                 } catch (MessagingException exception) {
                   return error(
@@ -134,6 +196,7 @@ public class EmailDeliveryService implements QueryDeliveryService {
                       exception.getMessage());
                 }
 
+                LOGGER.debug("Sending email...");
                 smtpClient.send(message);
 
                 return success();
@@ -144,5 +207,19 @@ public class EmailDeliveryService implements QueryDeliveryService {
   @SuppressWarnings("unused")
   public void setSenderEmail(String senderEmail) {
     this.senderEmail = senderEmail;
+  }
+
+  @SuppressWarnings("unused")
+  public void setBodyTemplate(String bodyTemplate) {
+    notNull(bodyTemplate, "bodyTemplate must be non-null");
+    LOGGER.debug("Setting bodyTemplate : {}", bodyTemplate);
+    this.bodyTemplate = bodyTemplate;
+  }
+
+  @SuppressWarnings("unused")
+  public void setSubjectTemplate(String subjectTemplate) {
+    notNull(subjectTemplate, "subjectTemplate must be non-null");
+    LOGGER.debug("Setting subjectTemplate : {}", subjectTemplate);
+    this.subjectTemplate = subjectTemplate;
   }
 }

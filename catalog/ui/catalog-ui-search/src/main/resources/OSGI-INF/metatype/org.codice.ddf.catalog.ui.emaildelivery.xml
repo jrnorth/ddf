@@ -19,6 +19,14 @@
          name="Email Query Courier"
          id="org.codice.ddf.catalog.ui.scheduling.subscribers.EmailQueryCourier">
 
+        <AD description="Set the subject line template."
+            name="Subject" id="subjectTemplate" type="String"
+            default="Scheduled query results for '%[attribute=title]'"/>
+
+        <AD description="Set the body template."
+            name="Body" id="bodyTemplate" type="String"
+            default="The query '%[attribute=title]' contains up to %[hitCount] results. Log in to see results at https://localhost:8993/search/catalog."/>
+
         <AD description="Set the email address used to indicate the sender"
             name="Sender Address" id="senderEmail" type="String"
             default="donotreply@example.com"/>
