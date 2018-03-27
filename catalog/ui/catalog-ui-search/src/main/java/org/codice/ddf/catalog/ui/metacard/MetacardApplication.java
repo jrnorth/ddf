@@ -887,11 +887,12 @@ public class MetacardApplication implements SparkApplication {
                     .get(DELIVERY_TYPE_KEY)
                     .equals(queryDeliveryService.getDeliveryType())) {
                   queryDeliveryService.deliver(
-                      metacardId,
+                      ImmutableMap.of(Metacard.TITLE, metacardId),
                       queryResponse,
                       username,
                       (String) matchingDest.get(DELIVERY_METHOD_ID_KEY),
-                      (Map<String, Object>) matchingDest.get(DELIVERY_PARAMETERS_KEY));
+                      (Map<String, Object>) matchingDest.get(DELIVERY_PARAMETERS_KEY),
+                      LOGGER::error);
                 }
               }
             }

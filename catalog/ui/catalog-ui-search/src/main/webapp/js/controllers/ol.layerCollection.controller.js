@@ -20,7 +20,7 @@ define([
     'openlayers',
     'properties',
     'component/singletons/user-instance',
-    'js/model/user',
+    'js/model/User',
     'js/controllers/common.layerCollection.controller'
 ], function (wreqr, _, $, Marionette, ol, properties, user, User, CommonLayerController) {
     "use strict";

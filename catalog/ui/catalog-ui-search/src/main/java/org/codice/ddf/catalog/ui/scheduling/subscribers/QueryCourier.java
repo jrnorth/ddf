@@ -29,17 +29,17 @@ public interface QueryCourier {
   String DISPLAY_NAME_KEY = "displayName";
 
   /**
-   * @see QueryCourier#deliver(String, QueryResponse, String, String, Map, Consumer, Runnable,
+   * @see QueryCourier#deliver(Map, QueryResponse, String, String, Map, Consumer, Runnable,
    *     Consumer)
    */
   default void deliver(
-      String queryTitle,
+      Map<String, Object> queryMetacardData,
       QueryResponse queryResults,
       String userID,
       String deliveryID,
       Map<String, Object> parameters) {
     deliver(
-        queryTitle,
+        queryMetacardData,
         queryResults,
         userID,
         deliveryID,
@@ -50,38 +50,48 @@ public interface QueryCourier {
   }
 
   /**
-   * @see QueryCourier#deliver(String, QueryResponse, String, String, Map, Consumer, Runnable,
+   * @see QueryCourier#deliver(Map, QueryResponse, String, String, Map, Consumer, Runnable,
    *     Consumer)
    */
   default void deliver(
-      String queryTitle,
+      Map<String, Object> queryMetacardData,
       QueryResponse queryResults,
       String userID,
       String deliveryID,
       Map<String, Object> parameters,
       Consumer<String> err) {
-    deliver(queryTitle, queryResults, userID, deliveryID, parameters, err, () -> {}, warning -> {});
+    deliver(
+        queryMetacardData,
+        queryResults,
+        userID,
+        deliveryID,
+        parameters,
+        err,
+        () -> {},
+        warning -> {});
   }
 
   /**
-   * @see QueryCourier#deliver(String, QueryResponse, String, String, Map, Consumer, Runnable,
+   * @see QueryCourier#deliver(Map, QueryResponse, String, String, Map, Consumer, Runnable,
    *     Consumer)
    */
   default void deliver(
-      String queryTitle,
+      Map<String, Object> queryMetacardData,
       QueryResponse queryResults,
       String userID,
       String deliveryID,
       Map<String, Object> parameters,
       Consumer<String> err,
       Runnable done) {
-    deliver(queryTitle, queryResults, userID, deliveryID, parameters, err, done, warning -> {});
+    deliver(
+        queryMetacardData, queryResults, userID, deliveryID, parameters, err, done, warning -> {});
   }
 
   /**
    * Deliver the given query results to a destination described by the given parameters.
    *
-   * @param queryTitle the human readable string titling the query run
+   * @param queryMetacardData the attributes and values pulled from the query metacard for which the
+   *     results were obtained
    * @param queryResults the query results to be sent to the designated destination
    * @param userID the ID of the user effectively running this query
    * @param deliveryID the ID identifying this delivery method in the given user's preferences
@@ -95,7 +105,7 @@ public interface QueryCourier {
    *     occur while attempting to complete delivery
    */
   void deliver(
-      String queryTitle,
+      Map<String, Object> queryMetacardData,
       QueryResponse queryResults,
       String userID,
       String deliveryID,
@@ -120,9 +130,9 @@ public interface QueryCourier {
    * @return a {@link java.util.Map Map} of <tt>String</tt>s to {@link QueryDeliveryDatumType}s
    *     describing all parameters required by this {@link QueryCourier} to successfully complete
    *     its deliveries. The map's keys indicates keys expected to be present in parameters passed
-   *     to {@link QueryCourier#deliver(String, QueryResponse, String, String, Map, Consumer,
-   *     Runnable, Consumer)} QueryCourier.deliver}; a particular key's value describes the type of
-   *     value expected to be associated with the related key in the same parameters.
+   *     to {@link QueryCourier#deliver(Map, QueryResponse, String, String, Map, Consumer, Runnable,
+   *     Consumer)} QueryCourier.deliver}; a particular key's value describes the type of value
+   *     expected to be associated with the related key in the same parameters.
    */
   Map<String, QueryDeliveryDatumType> getRequiredFields();
 }

@@ -274,7 +274,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
     private void deliver(
         final String deliveryType,
-        final String queryMetacardTitle,
+        final Map<String, Object> queryMetacardData,
         final QueryResponse results,
         final String userID,
         final String deliveryID,
@@ -326,7 +326,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
       selectedServices
           .get(0)
-          .deliver(queryMetacardTitle, results, userID, deliveryID, deliveryParameters, err);
+          .deliver(queryMetacardData, results, userID, deliveryID, deliveryParameters, err);
     }
 
     private Fallible<Map<String, Object>> getUserPreferences(final String userID) {
@@ -411,7 +411,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
     private void deliverAll(
         final Collection<String> scheduleDeliveryIDs,
         final String scheduleUserID,
-        final String queryMetacardTitle,
+        final Map<String, Object> queryMetacardData,
         final QueryResponse results,
         final Consumer<String> err) {
       getUserPreferences(scheduleUserID)
@@ -428,7 +428,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                                   deliveryInfo ->
                                       deliver(
                                           deliveryInfo.getLeft(),
-                                          queryMetacardTitle,
+                                          queryMetacardData,
                                           results,
                                           scheduleUserID,
                                           deliveryID,
@@ -509,7 +509,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
                     deliverAll(
                         scheduleDeliveryIDs,
                         scheduleUserID,
-                        queryMetacardTitle,
+                        queryMetacardData,
                         results,
                         LOGGER::error));
 
