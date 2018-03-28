@@ -52,7 +52,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.cache.CacheException;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -184,7 +183,7 @@ public class QuerySchedulingPostIngestPlugin implements PostIngestPlugin {
 
     private int unitsPassedSinceStarted;
 
-    private @Nullable SchedulerFuture<?> job = null;
+    private SchedulerFuture<?> job = null;
 
     QueryDeliveryExecutor(
         QuerySchedulingPostIngestPlugin plugin,
