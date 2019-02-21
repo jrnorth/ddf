@@ -230,7 +230,6 @@ public class HandlebarsWfsFeatureTransformer implements FeatureTransformer<Featu
   private String getIdAttributeValue(
       StartElement startElement, Map<String, String> namespaces, String namespaceAlias) {
     String id = null;
-    startElement.getAttributeByName(new QName(namespaces.get(namespaceAlias), "id")).getValue();
     javax.xml.stream.events.Attribute idAttribute =
         startElement.getAttributeByName(new QName(namespaces.get(namespaceAlias), "id"));
     if (idAttribute != null) {

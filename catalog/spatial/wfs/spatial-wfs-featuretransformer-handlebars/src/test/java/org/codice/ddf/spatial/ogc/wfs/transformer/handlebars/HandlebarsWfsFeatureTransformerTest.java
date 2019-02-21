@@ -232,6 +232,23 @@ public class HandlebarsWfsFeatureTransformerTest {
     assertThat(metacardOptional, equalTo(Optional.empty()));
   }
 
+  @Test
+  public void featureMemberMissingIdAttributeTransformsCorrectly() throws Exception {
+    try (final InputStream inputStream = getClass().getResourceAsStream("/FeatureMemberNoId.xml")) {
+      final Optional<Metacard> transformedFeature = transformer.apply(inputStream, mockWfsMetadata);
+      assertThat(
+          "The transformer should have produced a metacard.",
+          transformedFeature.isPresent(),
+          is(true));
+
+      final Metacard metacard = transformedFeature.get();
+      assertDefaultAttributesExist(metacard);
+      assertExpectedAttributes(metacard);
+      assertThat(
+          "The metacard should not have an ID.", metacard.getAttribute(Core.ID), is(nullValue()));
+    }
+  }
+
   private void assertDefaultAttributesExist(Metacard metacard) {
     assertThat(metacard.getEffectiveDate(), notNullValue());
     assertThat(metacard.getModifiedDate(), notNullValue());
