@@ -76,7 +76,7 @@ public class FeatureMetacardType extends MetacardTypeImpl {
 
   private final transient String gmlNamespace;
 
-  private final XmlSchema schema;
+  private final transient XmlSchema schema;
 
   private static final String EXT_PREFIX = "ext.";
 
