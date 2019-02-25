@@ -26,7 +26,6 @@ import ddf.catalog.data.impl.types.MediaAttributes;
 import ddf.catalog.data.impl.types.ValidationAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +42,9 @@ import org.apache.ws.commons.schema.XmlSchemaParticle;
 import org.apache.ws.commons.schema.XmlSchemaSequence;
 import org.apache.ws.commons.schema.XmlSchemaSequenceMember;
 import org.apache.ws.commons.schema.XmlSchemaSimpleType;
+import org.apache.ws.commons.schema.XmlSchemaSimpleTypeContent;
+import org.apache.ws.commons.schema.XmlSchemaSimpleTypeList;
+import org.apache.ws.commons.schema.XmlSchemaSimpleTypeRestriction;
 import org.apache.ws.commons.schema.XmlSchemaType;
 import org.apache.ws.commons.schema.constants.Constants;
 import org.codice.ddf.spatial.ogc.wfs.catalog.MetacardTypeEnhancer;
@@ -160,6 +162,7 @@ public class FeatureMetacardType extends MetacardTypeImpl {
     addDescriptors(new MediaAttributes().getAttributeDescriptors());
   }
 
+  @Override
   public String getName() {
     return featureType.getLocalPart();
   }
@@ -178,11 +181,8 @@ public class FeatureMetacardType extends MetacardTypeImpl {
 
   private void processXmlSchema(XmlSchema schema) {
     Map<QName, XmlSchemaElement> elements = schema.getElements();
-    Iterator<XmlSchemaElement> xmlSchemaElementIterator = elements.values().iterator();
 
-    while (xmlSchemaElementIterator.hasNext()) {
-      Object o = xmlSchemaElementIterator.next();
-      XmlSchemaElement element = (XmlSchemaElement) o;
+    for (final XmlSchemaElement element : elements.values()) {
       XmlSchemaType schemaType = element.getSchemaType();
       if (schemaType instanceof XmlSchemaComplexType) {
         processComplexType(element);
@@ -195,7 +195,7 @@ public class FeatureMetacardType extends MetacardTypeImpl {
   private void processComplexType(XmlSchemaElement xmlSchemaElement) {
     if (!processGmlType(xmlSchemaElement)) {
       XmlSchemaType schemaType = xmlSchemaElement.getSchemaType();
-      if ((schemaType != null) && (schemaType instanceof XmlSchemaComplexType)) {
+      if (schemaType instanceof XmlSchemaComplexType) {
         XmlSchemaComplexType complexType = (XmlSchemaComplexType) schemaType;
         if (complexType.getParticle() != null) {
           processXmlSchemaParticle(complexType.getParticle());
@@ -214,13 +214,9 @@ public class FeatureMetacardType extends MetacardTypeImpl {
   }
 
   private void processXmlSchemaParticle(XmlSchemaParticle particle) {
-    XmlSchemaSequence schemaSequence;
     if (particle instanceof XmlSchemaSequence) {
-      schemaSequence = (XmlSchemaSequence) particle;
-      List<XmlSchemaSequenceMember> schemaObjectCollection = schemaSequence.getItems();
-      Iterator<XmlSchemaSequenceMember> iterator = schemaObjectCollection.iterator();
-      while (iterator.hasNext()) {
-        Object element = iterator.next();
+      XmlSchemaSequence schemaSequence = (XmlSchemaSequence) particle;
+      for (final XmlSchemaSequenceMember element : schemaSequence.getItems()) {
         if (element instanceof XmlSchemaElement) {
           XmlSchemaElement innerElement = ((XmlSchemaElement) element);
           XmlSchemaType innerEleType = innerElement.getSchemaType();
@@ -238,9 +234,9 @@ public class FeatureMetacardType extends MetacardTypeImpl {
   }
 
   private void processSimpleType(XmlSchemaElement xmlSchemaElement) {
-    QName qName = xmlSchemaElement.getSchemaTypeName();
+    QName baseTypeQName = getBaseTypeQName((XmlSchemaSimpleType) xmlSchemaElement.getSchemaType());
     String name = xmlSchemaElement.getName();
-    AttributeType<?> attributeType = toBasicType(qName);
+    AttributeType<?> attributeType = toBasicType(baseTypeQName);
 
     if (attributeType != null) {
       boolean multiValued = xmlSchemaElement.getMaxOccurs() > 1;
@@ -254,11 +250,35 @@ public class FeatureMetacardType extends MetacardTypeImpl {
               multiValued,
               attributeType));
     }
-    if (Constants.XSD_STRING.equals(qName)) {
+    if (Constants.XSD_STRING.equals(baseTypeQName)) {
       textualProperties.add(propertyPrefix + name);
     }
 
     properties.add(propertyPrefix + name);
+  }
+
+  private QName getBaseTypeQName(final XmlSchemaSimpleType simpleType) {
+    final boolean isBaseType = toBasicType(simpleType.getQName()) != null;
+    if (isBaseType) {
+      return simpleType.getQName();
+    }
+
+    final XmlSchemaSimpleTypeContent content = simpleType.getContent();
+    if (content instanceof XmlSchemaSimpleTypeList) {
+      final XmlSchemaSimpleTypeList simpleListType = (XmlSchemaSimpleTypeList) content;
+      return simpleListType.getItemType() == null
+          ? simpleListType.getItemTypeName()
+          : getBaseTypeQName(simpleListType.getItemType());
+    } else if (content instanceof XmlSchemaSimpleTypeRestriction) {
+      final XmlSchemaSimpleTypeRestriction simpleRestrictionType =
+          (XmlSchemaSimpleTypeRestriction) content;
+      return simpleRestrictionType.getBaseType() == null
+          ? simpleRestrictionType.getBaseTypeName()
+          : getBaseTypeQName(simpleRestrictionType.getBaseType());
+    } else {
+      // TODO how to handle a union?
+      return simpleType.getQName();
+    }
   }
 
   private Boolean processGmlType(XmlSchemaElement xmlSchemaElement) {
@@ -289,10 +309,10 @@ public class FeatureMetacardType extends MetacardTypeImpl {
       return true;
     }
 
-    if ((qName != null)
+    if (qName != null
         && qName.getNamespaceURI().equals(gmlNamespace)
-        && (!StringUtils.isEmpty(name))) {
-      LOGGER.debug("Adding geo property: {}", propertyPrefix + name);
+        && !StringUtils.isEmpty(name)) {
+      LOGGER.debug("Adding geo property: {}{}", propertyPrefix, name);
       gmlProperties.add(propertyPrefix + name);
 
       boolean multiValued = xmlSchemaElement.getMaxOccurs() > 1;

@@ -28,6 +28,8 @@ import ddf.catalog.data.impl.types.DateTimeAttributes;
 import ddf.catalog.data.impl.types.LocationAttributes;
 import ddf.catalog.data.impl.types.MediaAttributes;
 import ddf.catalog.data.impl.types.ValidationAttributes;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.xml.namespace.QName;
 import org.apache.ws.commons.schema.XmlSchema;
+import org.apache.ws.commons.schema.XmlSchemaCollection;
 import org.apache.ws.commons.schema.XmlSchemaComplexContent;
 import org.apache.ws.commons.schema.XmlSchemaComplexContentExtension;
 import org.apache.ws.commons.schema.XmlSchemaComplexType;
@@ -47,6 +50,7 @@ import org.apache.ws.commons.schema.constants.Constants;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
 import org.junit.Before;
 import org.junit.Test;
+import org.xml.sax.InputSource;
 
 public class FeatureMetacardTypeTest {
 
@@ -318,6 +322,15 @@ public class FeatureMetacardTypeTest {
     assertThat(fmt.getAttributeDescriptors().size(), is(descriptors.size() + 1));
   }
 
+  @Test
+  public void testFeatureMetacardTypeFindCustomSimpleTypes() throws Exception {
+    loadSchema("customSimpleTypes.xsd");
+
+    final FeatureMetacardType featureMetacardType =
+        new FeatureMetacardType(
+            schema, FEATURE_TYPE, EMPTY_NON_QUERYABLE_PROPS, Wfs11Constants.GML_3_1_1_NAMESPACE);
+  }
+
   private String prefix(String element) {
     return EXT_PREFIX + PROPERTY_PREFIX + element;
   }
@@ -368,5 +381,13 @@ public class FeatureMetacardTypeTest {
         name,
         new XmlSchemaComplexType(schema, false),
         new QName(Wfs11Constants.GML_3_1_1_NAMESPACE, GML));
+  }
+
+  private void loadSchema(final String schemaFile) throws IOException {
+    final XmlSchemaCollection schemaCollection = new XmlSchemaCollection();
+    schemaCollection.init();
+    try (final InputStream schemaStream = getClass().getResourceAsStream(schemaFile)) {
+      schema = schemaCollection.read(new InputSource(schemaStream));
+    }
   }
 }
