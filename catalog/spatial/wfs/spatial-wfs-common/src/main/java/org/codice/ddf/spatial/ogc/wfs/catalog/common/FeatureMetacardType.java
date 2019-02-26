@@ -214,34 +214,29 @@ public class FeatureMetacardType extends MetacardTypeImpl {
         } else if (complexType.getContentModel() instanceof XmlSchemaSimpleContent) {
           XmlSchemaContent content = complexType.getContentModel().getContent();
           if (content instanceof XmlSchemaSimpleContentExtension) {
-            processSimpleContentExtension(
-                xmlSchemaElement, (XmlSchemaSimpleContentExtension) content);
+            final XmlSchemaSimpleContentExtension extension =
+                (XmlSchemaSimpleContentExtension) content;
+            processSimpleContent(xmlSchemaElement, extension.getBaseTypeName());
           } else if (content instanceof XmlSchemaSimpleContentRestriction) {
-            processSimpleContentRestriction(
-                xmlSchemaElement, (XmlSchemaSimpleContentRestriction) content);
+            final XmlSchemaSimpleContentRestriction restriction =
+                (XmlSchemaSimpleContentRestriction) content;
+            processSimpleContent(xmlSchemaElement, restriction.getBaseTypeName());
           }
         }
       }
     }
   }
 
-  private void processSimpleContentExtension(
-      final XmlSchemaElement parentElement, final XmlSchemaSimpleContentExtension extension) {
+  private void processSimpleContent(
+      final XmlSchemaElement parentElement, final QName simpleContentTypeName) {
     final QName baseTypeName;
-    final QName extensionName = extension.getBaseTypeName();
-    final XmlSchemaType schemaType = schema.getTypeByName(extensionName);
+    final XmlSchemaType schemaType = schema.getTypeByName(simpleContentTypeName);
     if (schemaType != null) {
       baseTypeName = getBaseTypeQName((XmlSchemaSimpleType) schemaType);
     } else {
-      baseTypeName = extensionName;
+      baseTypeName = simpleContentTypeName;
     }
 
-    mapSchemaElement(parentElement, baseTypeName);
-  }
-
-  private void processSimpleContentRestriction(
-      final XmlSchemaElement parentElement, final XmlSchemaSimpleContentRestriction restriction) {
-    final QName baseTypeName = getBaseTypeQName(restriction.getBaseType());
     mapSchemaElement(parentElement, baseTypeName);
   }
 
