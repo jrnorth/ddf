@@ -235,7 +235,6 @@ public class WfsSource extends AbstractWfsSource {
     }
   }
 
-  @SuppressWarnings("unchecked")
   public WfsSource(
       FilterAdapter filterAdapter,
       BundleContext context,
