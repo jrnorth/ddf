@@ -246,7 +246,7 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
   private void removeEmptyFilters(List<FilterType> filters) {
     // Loop through the filters and remove any empty filters
     List<FilterType> filtersToBeRemoved = new ArrayList<>(filters.size());
-    Boolean foundInvalidFilter = false;
+    boolean foundInvalidFilter = false;
     for (FilterType filterType : filters) {
       if (filterType == null) {
         foundInvalidFilter = true;
@@ -575,7 +575,7 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
           createPropertyIsFilter(attrDescriptor.getPropertyName(), literal, propertyIsType));
       return returnFilter;
     }
-    LOGGER.debug("All textual properties have been blacklisted.  Removing from query.");
+    LOGGER.debug("All textual properties have been blacklisted. Removing from query.");
     return null;
   }
 
@@ -1103,7 +1103,7 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
   }
 
   private String buildCoordinateString(Envelope envelope) {
-    return String.valueOf(envelope.getMinX())
+    return envelope.getMinX()
         + ","
         + envelope.getMinY()
         + " "
