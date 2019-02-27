@@ -22,7 +22,7 @@ import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsRequest;
 public class GetCapabilitiesRequest extends WfsRequest {
 
   public GetCapabilitiesRequest() {
-    setRequest(Wfs11Constants.GET_CAPABILITES);
+    setRequest(Wfs11Constants.GET_CAPABILITIES);
     setVersion(Wfs11Constants.VERSION_1_1_0);
     setService(Wfs11Constants.WFS);
   }

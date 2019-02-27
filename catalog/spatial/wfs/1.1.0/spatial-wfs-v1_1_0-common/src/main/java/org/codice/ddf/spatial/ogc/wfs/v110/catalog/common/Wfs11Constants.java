@@ -20,7 +20,7 @@ import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsConstants;
 
 public class Wfs11Constants extends WfsConstants {
 
-  static final String GET_CAPABILITES = "GetCapabilities";
+  static final String GET_CAPABILITIES = "GetCapabilities";
 
   static final String DESCRIBE_FEATURE_TYPE = "DescribeFeatureType";
 
