@@ -124,10 +124,7 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
   }
 
   public void setSupportedGeoFilters(List<String> supportedGeos) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "Updating supportedGeos to: {}", supportedGeos.stream().collect(Collectors.joining(",")));
-    }
+    LOGGER.debug("Updating supportedGeos to: {}", supportedGeos);
     this.supportedGeo = supportedGeos;
   }
 
