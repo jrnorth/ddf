@@ -474,7 +474,7 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
     }
 
     if ((Metacard.ANY_TEXT.equalsIgnoreCase(propertyName))) {
-      return buildPropertyIsFilterTypeForAnyGeo(literal, propertyIsType);
+      return buildPropertyIsFilterTypeForAnyText(literal, propertyIsType);
     } else if (featureMetacardType.getProperties().contains(propertyName)) {
       return buildPropertyIsFilterTypeForProperty(propertyName, literal, propertyIsType);
     } else if (Metacard.ID.equals(propertyName)) {
@@ -520,7 +520,7 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
     throw new IllegalArgumentException(String.format(PROPERTY_NOT_QUERYABLE, propertyName));
   }
 
-  private FilterType buildPropertyIsFilterTypeForAnyGeo(
+  private FilterType buildPropertyIsFilterTypeForAnyText(
       Object literal, PROPERTY_IS_OPS propertyIsType) {
 
     if (CollectionUtils.isEmpty(featureMetacardType.getTextualProperties())) {
