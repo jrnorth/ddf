@@ -43,6 +43,11 @@
         </dependency>
         <dependency>
             <groupId>org.codice.ddf.spatial</groupId>
+            <artifactId>spatial-wfs-mapper</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codice.ddf.spatial</groupId>
             <artifactId>spatial-wfs-v1_1_0-common</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -223,6 +228,7 @@
                             spatial-ogc-common,
                             spatial-wfs-converter;scope=compile|runtime,
                             spatial-wfs-v1_1_0-converter,
+                            spatial-wfs-mapper,
                             catalog-core-api-impl,
                             ddf-security-common,
                             platform-util,

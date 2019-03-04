@@ -23,9 +23,12 @@
     <!-- Get reference to Filter Adapter implementation -->
     <reference id="filterAdapter" interface="ddf.catalog.filter.FilterAdapter"/>
 
-    <reference-list id="metacardTypeEnhancerList"
+    <reference-list id="metacardTypeEnhancers"
                     interface="org.codice.ddf.spatial.ogc.wfs.catalog.MetacardTypeEnhancer"
                     availability="optional"/>
+
+    <reference-list id="metacardMappers"
+        interface="org.codice.ddf.spatial.ogc.wfs.catalog.mapper.MetacardMapper"/>
 
     <reference id="encryptionService" interface="ddf.security.encryption.EncryptionService"/>
 
@@ -41,12 +44,14 @@
             interface="ddf.catalog.source.FederatedSource">
         <cm:managed-component class="org.codice.ddf.spatial.ogc.wfs.v110.catalog.source.WfsSource"
                               init-method="init" destroy-method="destroy">
+            <argument ref="filterAdapter"/>
+            <argument ref="blueprintBundleContext"/>
+            <argument ref="clientFactoryFactory"/>
             <argument ref="encryptionService"/>
             <argument ref="metacardTypeRegistry"/>
+            <argument ref="metacardTypeEnhancers"/>
+            <argument ref="metacardMappers"/>
             <argument ref="featureTransformationService"/>
-            <argument ref="clientFactoryFactory"/>
-            <property name="context" ref="blueprintBundleContext"/>
-            <property name="filterAdapter" ref="filterAdapter"/>
             <property name="wfsUrl" value=""/>
             <property name="id" value=""/>
             <property name="username" value=""/>
@@ -62,7 +67,6 @@
             <property name="connectionTimeout" value="30000"/>
             <property name="receiveTimeout" value="60000"/>
             <property name="coordinateOrder" value="LAT_LON"/>
-            <property name="metacardTypeEnhancers" ref="metacardTypeEnhancerList"/>
             <property name="srsName" value="EPSG:4326"/>
 
             <cm:managed-properties persistent-id="" update-strategy="component-managed"

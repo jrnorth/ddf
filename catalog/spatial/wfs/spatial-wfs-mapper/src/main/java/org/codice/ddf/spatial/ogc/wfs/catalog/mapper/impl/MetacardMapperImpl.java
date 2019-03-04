@@ -40,7 +40,7 @@ public class MetacardMapperImpl implements MetacardMapper {
 
   public MetacardMapperImpl() {
     LOGGER.debug("Creating {}", MetacardMapperImpl.class.getName());
-    bidiMap = new DualHashBidiMap<String, String>();
+    bidiMap = new DualHashBidiMap<>();
   }
 
   @Override

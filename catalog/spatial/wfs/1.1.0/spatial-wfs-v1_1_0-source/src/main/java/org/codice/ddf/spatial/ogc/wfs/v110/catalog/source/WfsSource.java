@@ -91,6 +91,8 @@ import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsException;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsFeatureCollection;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsMetadataImpl;
+import org.codice.ddf.spatial.ogc.wfs.catalog.mapper.MetacardMapper;
+import org.codice.ddf.spatial.ogc.wfs.catalog.mapper.impl.MetacardMapperImpl;
 import org.codice.ddf.spatial.ogc.wfs.catalog.metacardtype.registry.WfsMetacardTypeRegistry;
 import org.codice.ddf.spatial.ogc.wfs.catalog.source.MarkableStreamInterceptor;
 import org.codice.ddf.spatial.ogc.wfs.featuretransformer.FeatureTransformationService;
@@ -107,7 +109,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Provides a Federated and Connected source implementation for OGC WFS servers. */
-@SuppressWarnings({"unused", "WeakerAccess"})
 public class WfsSource extends AbstractWfsSource {
 
   static final int WFS_MAX_FEATURES_RETURNED = 1000;
@@ -213,6 +214,8 @@ public class WfsSource extends AbstractWfsSource {
 
   private List<MetacardTypeEnhancer> metacardTypeEnhancers;
 
+  private List<MetacardMapper> metacardMappers;
+
   private String srsName;
 
   private boolean allowRedirects;
@@ -235,51 +238,34 @@ public class WfsSource extends AbstractWfsSource {
     }
   }
 
+  @SuppressWarnings("WeakerAccess")
   public WfsSource(
       FilterAdapter filterAdapter,
       BundleContext context,
-      AvailabilityTask task,
       ClientFactoryFactory clientFactoryFactory,
       EncryptionService encryptionService,
       WfsMetacardTypeRegistry wfsMetacardTypeRegistry,
-      List<MetacardTypeEnhancer> metacardTypeEnhancers) {
+      List<MetacardTypeEnhancer> metacardTypeEnhancers,
+      List<MetacardMapper> metacardMappers,
+      FeatureTransformationService featureTransformationService) {
 
     this.filterAdapter = filterAdapter;
     this.context = context;
-    this.availabilityTask = task;
     this.clientFactoryFactory = clientFactoryFactory;
     this.encryptionService = encryptionService;
     this.wfsMetacardTypeRegistry = wfsMetacardTypeRegistry;
     this.metacardTypeEnhancers = metacardTypeEnhancers;
+    this.metacardMappers = metacardMappers;
+    this.featureTransformationService = featureTransformationService;
     this.wfsMetadata =
         new WfsMetadataImpl<>(
             this::getId,
             this::getCoordinateOrder,
             Collections.singletonList(FEATURE_MEMBER_ELEMENT),
             FeatureTypeType.class);
-    initProviders();
-    createClientFactory();
-    configureWfsFeatures();
-  }
-
-  public WfsSource(
-      EncryptionService encryptionService,
-      WfsMetacardTypeRegistry wfsMetacardTypeRegistry,
-      FeatureTransformationService featureTransformationService,
-      ClientFactoryFactory clientFactoryFactory) {
     scheduler =
         Executors.newSingleThreadScheduledExecutor(
             StandardThreadFactoryBuilder.newThreadFactory("wfsSourceThread"));
-    this.encryptionService = encryptionService;
-    this.clientFactoryFactory = clientFactoryFactory;
-    this.wfsMetadata =
-        new WfsMetadataImpl<>(
-            this::getId,
-            this::getCoordinateOrder,
-            Collections.singletonList(FEATURE_MEMBER_ELEMENT),
-            FeatureTypeType.class);
-    this.featureTransformationService = featureTransformationService;
-    this.wfsMetacardTypeRegistry = wfsMetacardTypeRegistry;
   }
 
   /**
@@ -290,13 +276,16 @@ public class WfsSource extends AbstractWfsSource {
    * <p>The init process creates a RemoteWfs object using the connection parameters from the
    * configuration.
    */
+  @SuppressWarnings("unused")
   public void init() {
     createClientFactory();
     setupAvailabilityPoll();
   }
 
-  @SuppressWarnings(
-      "squid:S1172" /* The code parameter is required in blueprint-cm-1.0.7. See https://issues.apache.org/jira/browse/ARIES-1436. */)
+  @SuppressWarnings({
+    "squid:S1172" /* The code parameter is required in blueprint-cm-1.0.7. See https://issues.apache.org/jira/browse/ARIES-1436. */,
+    "unused"
+  })
   public void destroy(int code) {
     wfsMetacardTypeRegistry.clear();
     availabilityPollFuture.cancel(true);
@@ -310,6 +299,7 @@ public class WfsSource extends AbstractWfsSource {
    *
    * @param configuration configuration settings
    */
+  @SuppressWarnings("unused")
   public void refresh(Map<String, Object> configuration) {
 
     LOGGER.trace("WfsSource {}: Refresh called", getId());
@@ -562,10 +552,10 @@ public class WfsSource extends AbstractWfsSource {
         if (schema != null) {
           FeatureMetacardType featureMetacardType =
               createFeatureMetacardTypeRegistration(featureTypeType, ftSimpleName, schema);
-
+          MetacardMapper metacardMapper = getMetacardMapper(featureTypeType.getName());
           this.featureTypeFilters.put(
               featureMetacardType.getFeatureType(),
-              new WfsFilterDelegate(featureMetacardType, supportedGeo));
+              new WfsFilterDelegate(featureMetacardType, metacardMapper, supportedGeo));
 
           mcTypeRegs.put(ftSimpleName, featureMetacardType);
 
@@ -585,6 +575,20 @@ public class WfsSource extends AbstractWfsSource {
     }
     LOGGER.debug(
         "Wfs Source {}: Number of validated Features = {}", getId(), featureTypeFilters.size());
+  }
+
+  private MetacardMapper getMetacardMapper(final QName featureTypeName) {
+    return metacardMappers
+        .stream()
+        .filter(mapper -> mapper.getFeatureType().equals(featureTypeName.toString()))
+        .findAny()
+        .orElseGet(
+            () -> {
+              LOGGER.debug(
+                  "Could not find MetacardMapper for featureType {}. Returning a default implementation.",
+                  featureTypeName);
+              return new MetacardMapperImpl();
+            });
   }
 
   private void registerFeatureMetacardTypes(Map<String, FeatureMetacardType> mcTypeRegs) {
