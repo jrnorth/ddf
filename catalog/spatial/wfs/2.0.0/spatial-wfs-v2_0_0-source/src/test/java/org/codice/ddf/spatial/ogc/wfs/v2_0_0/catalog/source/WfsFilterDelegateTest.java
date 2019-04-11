@@ -82,8 +82,9 @@ import net.opengis.ows.v_1_1_0.DomainType;
 import net.opengis.ows.v_1_1_0.ValueType;
 import org.apache.commons.lang.StringUtils;
 import org.codice.ddf.libs.geo.util.GeospatialUtil;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureAttributeDescriptor;
 import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureAttributeDescriptor;
+import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureAttributeDescriptorImpl;
 import org.codice.ddf.spatial.ogc.wfs.catalog.mapper.MetacardMapper;
 import org.codice.ddf.spatial.ogc.wfs.v2_0_0.catalog.common.Wfs20Constants;
 import org.codice.ddf.spatial.ogc.wfs.v2_0_0.catalog.common.Wfs20Constants.COMPARISON_OPERATORS;
@@ -1062,7 +1063,7 @@ public class WfsFilterDelegateTest {
     when(mockFeatureMetacardType.getGmlProperties()).thenReturn(gmlProps);
     when(mockFeatureMetacardType.getAttributeDescriptor(MOCK_GEOM))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_GEOM, MOCK_GEOM, true, false, false, false, BasicTypes.STRING_TYPE));
 
     SpatialOperatorType operator = new SpatialOperatorType();
@@ -1241,7 +1242,7 @@ public class WfsFilterDelegateTest {
     when(mockFeatureMetacardType.getGmlProperties()).thenReturn(gmlProps);
     when(mockFeatureMetacardType.getAttributeDescriptor(MOCK_GEOM))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_GEOM, MOCK_GEOM, true, false, false, false, BasicTypes.STRING_TYPE));
 
     SpatialOperatorType operator = new SpatialOperatorType();
@@ -1281,7 +1282,7 @@ public class WfsFilterDelegateTest {
     when(mockFeatureMetacardType.getGmlProperties()).thenReturn(gmlProps);
     when(mockFeatureMetacardType.getAttributeDescriptor(MOCK_GEOM))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_GEOM, MOCK_GEOM, true, false, false, false, BasicTypes.STRING_TYPE));
 
     SpatialOperatorType operator = new SpatialOperatorType();
@@ -1312,7 +1313,7 @@ public class WfsFilterDelegateTest {
     when(mockFeatureMetacardType.getGmlProperties()).thenReturn(gmlProps);
     when(mockFeatureMetacardType.getAttributeDescriptor(MOCK_GEOM))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_GEOM, MOCK_GEOM, true, false, false, false, BasicTypes.STRING_TYPE));
 
     SpatialOperatorType operator = new SpatialOperatorType();
@@ -1456,7 +1457,7 @@ public class WfsFilterDelegateTest {
     WfsFilterDelegate delegate = setupFilterDelegate(SPATIAL_OPERATORS.Contains.toString());
     when(mockFeatureMetacardType.getAttributeDescriptor(MOCK_GEOM))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_GEOM, MOCK_GEOM, false, false, false, false, BasicTypes.STRING_TYPE));
 
     delegate.contains(MOCK_GEOM, POLYGON);
@@ -1481,7 +1482,7 @@ public class WfsFilterDelegateTest {
     for (String gmlProp : gmlProps) {
       when(mockFeatureMetacardType.getAttributeDescriptor(gmlProp))
           .thenReturn(
-              new FeatureAttributeDescriptor(
+              new FeatureAttributeDescriptorImpl(
                   gmlProp, gmlProp, indexed, false, false, false, BasicTypes.STRING_TYPE));
     }
 

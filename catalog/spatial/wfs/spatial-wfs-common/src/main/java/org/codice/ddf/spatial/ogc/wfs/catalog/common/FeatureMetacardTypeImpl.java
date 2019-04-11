@@ -250,7 +250,7 @@ public class FeatureMetacardTypeImpl extends MetacardTypeImpl implements Feature
     if (attributeType != null) {
       boolean multiValued = xmlSchemaElement.getMaxOccurs() > 1;
       add(
-          new FeatureAttributeDescriptor(
+          new FeatureAttributeDescriptorImpl(
               propertyPrefix + name,
               name,
               isQueryable(name) /* indexed */,
@@ -280,7 +280,7 @@ public class FeatureMetacardTypeImpl extends MetacardTypeImpl implements Feature
 
       boolean multiValued = xmlSchemaElement.getMaxOccurs() > 1;
       add(
-          new FeatureAttributeDescriptor(
+          new FeatureAttributeDescriptorImpl(
               propertyPrefix + name,
               name,
               isQueryable(name) /* indexed */,
@@ -302,7 +302,7 @@ public class FeatureMetacardTypeImpl extends MetacardTypeImpl implements Feature
 
       boolean multiValued = xmlSchemaElement.getMaxOccurs() > 1;
       add(
-          new FeatureAttributeDescriptor(
+          new FeatureAttributeDescriptorImpl(
               propertyPrefix + name,
               name,
               isQueryable(name) /* indexed */,

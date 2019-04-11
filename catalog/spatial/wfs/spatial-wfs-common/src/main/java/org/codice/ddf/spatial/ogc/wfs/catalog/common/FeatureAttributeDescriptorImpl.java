@@ -13,9 +13,9 @@
  */
 package org.codice.ddf.spatial.ogc.wfs.catalog.common;
 
-import ddf.catalog.data.AttributeDescriptor;
 import ddf.catalog.data.AttributeType;
 import ddf.catalog.data.impl.AttributeDescriptorImpl;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureAttributeDescriptor;
 
 /**
  * Extension of the {@link AttributeDescriptorImpl} to allow for mapping of an actual property name,
@@ -23,13 +23,14 @@ import ddf.catalog.data.impl.AttributeDescriptorImpl;
  * ddf.catalog.data.impl.MetacardImpl.BASIC_METACARD}, to a name that can be used without
  * over-writing existing attributeDescriptors.
  */
-public class FeatureAttributeDescriptor extends AttributeDescriptorImpl {
+public class FeatureAttributeDescriptorImpl extends AttributeDescriptorImpl
+    implements FeatureAttributeDescriptor {
 
   private static final long serialVersionUID = 1L;
 
-  private String propertyName;
+  private final String propertyName;
 
-  public FeatureAttributeDescriptor(
+  public FeatureAttributeDescriptorImpl(
       String name,
       String propertyName,
       boolean indexed,
@@ -42,21 +43,7 @@ public class FeatureAttributeDescriptor extends AttributeDescriptorImpl {
     this.propertyName = propertyName;
   }
 
-  public FeatureAttributeDescriptor(AttributeDescriptor ad) {
-    super(
-        ad.getName(),
-        ad.isIndexed(),
-        ad.isStored(),
-        ad.isTokenized(),
-        ad.isMultiValued(),
-        ad.getType());
-  }
-
-  /**
-   * returns the name of the actual property to be queried against at the remote Wfs
-   *
-   * @return String - the name of the property on the remote Wfs
-   */
+  @Override
   public String getPropertyName() {
     return propertyName;
   }

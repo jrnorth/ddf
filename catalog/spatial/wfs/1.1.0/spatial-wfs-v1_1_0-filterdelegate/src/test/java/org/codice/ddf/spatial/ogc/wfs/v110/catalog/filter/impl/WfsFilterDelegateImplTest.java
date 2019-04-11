@@ -46,7 +46,7 @@ import net.opengis.filter.v_1_1_0.DistanceBufferType;
 import net.opengis.filter.v_1_1_0.FilterType;
 import net.opengis.filter.v_1_1_0.UnaryLogicOpType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureAttributeDescriptor;
+import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureAttributeDescriptorImpl;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants.SPATIAL_OPERATORS;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.WfsFilterDelegate;
 import org.custommonkey.xmlunit.XMLUnit;
@@ -423,12 +423,12 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getTextualProperties()).thenReturn(mockProps);
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY, MOCK_PROPERTY, true, true, true, true, BasicTypes.STRING_TYPE));
 
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY_2))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY_2, MOCK_PROPERTY_2, true, true, true, true, BasicTypes.STRING_TYPE));
 
     WfsFilterDelegate delegate = createDelegate();
@@ -483,7 +483,7 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getProperties()).thenReturn(mockProps);
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY, MOCK_PROPERTY, true, true, true, true, BasicTypes.FLOAT_TYPE));
     WfsFilterDelegate delegate = createDelegate();
 
@@ -498,7 +498,7 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getProperties()).thenReturn(mockProps);
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY, MOCK_PROPERTY, true, true, true, true, BasicTypes.DOUBLE_TYPE));
     WfsFilterDelegate delegate = createDelegate();
 
@@ -958,11 +958,11 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getTextualProperties()).thenReturn(mockProps);
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY, MOCK_PROPERTY, true, true, true, true, BasicTypes.STRING_TYPE));
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY_2))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY_2, MOCK_PROPERTY_2, true, true, true, true, BasicTypes.STRING_TYPE));
     WfsFilterDelegate delegate = createDelegate();
     FilterType filter = delegate.propertyIsLike(Metacard.ANY_TEXT, LITERAL, true);
@@ -1020,7 +1020,7 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getProperties()).thenReturn(mockProps);
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY, MOCK_PROPERTY, false, false, false, false, BasicTypes.STRING_TYPE));
 
     WfsFilterDelegate delegate = createDelegate();
@@ -1036,11 +1036,11 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getProperties()).thenReturn(mockProps);
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY, MOCK_PROPERTY, false, false, false, false, BasicTypes.STRING_TYPE));
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY_2))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY_2,
                 MOCK_PROPERTY_2,
                 false,
@@ -1075,7 +1075,7 @@ public class WfsFilterDelegateImplTest {
 
     when(featureMetacardType.getAttributeDescriptor(MOCK_GEOM))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_GEOM, MOCK_GEOM, false, false, false, false, BasicTypes.STRING_TYPE));
     delegate.intersects(MOCK_GEOM, POLYGON);
   }
@@ -1319,7 +1319,7 @@ public class WfsFilterDelegateImplTest {
     WfsFilterDelegate delegate = setupFilterDelegate(SPATIAL_OPERATORS.CONTAINS.getValue());
     when(featureMetacardType.getAttributeDescriptor(MOCK_GEOM))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_GEOM, MOCK_GEOM, false, false, false, false, BasicTypes.STRING_TYPE));
 
     delegate.contains(MOCK_GEOM, POLYGON);
@@ -1525,12 +1525,12 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getGmlProperties()).thenReturn(gmlProps);
     when(featureMetacardType.getAttributeDescriptor(geom1))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 geom1, geom1, geom1Indexed, false, false, false, BasicTypes.STRING_TYPE));
 
     when(featureMetacardType.getAttributeDescriptor(geom2))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 geom2, geom2, geom2Indexed, false, false, false, BasicTypes.STRING_TYPE));
   }
 
@@ -1576,7 +1576,7 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getGmlProperties()).thenReturn(gmlProps);
     when(featureMetacardType.getAttributeDescriptor(MOCK_GEOM))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_GEOM, MOCK_GEOM, true, false, false, false, BasicTypes.STRING_TYPE));
 
     List<String> supportedGeo = Collections.singletonList(spatialOpType);
@@ -1588,7 +1588,7 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getTextualProperties()).thenReturn(mockProps);
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY, MOCK_PROPERTY, true, true, true, true, BasicTypes.STRING_TYPE));
   }
 
@@ -1597,7 +1597,7 @@ public class WfsFilterDelegateImplTest {
     when(featureMetacardType.getProperties()).thenReturn(mockProps);
     when(featureMetacardType.getAttributeDescriptor(MOCK_PROPERTY))
         .thenReturn(
-            new FeatureAttributeDescriptor(
+            new FeatureAttributeDescriptorImpl(
                 MOCK_PROPERTY, MOCK_PROPERTY, true, true, true, true, type));
   }
 
