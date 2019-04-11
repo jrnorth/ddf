@@ -120,6 +120,7 @@
             <Embed-Dependency>
               jaxb2-basics-runtime;version="0.11.0",
               spatial-wfs-common,
+              spatial-wfs-v1_1_0-common,
               catalog-core-api-impl,
               platform-util
             </Embed-Dependency>
