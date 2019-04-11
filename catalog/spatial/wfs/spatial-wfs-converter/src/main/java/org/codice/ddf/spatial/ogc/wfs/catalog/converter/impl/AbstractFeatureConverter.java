@@ -59,7 +59,7 @@ import org.apache.commons.lang.StringUtils;
 import org.codice.ddf.libs.geo.GeoFormatException;
 import org.codice.ddf.libs.geo.util.GeospatialUtil;
 import org.codice.ddf.spatial.ogc.catalog.common.converter.XmlNode;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.FeatureConverter;
 import org.codice.ddf.spatial.ogc.wfs.catalog.mapper.MetacardMapper;
 import org.slf4j.Logger;

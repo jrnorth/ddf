@@ -19,6 +19,7 @@ import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.mock;
 
 import java.util.Collections;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.featuretransformer.WfsMetadata;
 import org.junit.Before;
 import org.junit.Test;

@@ -89,9 +89,10 @@ import org.codice.ddf.spatial.ogc.catalog.MetadataTransformer;
 import org.codice.ddf.spatial.ogc.catalog.common.AvailabilityCommand;
 import org.codice.ddf.spatial.ogc.catalog.common.AvailabilityTask;
 import org.codice.ddf.spatial.ogc.catalog.common.ContentTypeFilterDelegate;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.MetacardTypeEnhancer;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.AbstractWfsSource;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
+import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardTypeImpl;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsException;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsFeatureCollection;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsMetadataImpl;
@@ -103,6 +104,8 @@ import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.DescribeFeatureTypeReq
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.GetCapabilitiesRequest;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants;
+import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.FilterDelegateFactory;
+import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.WfsFilterDelegate;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.source.reader.XmlSchemaMessageBodyReaderWfs11;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.InvalidSyntaxException;
@@ -227,6 +230,8 @@ public class WfsSource extends AbstractWfsSource {
 
   private WfsMetacardTypeRegistry wfsMetacardTypeRegistry;
 
+  private FilterDelegateFactory filterDelegateFactory;
+
   private static final String FEATURE_MEMBER_ELEMENT = "featureMember";
 
   static {
@@ -247,7 +252,8 @@ public class WfsSource extends AbstractWfsSource {
       ClientFactoryFactory clientFactoryFactory,
       EncryptionService encryptionService,
       WfsMetacardTypeRegistry wfsMetacardTypeRegistry,
-      List<MetacardTypeEnhancer> metacardTypeEnhancers)
+      List<MetacardTypeEnhancer> metacardTypeEnhancers,
+      FilterDelegateFactory filterDelegateFactory)
       throws SecurityServiceException {
 
     this.filterAdapter = filterAdapter;
@@ -257,6 +263,7 @@ public class WfsSource extends AbstractWfsSource {
     this.encryptionService = encryptionService;
     this.wfsMetacardTypeRegistry = wfsMetacardTypeRegistry;
     this.metacardTypeEnhancers = metacardTypeEnhancers;
+    this.filterDelegateFactory = filterDelegateFactory;
     this.wfsMetadata =
         new WfsMetadataImpl<>(
             this::getId,
@@ -597,7 +604,7 @@ public class WfsSource extends AbstractWfsSource {
 
           this.featureTypeFilters.put(
               featureMetacardType.getFeatureType(),
-              new WfsFilterDelegate(featureMetacardType, supportedGeo));
+              filterDelegateFactory.createFilterDelegate(featureMetacardType, supportedGeo));
 
           mcTypeRegs.put(ftSimpleName, featureMetacardType);
 
@@ -655,10 +662,10 @@ public class WfsSource extends AbstractWfsSource {
             .filter(me -> me.getFeatureName() != null)
             .filter(me -> me.getFeatureName().equalsIgnoreCase(ftName))
             .findAny()
-            .orElse(FeatureMetacardType.DEFAULT_METACARD_TYPE_ENHANCER);
+            .orElse(FeatureMetacardTypeImpl.DEFAULT_METACARD_TYPE_ENHANCER);
 
     FeatureMetacardType ftMetacard =
-        new FeatureMetacardType(
+        new FeatureMetacardTypeImpl(
             schema,
             featureTypeType.getName(),
             nonQueryableProperties != null
@@ -1088,34 +1095,6 @@ public class WfsSource extends AbstractWfsSource {
       sb.append("\nlocation:\t").append(result.getMetacard().getLocation());
 
       LOGGER.debug("Transform complete. Metacard: {}", sb.toString());
-    }
-  }
-
-  private static class MetacardTypeRegistration {
-
-    private FeatureMetacardType ftMetacard;
-
-    private Dictionary<String, Object> props;
-
-    private String srs;
-
-    public MetacardTypeRegistration(
-        FeatureMetacardType ftMetacard, Dictionary<String, Object> props, String srs) {
-      this.ftMetacard = ftMetacard;
-      this.props = props;
-      this.srs = srs;
-    }
-
-    public FeatureMetacardType getFtMetacard() {
-      return ftMetacard;
-    }
-
-    public Dictionary<String, Object> getProps() {
-      return props;
-    }
-
-    public String getSrs() {
-      return srs;
     }
   }
 

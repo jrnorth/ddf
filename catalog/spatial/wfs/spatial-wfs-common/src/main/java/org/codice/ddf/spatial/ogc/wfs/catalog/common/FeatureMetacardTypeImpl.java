@@ -45,15 +45,16 @@ import org.apache.ws.commons.schema.XmlSchemaSequenceMember;
 import org.apache.ws.commons.schema.XmlSchemaSimpleType;
 import org.apache.ws.commons.schema.XmlSchemaType;
 import org.apache.ws.commons.schema.constants.Constants;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.MetacardTypeEnhancer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FeatureMetacardType extends MetacardTypeImpl {
+public class FeatureMetacardTypeImpl extends MetacardTypeImpl implements FeatureMetacardType {
 
   private static final long serialVersionUID = 1L;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FeatureMetacardType.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FeatureMetacardTypeImpl.class);
 
   private transient List<String> properties = new ArrayList<>();
 
@@ -86,7 +87,7 @@ public class FeatureMetacardType extends MetacardTypeImpl {
         }
       };
 
-  public FeatureMetacardType(
+  public FeatureMetacardTypeImpl(
       XmlSchema schema,
       final QName featureType,
       List<String> nonQueryableProperties,
@@ -94,7 +95,7 @@ public class FeatureMetacardType extends MetacardTypeImpl {
     this(schema, featureType, nonQueryableProperties, gmlNamespace, DEFAULT_METACARD_TYPE_ENHANCER);
   }
 
-  public FeatureMetacardType(
+  public FeatureMetacardTypeImpl(
       XmlSchema schema,
       final QName featureType,
       List<String> nonQueryableProperties,
@@ -160,18 +161,22 @@ public class FeatureMetacardType extends MetacardTypeImpl {
     addDescriptors(new MediaAttributes().getAttributeDescriptors());
   }
 
+  @Override
   public String getName() {
     return featureType.getLocalPart();
   }
 
+  @Override
   public String getPrefix() {
     return featureType.getPrefix();
   }
 
+  @Override
   public String getNamespaceURI() {
     return featureType.getNamespaceURI();
   }
 
+  @Override
   public QName getFeatureType() {
     return featureType;
   }
@@ -357,18 +362,22 @@ public class FeatureMetacardType extends MetacardTypeImpl {
     return !nonQueryableProperties.contains(propertyName);
   }
 
+  @Override
   public List<String> getTextualProperties() {
     return textualProperties;
   }
 
+  @Override
   public List<String> getGmlProperties() {
     return gmlProperties;
   }
 
+  @Override
   public List<String> getProperties() {
     return properties;
   }
 
+  @Override
   public List<String> getTemporalProperties() {
     return temporalProperties;
   }

@@ -90,6 +90,8 @@ import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.DescribeFeatureTypeReq
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.GetCapabilitiesRequest;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants;
+import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.FilterDelegateFactory;
+import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.impl.FilterDelegateFactoryImpl;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
@@ -230,6 +232,8 @@ public class WfsSourceTest {
   private WfsMetacardTypeRegistry mockWfsMetacardTypeRegistry = mock(WfsMetacardTypeRegistry.class);
 
   private ClientFactoryFactory mockClientFactoryFactory = mock(ClientFactoryFactory.class);
+
+  private FilterDelegateFactory mockFilterDelegateFactory = mock(FilterDelegateFactory.class);
 
   public void setUp(
       final String schema,
@@ -377,7 +381,8 @@ public class WfsSourceTest {
             mockClientFactoryFactory,
             encryptionService,
             mockWfsMetacardTypeRegistry,
-            Collections.emptyList());
+            Collections.emptyList(),
+            new FilterDelegateFactoryImpl());
   }
 
   @Test

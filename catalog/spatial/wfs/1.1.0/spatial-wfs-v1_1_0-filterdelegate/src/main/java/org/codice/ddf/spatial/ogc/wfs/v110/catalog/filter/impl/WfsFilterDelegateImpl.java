@@ -11,7 +11,7 @@
  * License is distributed along with this program and can be found at
  * <http://www.gnu.org/licenses/lgpl.html>.
  */
-package org.codice.ddf.spatial.ogc.wfs.v110.catalog.source;
+package org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.impl;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
@@ -23,7 +23,6 @@ import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKTReader;
 import com.vividsolutions.jts.io.WKTWriter;
 import ddf.catalog.data.Metacard;
-import ddf.catalog.filter.impl.SimpleFilterDelegate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -62,13 +61,14 @@ import net.opengis.gml.v_3_1_1.LineStringType;
 import net.opengis.gml.v_3_1_1.LinearRingType;
 import net.opengis.gml.v_3_1_1.PointType;
 import net.opengis.gml.v_3_1_1.PolygonType;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureAttributeDescriptor;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsConstants;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants.SPATIAL_OPERATORS;
+import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.WfsFilterDelegate;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,9 +78,9 @@ import org.slf4j.LoggerFactory;
  * class will return an "Invalid"(null) filter if a translation could not be made. It will return an
  * "Empty" filter, meaning no filters are set, only if it is a Content Type filter.
  */
-public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
+public class WfsFilterDelegateImpl extends WfsFilterDelegate {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WfsFilterDelegate.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(WfsFilterDelegateImpl.class);
 
   private static final String MISSING_PARAMETERS_MSG = "Required parameters are missing";
 
@@ -105,7 +105,7 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
 
   private List<QName> geometryOperands;
 
-  public WfsFilterDelegate(FeatureMetacardType featureMetacardType, List<String> supportedGeo) {
+  public WfsFilterDelegateImpl(FeatureMetacardType featureMetacardType, List<String> supportedGeo) {
 
     if (featureMetacardType == null) {
       throw new IllegalArgumentException("FeatureMetacardType can not be null");
@@ -123,6 +123,7 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
     return geometryOperands.contains(geoOperand);
   }
 
+  @Override
   public void setSupportedGeoFilters(List<String> supportedGeos) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(

@@ -31,7 +31,8 @@ import javax.xml.transform.stream.StreamSource;
 import net.opengis.wfs.v_1_1_0.FeatureTypeType;
 import org.apache.ws.commons.schema.XmlSchema;
 import org.apache.ws.commons.schema.XmlSchemaCollection;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
+import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardTypeImpl;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.FeatureConverter;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.FeatureConverterFactory;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.impl.GenericFeatureConverter;
@@ -107,12 +108,12 @@ public class XStreamWfs11FeatureTransformerTest {
     inputStream.close();
 
     FeatureMetacardType featureMetacardType =
-        new FeatureMetacardType(
+        new FeatureMetacardTypeImpl(
             schema,
             PETER_PAN_NAME,
             Collections.emptyList(),
             Wfs11Constants.GML_3_1_1_NAMESPACE,
-            FeatureMetacardType.DEFAULT_METACARD_TYPE_ENHANCER);
+            FeatureMetacardTypeImpl.DEFAULT_METACARD_TYPE_ENHANCER);
 
     when(metacardTypeRegistry.lookupMetacardTypeBySimpleName(
             SOURCE_ID, PETER_PAN_NAME.getLocalPart()))

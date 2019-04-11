@@ -39,4 +39,8 @@
         <module>spatial-wfs-featuretransformer-xstream</module>
         <module>spatial-wfs-featuretransformer-handlebars</module>
     </modules>
+
+    <properties>
+        <org.jvnet.ogc.wfs.1.1.0.version>2.6.1</org.jvnet.ogc.wfs.1.1.0.version>
+    </properties>
 </project>

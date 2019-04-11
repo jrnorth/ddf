@@ -38,7 +38,7 @@ import org.apache.ws.commons.schema.XmlSchemaComplexType;
 import org.apache.ws.commons.schema.XmlSchemaElement;
 import org.apache.ws.commons.schema.XmlSchemaSimpleType;
 import org.apache.ws.commons.schema.constants.Constants;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
+import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardTypeImpl;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsConstants;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsFeatureCollection;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.FeatureConverter;
@@ -292,7 +292,7 @@ public class GenericFeatureConverterTest {
     XmlSchema schema = new XmlSchema();
     schema.getElements().putAll(buildElementMap(schema));
 
-    return new FeatureMetacardType(
+    return new FeatureMetacardTypeImpl(
         schema, new QName(FEATURE_TYPE), new ArrayList<>(), Wfs10Constants.GML_NAMESPACE);
   }
 

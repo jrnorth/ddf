@@ -92,8 +92,9 @@ import org.codice.ddf.spatial.ogc.catalog.MetadataTransformer;
 import org.codice.ddf.spatial.ogc.catalog.common.AvailabilityCommand;
 import org.codice.ddf.spatial.ogc.catalog.common.AvailabilityTask;
 import org.codice.ddf.spatial.ogc.catalog.common.ContentTypeFilterDelegate;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.AbstractWfsSource;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
+import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardTypeImpl;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsException;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.FeatureConverter;
 import org.codice.ddf.spatial.ogc.wfs.catalog.mapper.MetacardMapper;
@@ -703,7 +704,7 @@ public class WfsSource extends AbstractWfsSource {
   private MetacardTypeRegistration createFeatureMetacardTypeRegistration(
       FeatureTypeType featureTypeType, String ftName, XmlSchema schema) {
     FeatureMetacardType ftMetacard =
-        new FeatureMetacardType(
+        new FeatureMetacardTypeImpl(
             schema,
             featureTypeType.getName(),
             nonQueryableProperties != null

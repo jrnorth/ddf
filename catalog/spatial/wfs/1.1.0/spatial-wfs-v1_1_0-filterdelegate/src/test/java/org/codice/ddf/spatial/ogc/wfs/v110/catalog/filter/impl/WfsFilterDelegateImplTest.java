@@ -11,7 +11,7 @@
  * License is distributed along with this program and can be found at
  * <http://www.gnu.org/licenses/lgpl.html>.
  */
-package org.codice.ddf.spatial.ogc.wfs.v110.catalog.source;
+package org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.impl;
 
 import static org.custommonkey.xmlunit.XMLAssert.assertXMLEqual;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -45,9 +45,10 @@ import net.opengis.filter.v_1_1_0.BinarySpatialOpType;
 import net.opengis.filter.v_1_1_0.DistanceBufferType;
 import net.opengis.filter.v_1_1_0.FilterType;
 import net.opengis.filter.v_1_1_0.UnaryLogicOpType;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureAttributeDescriptor;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants.SPATIAL_OPERATORS;
+import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.WfsFilterDelegate;
 import org.custommonkey.xmlunit.XMLUnit;
 import org.joda.time.DateTime;
 import org.junit.Before;
@@ -57,7 +58,7 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 @SuppressWarnings("FieldCanBeLocal")
-public class WfsFilterDelegateTest {
+public class WfsFilterDelegateImplTest {
 
   private static final JAXBContext JAXB_CONTEXT = initJaxbContext();
 
@@ -91,7 +92,7 @@ public class WfsFilterDelegateTest {
 
   private final Date endDate = getEndDate();
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WfsFilterDelegateTest.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(WfsFilterDelegateImplTest.class);
 
   private static final String FILTER_QNAME_LOCAL_PART = "Filter";
 
@@ -329,7 +330,7 @@ public class WfsFilterDelegateTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void testWFSFilterDelegateNullSchema() {
-    new WfsFilterDelegate(null, null);
+    new WfsFilterDelegateImpl(null, null);
   }
 
   @Test
@@ -411,7 +412,7 @@ public class WfsFilterDelegateTest {
   @Test(expected = IllegalArgumentException.class)
   public void testPropertyIsEqualToStringStringBooleanAnyTextNullMetacardType() {
 
-    WfsFilterDelegate delegate = new WfsFilterDelegate(null, SUPPORTED_GEO);
+    WfsFilterDelegate delegate = new WfsFilterDelegateImpl(null, SUPPORTED_GEO);
     delegate.propertyIsEqualTo(Metacard.ANY_TEXT, LITERAL, true);
   }
 
@@ -1305,7 +1306,7 @@ public class WfsFilterDelegateTest {
     whenGeom(MOCK_GEOM, MOCK_GEOM2, true, true);
 
     List<String> supportedGeo = Collections.singletonList(SPATIAL_OPERATORS.INTERSECTS.getValue());
-    WfsFilterDelegate delegate = new WfsFilterDelegate(featureMetacardType, supportedGeo);
+    WfsFilterDelegate delegate = new WfsFilterDelegateImpl(featureMetacardType, supportedGeo);
 
     FilterType filter = delegate.intersects(Metacard.ANY_GEO, POLYGON);
     assertThat(filter, notNullValue());
@@ -1329,7 +1330,7 @@ public class WfsFilterDelegateTest {
     whenGeom(MOCK_GEOM, MOCK_GEOM2, false, false);
 
     List<String> supportedGeo = Collections.singletonList(SPATIAL_OPERATORS.INTERSECTS.getValue());
-    WfsFilterDelegate delegate = new WfsFilterDelegate(featureMetacardType, supportedGeo);
+    WfsFilterDelegate delegate = new WfsFilterDelegateImpl(featureMetacardType, supportedGeo);
 
     FilterType filter = delegate.intersects(Metacard.ANY_GEO, POLYGON);
     assertThat(filter, nullValue());
@@ -1354,7 +1355,7 @@ public class WfsFilterDelegateTest {
     when(featureMetacardType.getGmlProperties()).thenReturn(gmlProps);
 
     WfsFilterDelegate delegate =
-        new WfsFilterDelegate(
+        new WfsFilterDelegateImpl(
             featureMetacardType,
             Collections.singletonList(SPATIAL_OPERATORS.INTERSECTS.getValue()));
     FilterType filter = delegate.intersects(Metacard.ANY_GEO, POLYGON);
@@ -1366,7 +1367,7 @@ public class WfsFilterDelegateTest {
   public void testGeoFilterNullMetacardType() {
     List<String> supportedGeo = Collections.singletonList(SPATIAL_OPERATORS.BEYOND.getValue());
 
-    WfsFilterDelegate delegate = new WfsFilterDelegate(null, supportedGeo);
+    WfsFilterDelegate delegate = new WfsFilterDelegateImpl(null, supportedGeo);
 
     delegate.beyond(Metacard.ANY_GEO, POLYGON, DISTANCE);
   }
@@ -1534,7 +1535,7 @@ public class WfsFilterDelegateTest {
   }
 
   private WfsFilterDelegate createDelegate() {
-    return new WfsFilterDelegate(featureMetacardType, SUPPORTED_GEO);
+    return new WfsFilterDelegateImpl(featureMetacardType, SUPPORTED_GEO);
   }
 
   private WfsFilterDelegate createIntegerDelegate() {
@@ -1579,7 +1580,7 @@ public class WfsFilterDelegateTest {
                 MOCK_GEOM, MOCK_GEOM, true, false, false, false, BasicTypes.STRING_TYPE));
 
     List<String> supportedGeo = Collections.singletonList(spatialOpType);
-    return new WfsFilterDelegate(featureMetacardType, supportedGeo);
+    return new WfsFilterDelegateImpl(featureMetacardType, supportedGeo);
   }
 
   private void whenTextualStringType() {

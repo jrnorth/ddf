@@ -38,7 +38,7 @@ import org.apache.ws.commons.schema.XmlSchemaElement;
 import org.apache.ws.commons.schema.XmlSchemaSimpleType;
 import org.apache.ws.commons.schema.constants.Constants;
 import org.codice.ddf.libs.geo.util.GeospatialUtil;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
+import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardTypeImpl;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.FeatureConverter;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.impl.EnhancedStaxDriver;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.impl.GmlGeometryConverter;
@@ -382,7 +382,7 @@ public class GenericFeatureConverterTest {
     XmlSchema schema = new XmlSchema();
     schema.getElements().putAll(buildElementMap(schema));
 
-    return new FeatureMetacardType(
+    return new FeatureMetacardTypeImpl(
         schema, new QName(FEATURE_TYPE), new ArrayList<String>(), Wfs20Constants.GML_3_2_NAMESPACE);
   }
 
@@ -433,7 +433,7 @@ public class GenericFeatureConverterTest {
     XmlSchema schema = new XmlSchema();
     schema.getElements().putAll(buildStatesElementMap(schema));
 
-    return new FeatureMetacardType(
+    return new FeatureMetacardTypeImpl(
         schema,
         new QName(STATES_FEATURE_TYPE),
         new ArrayList<String>(),

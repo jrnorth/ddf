@@ -26,8 +26,6 @@
         <module>spatial-wfs-v1_1_0-common</module>
         <module>spatial-wfs-v1_1_0-converter</module>
         <module>spatial-wfs-v1_1_0-source</module>
+        <module>spatial-wfs-v1_1_0-filterdelegate</module>
     </modules>
-    <properties>
-        <org.jvnet.ogc.wfs.1.1.0.version>2.6.1</org.jvnet.ogc.wfs.1.1.0.version>
-    </properties>
 </project>

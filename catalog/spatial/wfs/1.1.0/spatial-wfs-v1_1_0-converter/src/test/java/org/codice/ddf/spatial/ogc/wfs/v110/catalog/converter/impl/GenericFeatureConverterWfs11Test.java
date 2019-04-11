@@ -30,7 +30,7 @@ import javax.xml.namespace.QName;
 import org.apache.ws.commons.schema.XmlSchema;
 import org.apache.ws.commons.schema.XmlSchemaComplexType;
 import org.apache.ws.commons.schema.XmlSchemaElement;
-import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
+import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardTypeImpl;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.impl.GmlGeometryConverter;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants;
 import org.junit.Test;
@@ -126,7 +126,7 @@ public class GenericFeatureConverterWfs11Test {
     XmlSchema schema = new XmlSchema();
     schema.getElements().putAll(buildElementMap(schema));
 
-    return new FeatureMetacardType(
+    return new FeatureMetacardTypeImpl(
         schema, new QName("roads"), new ArrayList<>(), Wfs11Constants.GML_3_1_1_NAMESPACE);
   }
 
