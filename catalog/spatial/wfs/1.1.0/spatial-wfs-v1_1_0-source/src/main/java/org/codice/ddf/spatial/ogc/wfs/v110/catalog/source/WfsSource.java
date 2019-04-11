@@ -1204,4 +1204,8 @@ public class WfsSource extends AbstractWfsSource {
   public void setWfsMetacardTypeRegistry(WfsMetacardTypeRegistry wfsMetacardTypeRegistry) {
     this.wfsMetacardTypeRegistry = wfsMetacardTypeRegistry;
   }
+
+  public void setFilterDelegateFactory(final FilterDelegateFactory filterDelegateFactory) {
+    this.filterDelegateFactory = filterDelegateFactory;
+  }
 }

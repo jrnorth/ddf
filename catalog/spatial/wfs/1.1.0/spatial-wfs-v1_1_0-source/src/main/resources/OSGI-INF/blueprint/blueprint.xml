@@ -35,6 +35,8 @@
 
     <reference id="clientFactoryFactory" interface="org.codice.ddf.cxf.client.ClientFactoryFactory"/>
 
+    <reference id="filterDelegateFactory" interface="org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.FilterDelegateFactory"/>
+
     <cm:managed-service-factory
             id="org.codice.ddf.spatial.ogc.wfs.v110.catalog.source.WfsFederatedSource.id"
             factory-pid="Wfs_v110_Federated_Source"
@@ -63,6 +65,7 @@
             <property name="receiveTimeout" value="60000"/>
             <property name="coordinateOrder" value="LAT_LON"/>
             <property name="metacardTypeEnhancers" ref="metacardTypeEnhancerList"/>
+            <property name="filterDelegateFactory" ref="filterDelegateFactory"/>
             <property name="srsName" value="EPSG:4326"/>
 
             <cm:managed-properties persistent-id="" update-strategy="component-managed"
