@@ -60,6 +60,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.net.ssl.SSLHandshakeException;
 import javax.ws.rs.WebApplicationException;
@@ -230,7 +231,7 @@ public class WfsSource extends AbstractWfsSource {
 
   private WfsMetacardTypeRegistry wfsMetacardTypeRegistry;
 
-  private FilterDelegateFactory filterDelegateFactory;
+  private Supplier<FilterDelegateFactory> filterDelegateFactorySupplier;
 
   private static final String FEATURE_MEMBER_ELEMENT = "featureMember";
 
@@ -253,7 +254,7 @@ public class WfsSource extends AbstractWfsSource {
       EncryptionService encryptionService,
       WfsMetacardTypeRegistry wfsMetacardTypeRegistry,
       List<MetacardTypeEnhancer> metacardTypeEnhancers,
-      FilterDelegateFactory filterDelegateFactory)
+      Supplier<FilterDelegateFactory> filterDelegateFactorySupplier)
       throws SecurityServiceException {
 
     this.filterAdapter = filterAdapter;
@@ -263,7 +264,7 @@ public class WfsSource extends AbstractWfsSource {
     this.encryptionService = encryptionService;
     this.wfsMetacardTypeRegistry = wfsMetacardTypeRegistry;
     this.metacardTypeEnhancers = metacardTypeEnhancers;
-    this.filterDelegateFactory = filterDelegateFactory;
+    this.filterDelegateFactorySupplier = filterDelegateFactorySupplier;
     this.wfsMetadata =
         new WfsMetadataImpl<>(
             this::getId,
@@ -561,6 +562,15 @@ public class WfsSource extends AbstractWfsSource {
 
   private void buildFeatureFilters(List<FeatureTypeType> featureTypes, List<String> supportedGeo) {
     Wfs wfs = factory.getClient();
+
+    FilterDelegateFactory filterDelegateFactory = filterDelegateFactorySupplier.get();
+
+    if (filterDelegateFactory == null) {
+      LOGGER.warn(
+          "No FilterDelegateFactory is available so this source's features cannot be processed. "
+              + "Once the service is available, disable then re-enable this source.");
+      return;
+    }
 
     // Use local Map for metacardtype registrations and once they are populated with latest
     // MetacardTypes, then do actual registration
@@ -1205,7 +1215,8 @@ public class WfsSource extends AbstractWfsSource {
     this.wfsMetacardTypeRegistry = wfsMetacardTypeRegistry;
   }
 
-  public void setFilterDelegateFactory(final FilterDelegateFactory filterDelegateFactory) {
-    this.filterDelegateFactory = filterDelegateFactory;
+  public void setFilterDelegateFactorySupplier(
+      final Supplier<FilterDelegateFactory> filterDelegateFactorySupplier) {
+    this.filterDelegateFactorySupplier = filterDelegateFactorySupplier;
   }
 }

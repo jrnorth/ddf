@@ -370,6 +370,10 @@ public class WfsSourceTest {
 
     when(mockAvailabilityTask.isAvailable()).thenReturn(true);
 
+    FilterDelegateFactorySupplier filterDelegateFactorySupplier =
+        new FilterDelegateFactorySupplier(
+            Collections.singletonList(new FilterDelegateFactoryImpl()));
+
     source =
         new WfsSource(
             new GeotoolsFilterAdapterImpl(),
@@ -379,7 +383,7 @@ public class WfsSourceTest {
             encryptionService,
             mockWfsMetacardTypeRegistry,
             Collections.emptyList(),
-            new FilterDelegateFactoryImpl());
+            filterDelegateFactorySupplier);
   }
 
   @Test

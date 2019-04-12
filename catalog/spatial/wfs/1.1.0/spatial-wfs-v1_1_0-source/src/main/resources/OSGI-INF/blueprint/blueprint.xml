@@ -35,7 +35,16 @@
 
     <reference id="clientFactoryFactory" interface="org.codice.ddf.cxf.client.ClientFactoryFactory"/>
 
-    <reference id="filterDelegateFactory" interface="org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.FilterDelegateFactory"/>
+    <bean id="filterDelegateFactorySupplier"
+      class="org.codice.ddf.spatial.ogc.wfs.v110.catalog.source.FilterDelegateFactorySupplier">
+        <argument ref="sortedFilterDelegateFactories"/>
+    </bean>
+
+    <bean id="sortedFilterDelegateFactories" class="org.codice.ddf.platform.util.SortedServiceList"/>
+
+    <reference-list interface="org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.FilterDelegateFactory">
+      <reference-listener bind-method="bindPlugin" unbind-method="unbindPlugin" ref="sortedFilterDelegateFactories"/>
+    </reference-list>
 
     <cm:managed-service-factory
             id="org.codice.ddf.spatial.ogc.wfs.v110.catalog.source.WfsFederatedSource.id"
@@ -65,7 +74,7 @@
             <property name="receiveTimeout" value="60000"/>
             <property name="coordinateOrder" value="LAT_LON"/>
             <property name="metacardTypeEnhancers" ref="metacardTypeEnhancerList"/>
-            <property name="filterDelegateFactory" ref="filterDelegateFactory"/>
+            <property name="filterDelegateFactorySupplier" ref="filterDelegateFactorySupplier"/>
             <property name="srsName" value="EPSG:4326"/>
 
             <cm:managed-properties persistent-id="" update-strategy="component-managed"
