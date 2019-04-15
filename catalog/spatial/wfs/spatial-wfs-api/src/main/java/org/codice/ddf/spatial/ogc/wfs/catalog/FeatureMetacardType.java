@@ -18,7 +18,7 @@ import java.util.List;
 import javax.xml.namespace.QName;
 
 /**
- * <b> This code is experimental. While this interface is functional and tested, it may change or be
+ * <b>This code is experimental. While this interface is functional and tested, it may change or be
  * removed in a future version of the library.</b>
  *
  * <p>A {@link MetacardType} that represents a WFS FeatureType. An instance of this metacard type

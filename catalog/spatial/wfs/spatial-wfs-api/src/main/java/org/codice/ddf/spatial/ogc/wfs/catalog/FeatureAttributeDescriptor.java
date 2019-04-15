@@ -15,11 +15,22 @@ package org.codice.ddf.spatial.ogc.wfs.catalog;
 
 import ddf.catalog.data.AttributeDescriptor;
 
+/**
+ * <b>This code is experimental. While this interface is functional and tested, it may change or be
+ * removed in a future version of the library.</b>
+ *
+ * <p>An {@link AttributeDescriptor} that represents a property of a WFS FeatureType. An instance of
+ * this attribute descriptor corresponds to a single WFS feature property. {@link #getName()}
+ * returns 'ext.FeatureTypeName.FeaturePropertyName' where 'FeatureTypeName' is the name of the WFS
+ * feature and 'FeaturePropertyName' is the name of the feature property represented by this
+ * attribute descriptor, which is the name returned by {@link #getPropertyName()}. See {@link
+ * FeatureMetacardType} for more details.
+ */
 public interface FeatureAttributeDescriptor extends AttributeDescriptor {
   /**
-   * Returns the name of the actual property to be queried against at the remote WFS server.
+   * Returns the name of the WFS feature property.
    *
-   * @return the name of the property on the remote WFS server.
+   * @return the name of the WFS feature property.
    */
   String getPropertyName();
 }
