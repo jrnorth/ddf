@@ -22,5 +22,5 @@ import net.opengis.filter.v_1_1_0.FilterType;
  * removed in a future version of the library. </b>
  */
 public abstract class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
-  public abstract void setSupportedSpatialOperators(List<String> supportedSpatialOperators);
+  public abstract void setSupportedSpatialOperators(List<String> spatialOperators);
 }
