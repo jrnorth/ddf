@@ -19,20 +19,59 @@ import javax.xml.namespace.QName;
 
 /**
  * <b> This code is experimental. While this interface is functional and tested, it may change or be
- * removed in a future version of the library. </b>
+ * removed in a future version of the library.</b>
+ *
+ * <p>A {@link MetacardType} that represents a WFS FeatureType. An instance of this metacard type
+ * corresponds to a single WFS FeatureType and will contain attributes of the form
+ * 'ext.FeatureTypeName.FeaturePropertyName'. 'FeatureTypeName' is the local part of the {@link
+ * QName} returned by {@link #getFeatureType()}, and each 'FeaturePropertyName' is the name of one
+ * of the properties of the feature type.
  */
 public interface FeatureMetacardType extends MetacardType {
-  String getPrefix();
-
-  String getNamespaceURI();
-
+  /**
+   * Returns a {@link QName} that describes the WFS feature type.
+   *
+   * @return a {@link QName} that describes the WFS feature type.
+   */
   QName getFeatureType();
 
+  /**
+   * Returns the properties of the feature type whose base type is the XSD 'string' data type in the
+   * 'ext.FeatureTypeName.FeaturePropertyName' format as described in the class-level javadoc.
+   *
+   * @return the properties of the feature type whose base type is the XSD 'string' data type in the
+   *     'ext.FeatureTypeName.FeaturePropertyName' format as described in the class-level javadoc.
+   */
   List<String> getTextualProperties();
 
+  /**
+   * Returns the properties of the feature type whose type is any GML type that is not
+   * TimeInstantType or TimePeriodType in the 'ext.FeatureTypeName.FeaturePropertyName' format as
+   * described in the class-level javadoc. See {@link #getTemporalProperties()}.
+   *
+   * @return the properties of the feature type whose type is any GML type that is not
+   *     TimeInstantType or TimePeriodType in the 'ext.FeatureTypeName.FeaturePropertyName' format
+   *     as described in the class-level javadoc.
+   */
   List<String> getGmlProperties();
 
+  /**
+   * Returns the properties of the feature type whose type is the GML TimePeriodType or
+   * TimeInstantType in the 'ext.FeatureTypeName.FeaturePropertyName' format as described in the
+   * class-level javadoc. See {@link #getGmlProperties()}.
+   *
+   * @return the properties of the feature type whose type is the GML TimePeriodType or
+   *     TimeInstantType in the 'ext.FeatureTypeName.FeaturePropertyName' format as described in the
+   *     class-level javadoc.
+   */
   List<String> getTemporalProperties();
 
+  /**
+   * Returns all the properties of the feature type in the 'ext.FeatureTypeName.FeaturePropertyName'
+   * format as described in the class-level javadoc.
+   *
+   * @return all the properties of the feature type in the 'ext.FeatureTypeName.FeaturePropertyName'
+   *     format as described in the class-level javadoc.
+   */
   List<String> getProperties();
 }

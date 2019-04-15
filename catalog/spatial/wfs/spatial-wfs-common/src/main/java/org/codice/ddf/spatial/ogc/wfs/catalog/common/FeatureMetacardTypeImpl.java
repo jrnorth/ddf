@@ -167,16 +167,6 @@ public class FeatureMetacardTypeImpl extends MetacardTypeImpl implements Feature
   }
 
   @Override
-  public String getPrefix() {
-    return featureType.getPrefix();
-  }
-
-  @Override
-  public String getNamespaceURI() {
-    return featureType.getNamespaceURI();
-  }
-
-  @Override
   public QName getFeatureType() {
     return featureType;
   }

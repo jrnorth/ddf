@@ -237,7 +237,8 @@ public abstract class AbstractFeatureConverter implements FeatureConverter {
 
     try {
       if (metacardType instanceof FeatureMetacardType) {
-        URI namespaceUri = new URI(((FeatureMetacardType) metacardType).getNamespaceURI());
+        URI namespaceUri =
+            new URI(((FeatureMetacardType) metacardType).getFeatureType().getNamespaceURI());
         mc.setTargetNamespace(namespaceUri);
       }
     } catch (URISyntaxException e) {
