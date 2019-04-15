@@ -375,7 +375,7 @@ public class WfsSource extends AbstractWfsSource {
           geoFilters.add(spatialFilter);
         }
         for (WfsFilterDelegate delegate : featureTypeFilters.values()) {
-          delegate.setSupportedGeoFilters(geoFilters);
+          delegate.setSupportedSpatialOperators(geoFilters);
         }
       }
     }

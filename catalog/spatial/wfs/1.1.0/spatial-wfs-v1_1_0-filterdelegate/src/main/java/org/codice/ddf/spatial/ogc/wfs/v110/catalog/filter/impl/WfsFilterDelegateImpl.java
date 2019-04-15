@@ -124,12 +124,9 @@ public class WfsFilterDelegateImpl extends WfsFilterDelegate {
   }
 
   @Override
-  public void setSupportedGeoFilters(List<String> supportedGeos) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "Updating supportedGeos to: {}", supportedGeos.stream().collect(Collectors.joining(",")));
-    }
-    this.supportedGeo = supportedGeos;
+  public void setSupportedSpatialOperators(List<String> spatialOperators) {
+    LOGGER.debug("Updating supportedGeos to: {}", spatialOperators);
+    this.supportedGeo = spatialOperators;
   }
 
   @Override
