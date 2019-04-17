@@ -56,12 +56,12 @@ public interface FeatureMetacardType extends MetacardType {
   List<String> getGmlProperties();
 
   /**
-   * Returns the properties of the feature type whose type is the GML TimePeriodType or
-   * TimeInstantType in the 'ext.FeatureTypeName.FeaturePropertyName' format as described in the
+   * Returns the properties of the feature type whose type is the GML TimeInstantType or
+   * TimePeriodType in the 'ext.FeatureTypeName.FeaturePropertyName' format as described in the
    * class-level javadoc. See {@link #getGmlProperties()}.
    *
-   * @return the properties of the feature type whose type is the GML TimePeriodType or
-   *     TimeInstantType in the 'ext.FeatureTypeName.FeaturePropertyName' format as described in the
+   * @return the properties of the feature type whose type is the GML TimeInstantType or
+   *     TimePeriodType in the 'ext.FeatureTypeName.FeaturePropertyName' format as described in the
    *     class-level javadoc.
    */
   List<String> getTemporalProperties();
