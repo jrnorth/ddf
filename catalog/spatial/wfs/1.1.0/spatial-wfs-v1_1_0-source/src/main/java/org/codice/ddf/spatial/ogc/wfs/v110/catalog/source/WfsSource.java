@@ -407,7 +407,6 @@ public class WfsSource extends AbstractWfsSource {
               final String key = currentProperty.getKey();
               final Object currentValue = currentProperty.getValue();
               final Object newValue = config.get(key);
-              LOGGER.info("{}: old={}, new={}", key, currentValue, newValue);
               return ObjectUtils.notEqual(currentValue, newValue);
             });
   }
