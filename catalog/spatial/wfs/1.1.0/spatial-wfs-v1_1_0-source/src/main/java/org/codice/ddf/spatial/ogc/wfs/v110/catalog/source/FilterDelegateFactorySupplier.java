@@ -14,20 +14,49 @@
 package org.codice.ddf.spatial.ogc.wfs.v110.catalog.source;
 
 import java.util.List;
-import java.util.function.Supplier;
-import javax.annotation.Nullable;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.FilterDelegateFactory;
+import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.WfsFilterDelegate;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class FilterDelegateFactorySupplier implements Supplier<FilterDelegateFactory> {
-  private final List<FilterDelegateFactory> filterDelegateFactories;
+public class FilterDelegateFactorySupplier {
+  private static final Logger LOGGER = LoggerFactory.getLogger(FilterDelegateFactorySupplier.class);
 
-  public FilterDelegateFactorySupplier(final List<FilterDelegateFactory> filterDelegateFactories) {
+  private final BundleContext bundleContext;
+
+  private final List<ServiceReference<FilterDelegateFactory>> filterDelegateFactories;
+
+  public FilterDelegateFactorySupplier(
+      final BundleContext bundleContext,
+      final List<ServiceReference<FilterDelegateFactory>> filterDelegateFactories) {
+    this.bundleContext = bundleContext;
     this.filterDelegateFactories = filterDelegateFactories;
   }
 
-  @Nullable
-  @Override
-  public FilterDelegateFactory get() {
-    return filterDelegateFactories.isEmpty() ? null : filterDelegateFactories.get(0);
+  public FilterDelegateFactory get(final String id) {
+    LOGGER.trace("Finding the FilterDelegateFactory with ID '{}'.", id);
+    return filterDelegateFactories
+        .stream()
+        .filter(factory -> factory.getProperty("id").equals(id))
+        .findFirst()
+        .map(bundleContext::getService)
+        .orElseGet(
+            () -> {
+              LOGGER.debug(
+                  "Could not find the FilterDelegateFactory with ID '{}'. Returning the default factory.",
+                  id);
+              return new DefaultFilterDelegateFactory();
+            });
+  }
+
+  private class DefaultFilterDelegateFactory implements FilterDelegateFactory {
+    @Override
+    public WfsFilterDelegate createFilterDelegate(
+        final FeatureMetacardType featureMetacardType, final List<String> spatialOperators) {
+      return new WfsFilterDelegateImpl(featureMetacardType, spatialOperators);
+    }
   }
 }

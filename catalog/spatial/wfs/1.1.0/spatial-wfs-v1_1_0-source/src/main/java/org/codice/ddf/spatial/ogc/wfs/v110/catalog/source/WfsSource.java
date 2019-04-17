@@ -53,14 +53,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.net.ssl.SSLHandshakeException;
 import javax.ws.rs.WebApplicationException;
@@ -79,6 +77,7 @@ import net.opengis.wfs.v_1_1_0.QueryType;
 import net.opengis.wfs.v_1_1_0.WFSCapabilitiesType;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.cxf.jaxrs.provider.JAXBElementProvider;
 import org.apache.ws.commons.schema.XmlSchema;
 import org.codice.ddf.configuration.DictionaryMap;
@@ -167,6 +166,8 @@ public class WfsSource extends AbstractWfsSource {
 
   private static final String SRS_NAME_KEY = "srsName";
 
+  private static final String FILTER_DELEGATE_FACTORY_ID_KEY = "filterDelegateFactoryId";
+
   private static final Properties DESCRIBABLE_PROPERTIES = new Properties();
 
   private static final String SOURCE_MSG = " Source '";
@@ -231,7 +232,9 @@ public class WfsSource extends AbstractWfsSource {
 
   private WfsMetacardTypeRegistry wfsMetacardTypeRegistry;
 
-  private Supplier<FilterDelegateFactory> filterDelegateFactorySupplier;
+  private FilterDelegateFactorySupplier filterDelegateFactorySupplier;
+
+  private String filterDelegateFactoryId;
 
   private static final String FEATURE_MEMBER_ELEMENT = "featureMember";
 
@@ -254,7 +257,7 @@ public class WfsSource extends AbstractWfsSource {
       EncryptionService encryptionService,
       WfsMetacardTypeRegistry wfsMetacardTypeRegistry,
       List<MetacardTypeEnhancer> metacardTypeEnhancers,
-      Supplier<FilterDelegateFactory> filterDelegateFactorySupplier)
+      FilterDelegateFactorySupplier filterDelegateFactorySupplier)
       throws SecurityServiceException {
 
     this.filterAdapter = filterAdapter;
@@ -326,7 +329,7 @@ public class WfsSource extends AbstractWfsSource {
    */
   public void refresh(Map<String, Object> configuration) throws SecurityServiceException {
 
-    LOGGER.trace("WfsSource {}: Refresh called", getId());
+    LOGGER.trace("WfsSource {}: Refresh called with {}", getId(), configuration);
     String url = (String) configuration.get(WFSURL_KEY);
     String coordOrder = (String) configuration.get(COORDINATE_ORDER_KEY);
     String passwordValue = (String) configuration.get(PASSWORD_KEY);
@@ -347,21 +350,18 @@ public class WfsSource extends AbstractWfsSource {
 
     Integer newPollInterval = (Integer) configuration.get(POLL_INTERVAL_KEY);
 
-    if (hasWfsUrlChanged(url)
-        || hasDisableCnCheckChanged(disableCnCheckProp)
-        || hasUsernameChanged(usernameValue)
-        || hasPasswordChanged(passwordValue)
-        || hasAllowRedirectsChanged(allowRedirects)
-        || hasConnectionTimeoutChanged(connectionTimeout)
-        || hasReceiveTimeoutChanged(receiveTimeout)) {
-      this.wfsUrl = url;
-      this.password = encryptionService.decryptValue(passwordValue);
-      this.username = usernameValue;
-      this.disableCnCheck = disableCnCheckProp;
-      this.coordinateOrder = coordOrder;
-      this.allowRedirects = allowRedirects;
+    String newFilterDelegateFactoryId = (String) configuration.get(FILTER_DELEGATE_FACTORY_ID_KEY);
+
+    if (shouldReconfigureWfsFeatures(configuration)) {
+      setWfsUrl(url);
+      setPassword(passwordValue);
+      setUsername(usernameValue);
+      setDisableCnCheck(disableCnCheckProp);
+      setCoordinateOrder(coordOrder);
+      setAllowRedirects(allowRedirects);
       setConnectionTimeout(connectionTimeout);
       setReceiveTimeout(receiveTimeout);
+      setFilterDelegateFactoryId(newFilterDelegateFactoryId);
       createClientFactory();
       configureWfsFeatures();
     } else {
@@ -386,6 +386,30 @@ public class WfsSource extends AbstractWfsSource {
       availabilityPollFuture.cancel(true);
       setupAvailabilityPoll();
     }
+  }
+
+  private boolean shouldReconfigureWfsFeatures(final Map<String, Object> config) {
+    final Map<String, Object> currentProperties = new HashMap<>();
+    currentProperties.put(WFSURL_KEY, wfsUrl);
+    currentProperties.put(DISABLE_CN_CHECK_KEY, disableCnCheck);
+    currentProperties.put(ALLOW_REDIRECTS_KEY, allowRedirects);
+    currentProperties.put(USERNAME_KEY, username);
+    currentProperties.put(PASSWORD_KEY, password);
+    currentProperties.put(CONNECTION_TIMEOUT_KEY, connectionTimeout);
+    currentProperties.put(RECEIVE_TIMEOUT_KEY, receiveTimeout);
+    currentProperties.put(FILTER_DELEGATE_FACTORY_ID_KEY, filterDelegateFactoryId);
+
+    return currentProperties
+        .entrySet()
+        .stream()
+        .anyMatch(
+            currentProperty -> {
+              final String key = currentProperty.getKey();
+              final Object currentValue = currentProperty.getValue();
+              final Object newValue = config.get(key);
+              LOGGER.info("{}: old={}, new={}", key, currentValue, newValue);
+              return ObjectUtils.notEqual(currentValue, newValue);
+            });
   }
 
   public void setAllowRedirects(Boolean allowRedirects) {
@@ -563,14 +587,8 @@ public class WfsSource extends AbstractWfsSource {
   private void buildFeatureFilters(List<FeatureTypeType> featureTypes, List<String> supportedGeo) {
     Wfs wfs = factory.getClient();
 
-    FilterDelegateFactory filterDelegateFactory = filterDelegateFactorySupplier.get();
-
-    if (filterDelegateFactory == null) {
-      LOGGER.warn(
-          "No FilterDelegateFactory is available so this source's features cannot be processed. "
-              + "Once the service is available, disable then re-enable this source.");
-      return;
-    }
+    FilterDelegateFactory filterDelegateFactory =
+        filterDelegateFactorySupplier.get(filterDelegateFactoryId);
 
     // Use local Map for metacardtype registrations and once they are populated with latest
     // MetacardTypes, then do actual registration
@@ -1126,36 +1144,8 @@ public class WfsSource extends AbstractWfsSource {
     this.coordinateOrder = coordinateOrder;
   }
 
-  private boolean hasWfsUrlChanged(String wfsUrl) {
-    return !StringUtils.equals(this.wfsUrl, wfsUrl);
-  }
-
-  private boolean hasUsernameChanged(String usernameValue) {
-    return !StringUtils.equals(this.username, usernameValue);
-  }
-
-  private boolean hasPasswordChanged(String passwordValue) {
-    return !StringUtils.equals(this.password, passwordValue);
-  }
-
-  private boolean hasAllowRedirectsChanged(boolean allowRedirects) {
-    return this.allowRedirects != allowRedirects;
-  }
-
   private boolean hasSourceIdChanged(String id) {
     return !StringUtils.equals(getId(), id);
-  }
-
-  private boolean hasDisableCnCheckChanged(Boolean disableCnCheck) {
-    return this.disableCnCheck != disableCnCheck;
-  }
-
-  private boolean hasConnectionTimeoutChanged(Integer connectionTimeout) {
-    return !Objects.equals(this.connectionTimeout, connectionTimeout);
-  }
-
-  private boolean hasReceiveTimeoutChanged(Integer receiveTimeout) {
-    return !Objects.equals(this.receiveTimeout, receiveTimeout);
   }
 
   @Override
@@ -1216,7 +1206,11 @@ public class WfsSource extends AbstractWfsSource {
   }
 
   public void setFilterDelegateFactorySupplier(
-      final Supplier<FilterDelegateFactory> filterDelegateFactorySupplier) {
+      final FilterDelegateFactorySupplier filterDelegateFactorySupplier) {
     this.filterDelegateFactorySupplier = filterDelegateFactorySupplier;
+  }
+
+  public void setFilterDelegateFactoryId(final String filterDelegateFactoryId) {
+    this.filterDelegateFactoryId = filterDelegateFactoryId;
   }
 }

@@ -22,14 +22,15 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyListOf;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isA;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -82,6 +83,7 @@ import org.apache.ws.commons.schema.XmlSchemaCollection;
 import org.codice.ddf.cxf.client.ClientFactoryFactory;
 import org.codice.ddf.cxf.client.SecureCxfClientFactory;
 import org.codice.ddf.spatial.ogc.catalog.common.AvailabilityTask;
+import org.codice.ddf.spatial.ogc.wfs.catalog.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsException;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.WfsFeatureCollection;
 import org.codice.ddf.spatial.ogc.wfs.catalog.metacardtype.registry.WfsMetacardTypeRegistry;
@@ -92,7 +94,6 @@ import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.GetCapabilitiesRequest
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.FilterDelegateFactory;
-import org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.impl.FilterDelegateFactoryImpl;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
@@ -242,8 +243,7 @@ public class WfsSourceTest {
       final List<String> supportedGeos,
       final String srsName,
       final Integer numFeatures,
-      final Integer numResults,
-      final FilterDelegateFactory filterDelegateFactory)
+      final Integer numResults)
       throws WfsException, SecurityServiceException {
 
     SecureCxfClientFactory mockFactory = mock(SecureCxfClientFactory.class);
@@ -376,7 +376,18 @@ public class WfsSourceTest {
 
     when(mockAvailabilityTask.isAvailable()).thenReturn(true);
 
-    doReturn(filterDelegateFactory).when(mockFilterDelegateFactorySupplier).get();
+    final FilterDelegateFactory mockFilterDelegateFactory = mock(FilterDelegateFactory.class);
+    doAnswer(
+            invocationOnMock -> {
+              final FeatureMetacardType featureMetacardType =
+                  invocationOnMock.getArgumentAt(0, FeatureMetacardType.class);
+              final List<String> spatialOperators = invocationOnMock.getArgumentAt(1, List.class);
+              return new WfsFilterDelegateImpl(featureMetacardType, spatialOperators);
+            })
+        .when(mockFilterDelegateFactory)
+        .createFilterDelegate(any(FeatureMetacardType.class), anyListOf(String.class));
+
+    doReturn(mockFilterDelegateFactory).when(mockFilterDelegateFactorySupplier).get(anyString());
 
     source =
         new WfsSource(
@@ -392,14 +403,14 @@ public class WfsSourceTest {
 
   @Test
   public void testAvailability() throws WfsException, SecurityServiceException {
-    setUp(NO_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(NO_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
     assertThat(source.isAvailable(), is(true));
   }
 
   @Test(expected = UnsupportedQueryException.class)
   public void testQueryEmptyQueryList()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(NO_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(NO_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
     QueryImpl propertyIsLikeQuery =
         new QueryImpl(builder.attribute(Metacard.ANY_TEXT).is().like().text(LITERAL));
     propertyIsLikeQuery.setPageSize(MAX_FEATURES);
@@ -409,7 +420,7 @@ public class WfsSourceTest {
   @Test
   public void testPropertyIsLikeQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
     QueryImpl propertyIsLikeQuery =
         new QueryImpl(builder.attribute(Metacard.ANY_TEXT).is().like().text("literal"));
     propertyIsLikeQuery.setPageSize(MAX_FEATURES);
@@ -432,7 +443,7 @@ public class WfsSourceTest {
   @Test
   public void testTwoPropertyQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(TWO_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(TWO_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
     QueryImpl propertyIsLikeQuery =
         new QueryImpl(builder.attribute(Metacard.ANY_TEXT).is().like().text(LITERAL));
     propertyIsLikeQuery.setPageSize(MAX_FEATURES);
@@ -454,7 +465,7 @@ public class WfsSourceTest {
   @Test
   public void testContentTypeQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
     Filter propertyIsLikeFilter = builder.attribute(Metacard.ANY_TEXT).is().like().text(LITERAL);
     Filter contentTypeFilter =
         builder
@@ -483,7 +494,7 @@ public class WfsSourceTest {
   @Test
   public void testContentTypeAndNoPropertyQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(NO_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(NO_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
 
     Filter contentTypeFilter =
         builder
@@ -508,7 +519,7 @@ public class WfsSourceTest {
   @Test
   public void testTwoContentTypeAndNoPropertyQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(NO_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(NO_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null);
 
     Filter contentTypeFilter =
         builder
@@ -541,7 +552,7 @@ public class WfsSourceTest {
   @Test
   public void testAndQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
     Filter propertyIsLikeFilter = builder.attribute(Metacard.ANY_TEXT).is().like().text(LITERAL);
     Filter contentTypeFilter =
         builder.attribute(Metacard.ANY_TEXT).is().like().text(sampleFeatures.get(0).getLocalPart());
@@ -566,12 +577,7 @@ public class WfsSourceTest {
   public void testIntersectQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
     setUp(
-        ONE_GML_PROPERTY_SCHEMA,
-        Arrays.asList("Intersects", "BBOX"),
-        SRS_NAME,
-        ONE_FEATURE,
-        null,
-        new FilterDelegateFactoryImpl());
+        ONE_GML_PROPERTY_SCHEMA, Arrays.asList("Intersects", "BBOX"), SRS_NAME, ONE_FEATURE, null);
     Filter intersectFilter =
         builder.attribute(Metacard.ANY_GEO).is().intersecting().wkt(POLYGON_WKT);
     QueryImpl intersectQuery = new QueryImpl(intersectFilter);
@@ -594,12 +600,7 @@ public class WfsSourceTest {
   public void testTwoIntersectQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
     setUp(
-        TWO_GML_PROPERTY_SCHEMA,
-        Arrays.asList("Intersects", "BBOX"),
-        SRS_NAME,
-        ONE_FEATURE,
-        null,
-        new FilterDelegateFactoryImpl());
+        TWO_GML_PROPERTY_SCHEMA, Arrays.asList("Intersects", "BBOX"), SRS_NAME, ONE_FEATURE, null);
     Filter intersectFilter =
         builder.attribute(Metacard.ANY_GEO).is().intersecting().wkt(POLYGON_WKT);
     QueryImpl intersectQuery = new QueryImpl(intersectFilter);
@@ -623,13 +624,7 @@ public class WfsSourceTest {
   @Test
   public void testBboxQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(
-        ONE_GML_PROPERTY_SCHEMA,
-        Collections.singletonList("BBOX"),
-        SRS_NAME,
-        ONE_FEATURE,
-        null,
-        new FilterDelegateFactoryImpl());
+    setUp(ONE_GML_PROPERTY_SCHEMA, Collections.singletonList("BBOX"), SRS_NAME, ONE_FEATURE, null);
     Filter intersectFilter =
         builder.attribute(Metacard.ANY_GEO).is().intersecting().wkt(POLYGON_WKT);
     QueryImpl intersectQuery = new QueryImpl(intersectFilter);
@@ -651,13 +646,7 @@ public class WfsSourceTest {
   @Test
   public void testGmlImport()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(
-        GML_IMPORT_SCHEMA,
-        Collections.singletonList("BBOX"),
-        SRS_NAME,
-        ONE_FEATURE,
-        null,
-        new FilterDelegateFactoryImpl());
+    setUp(GML_IMPORT_SCHEMA, Collections.singletonList("BBOX"), SRS_NAME, ONE_FEATURE, null);
     Filter intersectFilter =
         builder.attribute(Metacard.ANY_GEO).is().intersecting().wkt(POLYGON_WKT);
     QueryImpl intersectQuery = new QueryImpl(intersectFilter);
@@ -679,7 +668,7 @@ public class WfsSourceTest {
   @Test(expected = UnsupportedQueryException.class)
   public void testNoGeoAttribuesQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(NO_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(NO_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
     Filter intersectFilter =
         builder.attribute(Metacard.ANY_GEO).is().intersecting().wkt(POLYGON_WKT);
     QueryImpl intersectQuery = new QueryImpl(intersectFilter);
@@ -691,8 +680,7 @@ public class WfsSourceTest {
   @Test
   public void testTwoFeatureTypesQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(
-        ONE_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null);
     QueryImpl propertyIsLikeQuery =
         new QueryImpl(builder.attribute(Metacard.ANY_TEXT).is().like().text(LITERAL));
     propertyIsLikeQuery.setPageSize(MAX_FEATURES);
@@ -729,8 +717,7 @@ public class WfsSourceTest {
     int pageSize = 4;
     int startIndex = 1;
 
-    setUp(
-        ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null);
 
     SourceResponse response = executeQuery(startIndex, pageSize);
     List<Result> results = response.getResults();
@@ -754,8 +741,7 @@ public class WfsSourceTest {
     int pageSize = 4;
     int startIndex = 2;
 
-    setUp(
-        ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null);
 
     SourceResponse response = executeQuery(startIndex, pageSize);
     List<Result> results = response.getResults();
@@ -780,7 +766,7 @@ public class WfsSourceTest {
     int startIndex = 3;
     int numFeatures = 2;
 
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, numFeatures, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, numFeatures, null);
 
     SourceResponse response = executeQuery(startIndex, pageSize);
     List<Result> results = response.getResults();
@@ -801,7 +787,7 @@ public class WfsSourceTest {
     int startIndex = 1;
     int numFeatures = 1;
 
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, numFeatures, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, numFeatures, null);
 
     SourceResponse response = executeQuery(startIndex, pageSize);
     List<Result> results = response.getResults();
@@ -823,8 +809,7 @@ public class WfsSourceTest {
     int pageSize = 20;
     int startIndex = 1;
 
-    setUp(
-        ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null);
 
     SourceResponse response = executeQuery(startIndex, pageSize);
     List<Result> results = response.getResults();
@@ -849,8 +834,7 @@ public class WfsSourceTest {
     int pageSize = 20;
     int startIndex = 2;
 
-    setUp(
-        ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null);
 
     SourceResponse response = executeQuery(startIndex, pageSize);
     List<Result> results = response.getResults();
@@ -874,8 +858,7 @@ public class WfsSourceTest {
     int pageSize = 4;
     int startIndex = -1;
 
-    setUp(
-        ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null);
 
     executeQuery(startIndex, pageSize);
   }
@@ -891,8 +874,7 @@ public class WfsSourceTest {
     int pageSize = 4;
     int startIndex = 0;
 
-    setUp(
-        ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, MAX_FEATURES, null);
 
     executeQuery(startIndex, pageSize);
   }
@@ -910,7 +892,7 @@ public class WfsSourceTest {
     int startIndex = 1;
     int numResults = WfsSource.WFS_MAX_FEATURES_RETURNED + 10;
 
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 1, numResults, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 1, numResults);
 
     SourceResponse response = executeQuery(startIndex, pageSize);
     List<Result> results = response.getResults();
@@ -932,7 +914,7 @@ public class WfsSourceTest {
     int startIndex = 1;
     int numResults = WfsSource.WFS_MAX_FEATURES_RETURNED + 10;
 
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 1, numResults, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 1, numResults);
 
     SourceResponse response = executeQuery(startIndex, pageSize);
     List<Result> results = response.getResults();
@@ -955,7 +937,7 @@ public class WfsSourceTest {
     int startIndex = 1;
     int numResults = WfsSource.WFS_MAX_FEATURES_RETURNED + 10;
 
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 1, numResults, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 1, numResults);
 
     SourceResponse response = executeQuery(startIndex, pageSize);
     List<Result> results = response.getResults();
@@ -966,7 +948,7 @@ public class WfsSourceTest {
 
   @Test
   public void testGetContentTypes() throws WfsException, SecurityServiceException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 2, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 2, null);
     Set<ContentType> contentTypes = source.getContentTypes();
     assertThat(contentTypes.size(), is(TWO_FEATURES));
     for (ContentType contentType : contentTypes) {
@@ -980,8 +962,7 @@ public class WfsSourceTest {
   @Test
   public void testQueryTwoFeaturesOneInvalid()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(
-        TWO_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(TWO_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null);
     Filter orderPersonFilter =
         builder
             .attribute(EXT_PREFIX + sampleFeatures.get(0) + "." + ORDER_PERSON)
@@ -1042,8 +1023,7 @@ public class WfsSourceTest {
   @Test
   public void testQueryTwoFeaturesWithMixedPropertyNames()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(
-        TWO_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(TWO_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null);
     Filter orderPersonFilter =
         builder
             .attribute(EXT_PREFIX + sampleFeatures.get(0).getLocalPart() + "." + ORDER_PERSON)
@@ -1108,7 +1088,7 @@ public class WfsSourceTest {
   @Test
   public void testIDQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(NO_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(NO_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null);
 
     QueryImpl idQuery = new QueryImpl(builder.attribute(Core.ID).is().text(ORDER_PERSON));
 
@@ -1129,7 +1109,7 @@ public class WfsSourceTest {
   @Test
   public void testTwoIDQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(NO_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(NO_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null);
 
     Filter idFilter1 = builder.attribute(Core.ID).is().text(ORDER_PERSON);
     Filter idFilter2 = builder.attribute(Core.ID).is().text(ORDER_DOG);
@@ -1169,8 +1149,7 @@ public class WfsSourceTest {
   @Test(expected = UnsupportedQueryException.class)
   public void testOneIDOnePropertyQuery()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(
-        ONE_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null);
 
     Filter idFilter = builder.attribute(Core.ID).is().text(ORDER_PERSON);
     Filter propertyIsLikeFilter = builder.attribute(Metacard.ANY_TEXT).is().like().text(LITERAL);
@@ -1185,7 +1164,7 @@ public class WfsSourceTest {
   @Test(expected = UnsupportedQueryException.class)
   public void testNoFeatures()
       throws UnsupportedQueryException, WfsException, SecurityServiceException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 0, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, 0, null);
     QueryImpl propertyIsLikeQuery =
         new QueryImpl(builder.attribute(Metacard.ANY_TEXT).is().like().text("literal"));
     propertyIsLikeQuery.setPageSize(MAX_FEATURES);
@@ -1195,7 +1174,7 @@ public class WfsSourceTest {
 
   @Test
   public void testTimeoutConfiguration() throws WfsException, SecurityServiceException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
 
     source.setConnectionTimeout(10000);
     source.setReceiveTimeout(10000);
@@ -1207,7 +1186,7 @@ public class WfsSourceTest {
   @Test
   public void testClientFactoryIsCreatedCorrectlyWhenUsernameAndPasswordAreConfigured()
       throws SecurityServiceException, WfsException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
 
     final String wfsUrl = "http://localhost/wfs";
     final String username = "test_user";
@@ -1251,7 +1230,7 @@ public class WfsSourceTest {
   @Test
   public void testClientFactoryIsCreatedCorrectlyWhenCertAliasAndKeystorePathAreConfigured()
       throws SecurityServiceException, WfsException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
 
     final String wfsUrl = "http://localhost/wfs";
     final Boolean disableCnCheck = false;
@@ -1296,7 +1275,7 @@ public class WfsSourceTest {
   @Test
   public void testClientFactoryIsCreatedCorrectlyWhenNoAuthIsConfigured()
       throws SecurityServiceException, WfsException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
 
     final String wfsUrl = "http://localhost/wfs";
     final Boolean disableCnCheck = false;
@@ -1332,7 +1311,7 @@ public class WfsSourceTest {
   @Test
   public void testNoWfsClientRefreshWhenConfigurationDoesNotChange()
       throws SecurityServiceException, WfsException {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, new FilterDelegateFactoryImpl());
+    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);
 
     verify(mockClientFactoryFactory)
         .getSecureCxfClientFactory(
@@ -1376,14 +1355,6 @@ public class WfsSourceTest {
 
     verify(mockWfs).getCapabilities(any(GetCapabilitiesRequest.class));
     verify(mockWfs).describeFeatureType(any(DescribeFeatureTypeRequest.class));
-  }
-
-  @Test
-  public void testNoFeatureMetacardTypesAreRegisteredWhenNoFilterDelegateFactoriesAreAvailable()
-      throws Exception {
-    setUp(ONE_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null, null);
-
-    verifyZeroInteractions(mockWfsMetacardTypeRegistry);
   }
 
   private SourceResponse executeQuery(int startIndex, int pageSize)

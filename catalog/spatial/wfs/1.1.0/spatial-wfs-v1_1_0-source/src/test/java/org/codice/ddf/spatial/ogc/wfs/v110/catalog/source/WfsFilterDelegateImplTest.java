@@ -11,7 +11,7 @@
  * License is distributed along with this program and can be found at
  * <http://www.gnu.org/licenses/lgpl.html>.
  */
-package org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.impl;
+package org.codice.ddf.spatial.ogc.wfs.v110.catalog.source;
 
 import static org.custommonkey.xmlunit.XMLAssert.assertXMLEqual;
 import static org.hamcrest.CoreMatchers.instanceOf;

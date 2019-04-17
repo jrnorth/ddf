@@ -37,14 +37,12 @@
 
     <bean id="filterDelegateFactorySupplier"
       class="org.codice.ddf.spatial.ogc.wfs.v110.catalog.source.FilterDelegateFactorySupplier">
-        <argument ref="sortedFilterDelegateFactories"/>
+        <argument ref="blueprintBundleContext"/>
+        <argument ref="filterDelegateFactories"/>
     </bean>
 
-    <bean id="sortedFilterDelegateFactories" class="org.codice.ddf.platform.util.SortedServiceList"/>
-
-    <reference-list interface="org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.FilterDelegateFactory">
-      <reference-listener bind-method="bindPlugin" unbind-method="unbindPlugin" ref="sortedFilterDelegateFactories"/>
-    </reference-list>
+    <reference-list id="filterDelegateFactories" member-type="service-reference"
+      interface="org.codice.ddf.spatial.ogc.wfs.v110.catalog.filter.FilterDelegateFactory"/>
 
     <cm:managed-service-factory
             id="org.codice.ddf.spatial.ogc.wfs.v110.catalog.source.WfsFederatedSource.id"
