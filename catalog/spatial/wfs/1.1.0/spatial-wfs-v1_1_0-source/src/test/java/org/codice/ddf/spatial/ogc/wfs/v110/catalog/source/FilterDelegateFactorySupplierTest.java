@@ -58,7 +58,7 @@ public class FilterDelegateFactorySupplierTest {
 
   @Test
   public void returnsDefaultFactoryWhenNoFactoryMatchesId() {
-    final FilterDelegateFactory factory = supplier.get("3");
+    final FilterDelegateFactory factory = supplier.get(null);
     assertThat(factory, is(notNullValue()));
     assertThat(factory, not(is(mockFactory1)));
     assertThat(factory, not(is(mockFactory2)));
