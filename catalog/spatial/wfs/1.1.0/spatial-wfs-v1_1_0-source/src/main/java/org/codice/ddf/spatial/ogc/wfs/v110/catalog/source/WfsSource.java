@@ -115,8 +115,6 @@ public class WfsSource extends AbstractWfsSource {
 
   static final int WFS_MAX_FEATURES_RETURNED = 1000;
 
-  static final int WFS_QUERY_PAGE_SIZE_MULTIPLIER = 3;
-
   private static final Logger LOGGER = LoggerFactory.getLogger(WfsSource.class);
 
   private static final String DESCRIBABLE_PROPERTIES_FILE = "/describable.properties";
@@ -666,9 +664,7 @@ public class WfsSource extends AbstractWfsSource {
 
     int pageNumber = query.getStartIndex() / origPageSize + 1;
 
-    int modifiedPageSize =
-        Math.min(
-            pageNumber * origPageSize * WFS_QUERY_PAGE_SIZE_MULTIPLIER, WFS_MAX_FEATURES_RETURNED);
+    int modifiedPageSize = Math.min(pageNumber * origPageSize, WFS_MAX_FEATURES_RETURNED);
     LOGGER.debug("WFS Source {}: modified page size = {}", getId(), modifiedPageSize);
     modifiedQuery.setPageSize(modifiedPageSize);
 

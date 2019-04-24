@@ -1298,10 +1298,7 @@ public class WfsSourceTest {
   }
 
   private void assertMaxFeatures(GetFeatureType getFeatureType, Query inQuery) {
-    int pageSize =
-        (inQuery.getStartIndex() / MAX_FEATURES + 1)
-            * inQuery.getPageSize()
-            * WfsSource.WFS_QUERY_PAGE_SIZE_MULTIPLIER;
+    int pageSize = (inQuery.getStartIndex() / MAX_FEATURES + 1) * inQuery.getPageSize();
     assertThat(getFeatureType.getMaxFeatures(), is(BigInteger.valueOf(pageSize)));
   }
 
