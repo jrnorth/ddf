@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema targetNamespace='http://stategeothermaldata.org/uri-gin/aasg/xmlschema/welllog/0.8'
+  elementFormDefault='qualified'
+  xmlns:aasg='http://stategeothermaldata.org/uri-gin/aasg/xmlschema/welllog/0.8'
+  xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:gml='http://www.opengis.net/gml'>
+  <xs:import namespace='http://www.opengis.net/gml'
+    schemaLocation='http://schemas.opengis.net/gml/3.1.1/base/gml.xsd'/>
+  <xs:import namespace='http://www.opengis.net/waterml/2.0'
+    schemaLocation='http://schemas.opengis.net/waterml/2.0/waterml2.xsd'/>
+  <xs:element name='AZWellLogs' type='aasg:AZWellLogsType' substitutionGroup='gml:_Feature'/>
+  <xs:complexType name='AZWellLogsType'>
+    <xs:complexContent>
+      <xs:extension base='gml:AbstractFeatureType'>
+        <xs:sequence>
+          <xs:element name='OBJECTID' type='xs:int'/>
+          <xs:element minOccurs='0' name='LogURI'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='OtherLogID'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='DisplayName'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='Notes'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='1073741822'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='LogTypeTerm'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='LogTypeName'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='WellBoreURI'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='WellBoreName'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='APINo'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='ParentWellURI'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='Keywords'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='SpudDate' type='xs:dateTime'/>
+          <xs:element minOccurs='0' name='WellType'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='Status'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='CommodityOfInterest'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='StatusDate' type='xs:dateTime'/>
+          <xs:element minOccurs='0' name='Function'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='Production'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='ProducingInterval'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='County'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='State'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='Field'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='OtherLocationName'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='PLSS_Meridians'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='TWP'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='RGE'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='Section_'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='SectionPart'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='Parcel'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='LatDegree' type='xs:double'/>
+          <xs:element minOccurs='0' name='LongDegree' type='xs:double'/>
+          <xs:element minOccurs='0' name='SRS'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='LocationUncertaintyStatement'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='DrillerTotalDepth_ft' type='xs:double'/>
+          <xs:element minOccurs='0' name='WellBoreShape'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='ElevationGL_ft' type='xs:double'/>
+          <xs:element minOccurs='0' name='TopLoggedInterval_ft' type='xs:double'/>
+          <xs:element minOccurs='0' name='BottomLoggedInterval_ft' type='xs:double'/>
+          <xs:element minOccurs='0' name='DateTimeLogRun' type='xs:dateTime'/>
+          <xs:element minOccurs='0' name='PaperCopyLocation'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='ScannedFileURL'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='LASFileURL'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='OtherDistribution'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='RelatedResource'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='Source'>
+            <xs:simpleType>
+              <xs:restriction base='xs:string'>
+                <xs:maxLength value='255'/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:element>
+          <xs:element minOccurs='0' name='Shape' type='gml:PointPropertyType'/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

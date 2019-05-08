@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<wfs:WFS_Capabilities version='1.1.0'
+  xsi:schemaLocation='http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/base/gml.xsd http://www.opengis.net/ogc http://schemas.opengis.net/filter/1.1.0/filter.xsd http://www.opengis.net/ows http://schemas.opengis.net/ows/1.0.0/owsAll.xsd http://www.opengis.net/wfs http://schemas.opengis.net/wfs/1.1.0/wfs.xsd'
+  xmlns:wfs='http://www.opengis.net/wfs' xmlns:ogc='http://www.opengis.net/ogc'
+  xmlns:gml='http://www.opengis.net/gml' xmlns:ows='http://www.opengis.net/ows'
+  xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xlink='http://www.w3.org/1999/xlink'
+  xmlns:aasg='http://stategeothermaldata.org/uri-gin/aasg/xmlschema/welllog/0.8'>
+  <ows:ServiceIdentification>
+    <ows:Title>AZWellLogs</ows:Title>
+    <ows:Abstract>WellLogs in the state of Arizona</ows:Abstract>
+    <ows:Keywords>
+      <ows:Keyword>Well Logs, Well Driller Depth, Arizona, Geothermal</ows:Keyword>
+    </ows:Keywords>
+    <ows:ServiceType>WFS</ows:ServiceType>
+    <ows:ServiceTypeVersion>1.1.0</ows:ServiceTypeVersion>
+    <ows:Fees>None</ows:Fees>
+    <ows:AccessConstraints></ows:AccessConstraints>
+  </ows:ServiceIdentification>
+  <ows:ServiceProvider>
+    <ows:ProviderName>Arizona Geological Survey</ows:ProviderName>
+    <ows:ProviderSite xlink:href='http://azgs.az.gov/'/>
+    <ows:ServiceContact>
+      <ows:IndividualName>Geoinformatics</ows:IndividualName>
+      <ows:PositionName>Geoinformatics Manager</ows:PositionName>
+      <ows:ContactInfo>
+        <ows:Phone>
+          <ows:Voice>520-770-3500</ows:Voice>
+          <ows:Facsimile></ows:Facsimile>
+        </ows:Phone>
+        <ows:Address>
+          <ows:DeliveryPoint>416 W. Congress St., Suite 100</ows:DeliveryPoint>
+          <ows:City>Tucson</ows:City>
+          <ows:AdministrativeArea>AZ</ows:AdministrativeArea>
+          <ows:PostalCode>85701</ows:PostalCode>
+          <ows:Country></ows:Country>
+          <ows:ElectronicMailAddress>metadata@usgin.org</ows:ElectronicMailAddress>
+        </ows:Address>
+        <ows:OnlineResource
+          xlink:href='http://services.azgs.az.gov/arcgis/services/aasggeothermal/AZWellLogs/MapServer/WFSServer'/>
+        <ows:HoursOfService></ows:HoursOfService>
+        <ows:ContactInstructions></ows:ContactInstructions>
+      </ows:ContactInfo>
+      <ows:Role>web service host / metadata manager</ows:Role>
+    </ows:ServiceContact>
+  </ows:ServiceProvider>
+  <ows:OperationsMetadata>
+    <ows:Operation name='GetCapabilities'>
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get
+            xlink:href='http://services.azgs.az.gov/arcgis/services/aasggeothermal/AZWellLogs/MapServer/WFSServer?'/>
+          <ows:Post
+            xlink:href='http://services.azgs.az.gov/arcgis/services/aasggeothermal/AZWellLogs/MapServer/WFSServer'/>
+        </ows:HTTP>
+      </ows:DCP>
+      <ows:Parameter name='AcceptVersions'>
+        <ows:Value>1.1.0</ows:Value>
+        <ows:Value>1.0.0</ows:Value>
+      </ows:Parameter>
+      <ows:Parameter name='AcceptFormats'>
+        <ows:Value>text/xml</ows:Value>
+      </ows:Parameter>
+    </ows:Operation>
+    <ows:Operation name='DescribeFeatureType'>
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get
+            xlink:href='http://services.azgs.az.gov/arcgis/services/aasggeothermal/AZWellLogs/MapServer/WFSServer?'/>
+          <ows:Post
+            xlink:href='http://services.azgs.az.gov/arcgis/services/aasggeothermal/AZWellLogs/MapServer/WFSServer'/>
+        </ows:HTTP>
+      </ows:DCP>
+      <ows:Parameter name='outputFormat'>
+        <ows:Value>text/xml; subType=gml/3.1.1/profiles/gmlsf/1.0.0/0</ows:Value>
+      </ows:Parameter>
+    </ows:Operation>
+    <ows:Operation name='GetFeature'>
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get
+            xlink:href='http://services.azgs.az.gov/arcgis/services/aasggeothermal/AZWellLogs/MapServer/WFSServer?'/>
+          <ows:Post
+            xlink:href='http://services.azgs.az.gov/arcgis/services/aasggeothermal/AZWellLogs/MapServer/WFSServer'/>
+        </ows:HTTP>
+      </ows:DCP>
+      <ows:Parameter name='resultType'>
+        <ows:Value>results</ows:Value>
+        <ows:Value>hits</ows:Value>
+      </ows:Parameter>
+      <ows:Parameter name='outputFormat'>
+        <ows:Value>text/xml; subType=gml/3.1.1/profiles/gmlsf/1.0.0/0</ows:Value>
+      </ows:Parameter>
+    </ows:Operation>
+    <ows:ExtendedCapabilities>
+      <ows:Constraint name='serviceAxisOrderForSwappableSRS'>
+        <ows:Value>latitude,longitude</ows:Value>
+      </ows:Constraint>
+    </ows:ExtendedCapabilities>
+  </ows:OperationsMetadata>
+  <wfs:FeatureTypeList>
+    <wfs:FeatureType>
+      <wfs:Name>aasg:AZWellLogs</wfs:Name>
+      <wfs:Title>AZWellLogs</wfs:Title>
+      <wfs:DefaultSRS>urn:ogc:def:crs:EPSG:6.9:4326</wfs:DefaultSRS>
+      <wfs:OutputFormats>
+        <wfs:Format>text/xml; subType=gml/3.1.1/profiles/gmlsf/1.0.0/0</wfs:Format>
+      </wfs:OutputFormats>
+      <ows:WGS84BoundingBox>
+        <ows:LowerCorner>-114.80237639999996 31.369953340000052</ows:LowerCorner>
+        <ows:UpperCorner>-109.04870079999995 36.99750922000004</ows:UpperCorner>
+      </ows:WGS84BoundingBox>
+    </wfs:FeatureType>
+  </wfs:FeatureTypeList>
+  <ogc:Filter_Capabilities>
+    <ogc:Spatial_Capabilities>
+      <ogc:GeometryOperands>
+        <ogc:GeometryOperand>gml:Envelope</ogc:GeometryOperand>
+        <ogc:GeometryOperand>gml:Point</ogc:GeometryOperand>
+        <ogc:GeometryOperand>gml:Polygon</ogc:GeometryOperand>
+        <ogc:GeometryOperand>gml:LineString</ogc:GeometryOperand>
+      </ogc:GeometryOperands>
+      <ogc:SpatialOperators>
+        <ogc:SpatialOperator name='BBOX'/>
+        <ogc:SpatialOperator name='Equals'/>
+        <ogc:SpatialOperator name='Disjoint'/>
+        <ogc:SpatialOperator name='Intersects'/>
+        <ogc:SpatialOperator name='Crosses'/>
+        <ogc:SpatialOperator name='Touches'/>
+        <ogc:SpatialOperator name='Within'/>
+        <ogc:SpatialOperator name='Contains'/>
+        <ogc:SpatialOperator name='Overlaps'/>
+      </ogc:SpatialOperators>
+    </ogc:Spatial_Capabilities>
+    <ogc:Scalar_Capabilities>
+      <ogc:LogicalOperators/>
+      <ogc:ComparisonOperators>
+        <ogc:ComparisonOperator>EqualTo</ogc:ComparisonOperator>
+        <ogc:ComparisonOperator>NotEqualTo</ogc:ComparisonOperator>
+        <ogc:ComparisonOperator>LessThan</ogc:ComparisonOperator>
+        <ogc:ComparisonOperator>GreaterThan</ogc:ComparisonOperator>
+        <ogc:ComparisonOperator>LessThanEqualTo</ogc:ComparisonOperator>
+        <ogc:ComparisonOperator>GreaterThanEqualTo</ogc:ComparisonOperator>
+        <ogc:ComparisonOperator>Like</ogc:ComparisonOperator>
+        <ogc:ComparisonOperator>Between</ogc:ComparisonOperator>
+        <ogc:ComparisonOperator>NullCheck</ogc:ComparisonOperator>
+      </ogc:ComparisonOperators>
+    </ogc:Scalar_Capabilities>
+    <ogc:Id_Capabilities>
+      <ogc:EID/>
+      <ogc:FID/>
+    </ogc:Id_Capabilities>
+  </ogc:Filter_Capabilities>
+</wfs:WFS_Capabilities>

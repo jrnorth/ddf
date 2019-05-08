@@ -1,0 +1,35 @@
+{
+  "mappings": [
+    {
+      "request": {
+        "method": "GET",
+        "queryParameters": {
+          "request": {
+            "equalTo": "GetCapabilities"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "bodyFileName": "WFS_Capabilities.xml"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "queryParameters": {
+          "request": {
+            "equalTo": "DescribeFeatureType"
+          },
+          "typeName": {
+            "equalTo": "aasg:AZWellLogs"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "bodyFileName": "AZWellLogs.xsd"
+      }
+    }
+  ]
+}
