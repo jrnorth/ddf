@@ -1110,8 +1110,8 @@ public class WfsSourceTest {
       throws Exception {
     final MetacardMapperImpl metacardMapper = new MetacardMapperImpl();
     metacardMapper.setFeatureType("SampleFeature0");
-    metacardMapper.setTitleMapping("ext.SampleFeature0.orderperson");
-    metacardMapper.setResourceUriMapping("ext.SampleFeature0.orderdog");
+    metacardMapper.setTitleMapping("orderperson");
+    metacardMapper.setResourceUriMapping("orderdog");
     metacardMappers.add(metacardMapper);
 
     setUp(TWO_TEXT_PROPERTY_SCHEMA, null, null, ONE_FEATURE, null);

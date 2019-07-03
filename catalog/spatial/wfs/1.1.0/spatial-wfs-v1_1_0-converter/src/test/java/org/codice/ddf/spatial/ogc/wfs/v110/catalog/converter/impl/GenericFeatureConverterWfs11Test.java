@@ -23,8 +23,8 @@ import ddf.catalog.data.Metacard;
 import ddf.catalog.data.MetacardType;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import javax.xml.namespace.QName;
 import org.apache.ws.commons.schema.XmlSchema;
@@ -127,7 +127,7 @@ public class GenericFeatureConverterWfs11Test {
     schema.getElements().putAll(buildElementMap(schema));
 
     return new FeatureMetacardType(
-        schema, new QName("roads"), new ArrayList<>(), Wfs11Constants.GML_3_1_1_NAMESPACE);
+        schema, new QName("roads"), new HashSet<>(), Wfs11Constants.GML_3_1_1_NAMESPACE);
   }
 
   private Map<QName, XmlSchemaElement> buildElementMap(XmlSchema schema) {
