@@ -392,16 +392,4 @@ public class FeatureMetacardType extends MetacardTypeImpl {
   public List<String> getTemporalProperties() {
     return temporalProperties;
   }
-
-  /**
-   * @return this but as a new {@link MetacardTypeImpl} (not a {@code FeatureMetacardType}) with no
-   *     'ext.&lt;feature type&gt;' attributes
-   */
-  /*  public MetacardTypeImpl withoutExternalWfsAttributes() {
-    final Set<AttributeDescriptor> attributeDescriptors =
-        getAttributeDescriptors().stream()
-            .filter(descriptor -> !descriptor.getName().startsWith(propertyPrefix))
-            .collect(toSet());
-    return new MetacardTypeImpl(getName(), attributeDescriptors);
-  }*/
 }
