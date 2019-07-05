@@ -26,6 +26,7 @@ import ddf.catalog.data.MetacardType;
 import ddf.catalog.data.types.Core;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,20 +34,31 @@ import javax.xml.namespace.QName;
 import org.apache.ws.commons.schema.XmlSchema;
 import org.apache.ws.commons.schema.XmlSchemaComplexType;
 import org.apache.ws.commons.schema.XmlSchemaElement;
+import org.codice.ddf.libs.geo.util.GeospatialUtil;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.impl.GmlGeometryConverter;
 import org.codice.ddf.spatial.ogc.wfs.catalog.mapper.MetacardMapper;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants;
+import org.junit.Before;
 import org.junit.Test;
 
 public class GenericFeatureConverterWfs11Test {
 
   private static final String GML = "GML";
 
+  private XStream xStream;
+
+  @Before
+  public void setUp() {
+    MetacardMapper metacardMapper = getMetacardMapper();
+    GenericFeatureConverterWfs11 converter = getConverter(metacardMapper);
+    xStream = getxStream(converter);
+  }
+
   @Test
   public void testPointSrs26713Pos() throws IOException {
     try (InputStream is = open("/point-eps26713-pos.xml")) {
-      Metacard metacard = (Metacard) getxStream().fromXML(is);
+      Metacard metacard = (Metacard) xStream.fromXML(is);
       assertThat(metacard.getLocation(), is("POINT (598566.26906782 4914058.52150682)"));
     }
   }
@@ -54,7 +66,7 @@ public class GenericFeatureConverterWfs11Test {
   @Test
   public void testLinearRingSrs26713PosList() throws IOException {
     try (InputStream is = open("/linearring-eps26713-poslist.xml")) {
-      Metacard metacard = (Metacard) getxStream().fromXML(is);
+      Metacard metacard = (Metacard) xStream.fromXML(is);
       assertThat(metacard.getLocation(), is("LINEARRING (0 0, 0 10, 10 10, 10 0, 0 0)"));
     }
   }
@@ -62,7 +74,7 @@ public class GenericFeatureConverterWfs11Test {
   @Test
   public void testLinearRingSrs26713PointProperty() throws IOException {
     try (InputStream is = open("/linearring-eps26713-pointproperty.xml")) {
-      Metacard metacard = (Metacard) getxStream().fromXML(is);
+      Metacard metacard = (Metacard) xStream.fromXML(is);
       assertThat(metacard.getLocation(), is("POINT (0 0)"));
     }
   }
@@ -70,7 +82,7 @@ public class GenericFeatureConverterWfs11Test {
   @Test
   public void testLineStringSrs26713() throws IOException {
     try (InputStream is = open("/linestring-eps26713.xml")) {
-      Metacard metacard = (Metacard) getxStream().fromXML(is);
+      Metacard metacard = (Metacard) xStream.fromXML(is);
       assertThat(
           metacard.getLocation(),
           is(
@@ -81,7 +93,7 @@ public class GenericFeatureConverterWfs11Test {
   @Test
   public void testCurveSrs26713() throws IOException {
     try (InputStream is = open("/curve-eps26713.xml")) {
-      Metacard metacard = (Metacard) getxStream().fromXML(is);
+      Metacard metacard = (Metacard) xStream.fromXML(is);
       assertThat(
           metacard.getLocation(),
           is(
@@ -92,7 +104,7 @@ public class GenericFeatureConverterWfs11Test {
   @Test
   public void testPolygonCurveSrs26713() throws IOException {
     try (InputStream is = open("/polygon-eps26713.xml")) {
-      Metacard metacard = (Metacard) getxStream().fromXML(is);
+      Metacard metacard = (Metacard) xStream.fromXML(is);
       assertThat(
           metacard.getLocation(),
           is("POLYGON ((45.256 -110.45, 46.46 -109.48, 43.84 -109.86, 45.256 -110.45))"));
@@ -102,9 +114,36 @@ public class GenericFeatureConverterWfs11Test {
   @Test
   public void testSurfaceSrs26713() throws IOException {
     try (InputStream is = open("/surface-eps26713.xml")) {
-      Metacard metacard = (Metacard) getxStream().fromXML(is);
+      Metacard metacard = (Metacard) xStream.fromXML(is);
       assertThat(metacard.getLocation(), notNullValue());
       assertThat(metacard.getLocation(), is("MULTIPOLYGON (((0 0, 0 1, 1 1, 1 0, 0 0)))"));
+    }
+  }
+
+  @Test
+  public void testCoordinatesAreSwappedWhenConverterCoordinateOrderIsLatLon() throws IOException {
+    try (InputStream is = open("/polygon-eps26713.xml")) {
+      MetacardMapper metacardMapper = getMetacardMapper();
+      GenericFeatureConverterWfs11 converter = getConverter(metacardMapper);
+      converter.setCoordinateOrder(GeospatialUtil.LAT_LON_ORDER);
+      xStream = getxStream(converter);
+      Metacard metacard = (Metacard) xStream.fromXML(is);
+      assertThat(
+          metacard.getLocation(),
+          is("POLYGON ((-110.45 45.256, -109.48 46.46, -109.86 43.84, -110.45 45.256))"));
+    }
+  }
+
+  @Test
+  public void testBasicMetacardAttributesArePopulatedEvenWhenNoMetacardMapperExists()
+      throws IOException {
+    try (InputStream is = open("/basic-metacard-attributes.xml")) {
+      GenericFeatureConverterWfs11 converter = getConverter();
+      xStream = getxStream(converter);
+      Metacard metacard = (Metacard) xStream.fromXML(is);
+      assertThat(metacard.getTitle(), is("The Title"));
+      assertThat(
+          metacard.getCreatedDate().toInstant(), is(Instant.parse("2019-07-05T21:05:00.000Z")));
     }
   }
 
@@ -112,13 +151,28 @@ public class GenericFeatureConverterWfs11Test {
     return GenericFeatureConverterWfs11Test.class.getResourceAsStream(resource);
   }
 
-  private XStream getxStream() {
-    XStream xstream = new XStream(new WstxDriver());
+  private MetacardMapper getMetacardMapper() {
     MetacardMapper mockMapper = mock(MetacardMapper.class);
     doReturn(Core.LOCATION).when(mockMapper).getMetacardAttribute("the_geom");
-    GenericFeatureConverterWfs11 converter = new GenericFeatureConverterWfs11(mockMapper);
+    return mockMapper;
+  }
+
+  private GenericFeatureConverterWfs11 getConverter() {
+    GenericFeatureConverterWfs11 converter =
+        new GenericFeatureConverterWfs11("urn:x-ogc:def:crs:EPSG:26713");
+    converter.setMetacardType(buildMetacardType());
+    return converter;
+  }
+
+  private GenericFeatureConverterWfs11 getConverter(MetacardMapper metacardMapper) {
+    GenericFeatureConverterWfs11 converter = new GenericFeatureConverterWfs11(metacardMapper);
     converter.setSrs("urn:x-ogc:def:crs:EPSG:26713");
     converter.setMetacardType(buildMetacardType());
+    return converter;
+  }
+
+  private XStream getxStream(GenericFeatureConverterWfs11 converter) {
+    XStream xstream = new XStream(new WstxDriver());
     xstream.registerConverter(converter);
     xstream.registerConverter(new GmlGeometryConverter());
     xstream.alias("featureMember", Metacard.class);
