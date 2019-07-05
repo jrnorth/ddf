@@ -48,30 +48,20 @@ public final class WfsTransformerProcessor {
     for (FeatureTransformer featureTransformer : transformerServiceList) {
       try (InputStream featureMemberInputStream =
           new BufferedInputStream(new ByteArrayInputStream(featureMember.getBytes()))) {
-        return featureTransformer.apply(featureMemberInputStream, metadata);
+        Optional<Metacard> metacardOptional =
+            featureTransformer.apply(featureMemberInputStream, metadata);
+
+        if (metacardOptional.isPresent()) {
+          return metacardOptional;
+        }
       } catch (IOException e) {
-        LOGGER.info(
-            "Error transforming feature member: [{}], with feature transformer: [{}]",
+        LOGGER.error(
+            "Error transforming feature member:{}, with feature transformer: {}",
             featureMember,
             featureTransformer);
-        LOGGER.debug(
-            "Error transforming feature member: [{}], with feature transformer: [{}]",
-            featureMember,
-            featureTransformer,
-            e);
       }
     }
+
     return Optional.empty();
   }
-
-  /*  private Metacard removeExternalWfsAttributes(final Metacard metacard) {
-    final MetacardType metacardType = metacard.getMetacardType();
-    if (!(metacardType instanceof FeatureMetacardType)) {
-      return metacard;
-    }
-
-    final MetacardType metacardTypeWithoutExternalWfsAttributes =
-        ((FeatureMetacardType) metacard).withoutExternalWfsAttributes();
-    return new MetacardImpl(metacard, metacardTypeWithoutExternalWfsAttributes);
-  }*/
 }

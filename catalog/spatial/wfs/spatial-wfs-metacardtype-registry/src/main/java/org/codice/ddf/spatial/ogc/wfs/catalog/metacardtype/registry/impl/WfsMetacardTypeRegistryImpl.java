@@ -30,9 +30,9 @@ public final class WfsMetacardTypeRegistryImpl implements WfsMetacardTypeRegistr
 
   public static final String SOURCE_ID = "source-id";
 
-  private final BundleContext bundleContext;
+  private BundleContext bundleContext;
 
-  private final List<ServiceRegistration<MetacardType>> serviceRegistrations;
+  private List<ServiceRegistration<MetacardType>> serviceRegistrations;
 
   public WfsMetacardTypeRegistryImpl(BundleContext bundleContext) {
     this.bundleContext = bundleContext;
@@ -40,25 +40,31 @@ public final class WfsMetacardTypeRegistryImpl implements WfsMetacardTypeRegistr
   }
 
   /** {@inheritDoc} */
-  @Override
   public Optional<MetacardType> lookupMetacardTypeBySimpleName(String sourceId, String simpleName) {
+
     if (sourceId == null || simpleName == null) {
       return Optional.empty();
     }
 
-    return serviceRegistrations
-        .stream()
-        .filter(s -> s.getReference().getProperty(SOURCE_ID) != null)
-        .filter(s -> s.getReference().getProperty(SOURCE_ID).equals(sourceId))
-        .filter(s -> s.getReference().getProperty(FEATURE_NAME) != null)
-        .filter(s -> s.getReference().getProperty(FEATURE_NAME).equals(simpleName))
-        .findFirst()
-        .map(ServiceRegistration::getReference)
-        .map(bundleContext::getService);
+    Optional<ServiceRegistration<MetacardType>> serviceRegistrationOptional =
+        serviceRegistrations
+            .stream()
+            .filter(s -> s.getReference().getProperty(SOURCE_ID) != null)
+            .filter(s -> s.getReference().getProperty(SOURCE_ID).equals(sourceId))
+            .filter(s -> s.getReference().getProperty(FEATURE_NAME) != null)
+            .filter(s -> s.getReference().getProperty(FEATURE_NAME).equals(simpleName))
+            .findFirst();
+
+    if (serviceRegistrationOptional.isPresent()) {
+      MetacardType featureMetacardType =
+          bundleContext.getService(serviceRegistrationOptional.get().getReference());
+      return Optional.of(featureMetacardType);
+    }
+
+    return Optional.empty();
   }
 
   /** {@inheritDoc} */
-  @Override
   public void registerMetacardType(
       MetacardType metacardType, String sourceId, String featureSimpleName) {
 
@@ -75,9 +81,8 @@ public final class WfsMetacardTypeRegistryImpl implements WfsMetacardTypeRegistr
   }
 
   /** {@inheritDoc} */
-  @Override
   public void clear() {
-    serviceRegistrations.forEach(ServiceRegistration::unregister);
+    serviceRegistrations.stream().forEach(ServiceRegistration::unregister);
     serviceRegistrations.clear();
   }
 }

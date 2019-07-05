@@ -25,6 +25,10 @@
     <dependencies>
         <dependency>
             <groupId>org.codice.ddf.spatial</groupId>
+            <artifactId>spatial-wfs-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.codice.ddf.spatial</groupId>
             <artifactId>spatial-wfs-featuretransformer-api</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -32,18 +36,6 @@
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-core</artifactId>
             <version>${camel.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ddf.catalog.core</groupId>
-            <artifactId>catalog-core-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ddf.catalog.core</groupId>
-            <artifactId>catalog-core-api-impl</artifactId>
         </dependency>
         <dependency>
             <groupId>ddf.platform.util</groupId>
@@ -80,10 +72,9 @@
                             *
                         </Import-Package>
                         <Embed-Dependency>
-                            catalog-core-api-impl,
-                            platform-util,
-                            spatial-wfs-common
+                            platform-util
                         </Embed-Dependency>
+                        <Embed-Transitive>true</Embed-Transitive>
                     </instructions>
                 </configuration>
             </plugin>
@@ -117,6 +108,7 @@
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.35</minimum>
                                         </limit>
+
                                     </limits>
                                 </rule>
                             </rules>
