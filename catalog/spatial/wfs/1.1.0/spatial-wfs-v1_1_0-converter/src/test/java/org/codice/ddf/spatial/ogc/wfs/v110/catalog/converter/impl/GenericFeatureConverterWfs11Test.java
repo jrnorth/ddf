@@ -16,11 +16,14 @@ package org.codice.ddf.spatial.ogc.wfs.v110.catalog.converter.impl;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.WstxDriver;
 import ddf.catalog.data.Metacard;
 import ddf.catalog.data.MetacardType;
+import ddf.catalog.data.types.Core;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -32,6 +35,7 @@ import org.apache.ws.commons.schema.XmlSchemaComplexType;
 import org.apache.ws.commons.schema.XmlSchemaElement;
 import org.codice.ddf.spatial.ogc.wfs.catalog.common.FeatureMetacardType;
 import org.codice.ddf.spatial.ogc.wfs.catalog.converter.impl.GmlGeometryConverter;
+import org.codice.ddf.spatial.ogc.wfs.catalog.mapper.MetacardMapper;
 import org.codice.ddf.spatial.ogc.wfs.v110.catalog.common.Wfs11Constants;
 import org.junit.Test;
 
@@ -110,10 +114,10 @@ public class GenericFeatureConverterWfs11Test {
 
   private XStream getxStream() {
     XStream xstream = new XStream(new WstxDriver());
-
-    GenericFeatureConverterWfs11 converter =
-        new GenericFeatureConverterWfs11("urn:x-ogc:def:crs:EPSG:26713");
-
+    MetacardMapper mockMapper = mock(MetacardMapper.class);
+    doReturn(Core.LOCATION).when(mockMapper).getMetacardAttribute("the_geom");
+    GenericFeatureConverterWfs11 converter = new GenericFeatureConverterWfs11(mockMapper);
+    converter.setSrs("urn:x-ogc:def:crs:EPSG:26713");
     converter.setMetacardType(buildMetacardType());
     xstream.registerConverter(converter);
     xstream.registerConverter(new GmlGeometryConverter());
