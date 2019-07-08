@@ -34,16 +34,6 @@
         interface="org.codice.ddf.spatial.ogc.wfs.catalog.mapper.MetacardMapper"
         availability="optional"/>
 
-    <bean id="scheduler" class="java.util.concurrent.Executors"
-      factory-method="newSingleThreadScheduledExecutor">
-      <argument>
-        <bean class="org.codice.ddf.platform.util.StandardThreadFactoryBuilder"
-          factory-method="newThreadFactory">
-          <argument value="wfsSourceThread"/>
-        </bean>
-      </argument>
-    </bean>
-
     <cm:managed-service-factory
             id="org.codice.ddf.spatial.ogc.wfs.v1_0_0.catalog.source.WfsFederatedSource.id"
             factory-pid="Wfs_v1_0_0_Federated_Source"
@@ -52,7 +42,18 @@
                               init-method="init" destroy-method="destroy">
             <argument ref="clientFactoryFactory"/>
             <argument ref="encryptionService"/>
-            <argument ref="scheduler"/>
+            <argument>
+                <!-- Must be instantiated inline so sources don't share the same instance -->
+                <bean class="java.util.concurrent.Executors"
+                  factory-method="newSingleThreadScheduledExecutor">
+                    <argument>
+                        <bean class="org.codice.ddf.platform.util.StandardThreadFactoryBuilder"
+                          factory-method="newThreadFactory">
+                            <argument value="wfsSourceThread"/>
+                        </bean>
+                    </argument>
+                </bean>
+            </argument>
 
             <property name="context" ref="blueprintBundleContext"/>
             <property name="filterAdapter" ref="filterAdapter"/>
