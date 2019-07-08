@@ -984,6 +984,7 @@ public class WfsSourceTest {
     source.query(new QueryRequestImpl(inQuery));
   }
 
+  // TODO will probably need to fix some of these tests
   @Test(expected = IllegalArgumentException.class)
   public void testQueryTwoFeaturesWithMixedPropertyNames() throws Exception {
     setUp(TWO_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null);
