@@ -223,8 +223,7 @@
                         <Private-Package>
                             org.codice.ddf.spatial.ogc.wfs.catalog.mapper.impl,
                             <!-- This bundle's packages -->
-                            org.codice.ddf.spatial.ogc.wfs.v1_0_0.catalog.source,
-                            org.codice.ddf.spatial.ogc.wfs.v1_0_0.catalog.source.reader
+                            {local-packages}
                         </Private-Package>
                         <Include-Resource>{maven-resources},target/classes/describable.properties</Include-Resource>
                     </instructions>
