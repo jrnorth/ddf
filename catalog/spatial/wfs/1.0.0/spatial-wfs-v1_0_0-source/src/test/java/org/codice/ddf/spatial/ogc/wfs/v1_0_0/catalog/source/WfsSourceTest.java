@@ -915,7 +915,7 @@ public class WfsSourceTest {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testQueryTwoFeaturesOneInvalid() throws Exception {
     setUp(TWO_TEXT_PROPERTY_SCHEMA, null, null, TWO_FEATURES, null);
     Filter orderPersonFilter = builder.attribute(ORDER_PERSON).is().like().text(LITERAL);
@@ -939,7 +939,20 @@ public class WfsSourceTest {
     QueryImpl inQuery = new QueryImpl(totalFilter);
     inQuery.setPageSize(MAX_FEATURES);
 
+    ArgumentCaptor<GetFeatureType> captor = ArgumentCaptor.forClass(GetFeatureType.class);
     source.query(new QueryRequestImpl(inQuery));
+    verify(mockWfs).getFeature(captor.capture());
+
+    GetFeatureType getFeatureType = captor.getValue();
+    assertMaxFeatures(getFeatureType, inQuery);
+    assertEquals(ONE_FEATURE.intValue(), getFeatureType.getQuery().size());
+    QueryType query = getFeatureType.getQuery().get(0);
+    assertTrue(query.getTypeName().equals(sampleFeatures.get(0)));
+    // The Text Properties should be ORed
+    assertTrue(query.getFilter().isSetComparisonOps());
+    assertTrue(query.getFilter().getComparisonOps().getValue() instanceof PropertyIsLikeType);
+    PropertyIsLikeType pilt = (PropertyIsLikeType) query.getFilter().getComparisonOps().getValue();
+    assertEquals(ORDER_PERSON, pilt.getPropertyName().getContent());
   }
 
   @Test

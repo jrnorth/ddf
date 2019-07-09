@@ -458,16 +458,33 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
     return featureMetacardType.getProperties().contains(featurePropertyName);
   }
 
+  /**
+   * Attempts to map the incoming query property {@code queryProperty} (typically a metacard
+   * attribute) to a WFS feature property using the {@link MetacardMapper}, {@link #metacardMapper}.
+   *
+   * @param queryProperty the original property name from the query
+   * @param isWfsFeatureProperty tests whether the mapped query property (or {@code queryProperty}
+   *     if no mapping exists for {@code queryProperty}) is a valid WFS feature property. If the
+   *     test fails then this function will return {@code null} to indicate that the query clause
+   *     using this query property should be dropped. This test should be based on the feature
+   *     properties understood by the {@link FeatureMetacardType} ({@link #featureMetacardType})
+   *     such as {@link FeatureMetacardType#getProperties()}, {@link
+   *     FeatureMetacardType#getGmlProperties()}, {@link
+   *     FeatureMetacardType#getTemporalProperties()}, or {@link
+   *     FeatureMetacardType#getTextualProperties()}.
+   * @return The name of the valid and queryable WFS feature property corresponding to {@code
+   *     queryProperty}, or {@code null} if {@code queryProperty} cannot be mapped to a valid WFS
+   *     feature property.
+   * @throws IllegalArgumentException if {@code queryProperty} maps to a valid WFS feature property
+   *     but that feature property is not queryable
+   */
   private String mapQueryPropertyToFeatureProperty(
       final String queryProperty, final Predicate<String> isWfsFeatureProperty) {
     final String featurePropertyName =
         Optional.ofNullable(metacardMapper.getFeatureProperty(queryProperty)).orElse(queryProperty);
 
     if (!isWfsFeatureProperty.test(featurePropertyName)) {
-      throw new IllegalArgumentException(
-          String.format(
-              "'%s' was mapped to '%s', which is not a feature property of '%s'",
-              queryProperty, featurePropertyName, featureMetacardType.getFeatureType()));
+      return null;
     }
 
     if (!featureMetacardType.isQueryable(featurePropertyName)) {
@@ -487,8 +504,14 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
 
     final String featurePropertyName =
         mapQueryPropertyToFeatureProperty(propertyName, this::isWfsFeatureProperty);
+    if (featurePropertyName == null) {
+      LOGGER.debug(
+          "{} could not be mapped to a feature property. Its query clause will be dropped.",
+          propertyName);
+      return null;
+    }
 
-    LOGGER.debug("{} is being mapped to {}.", propertyName, featurePropertyName);
+    LOGGER.debug("{} maps to the feature property {}.", propertyName, featurePropertyName);
     final FilterType filter = new FilterType();
     filter.setComparisonOps(
         createPropertyIsBetween(featurePropertyName, lowerBoundary, upperBoundary));
@@ -564,8 +587,14 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
     } else {
       final String featurePropertyName =
           mapQueryPropertyToFeatureProperty(propertyName, this::isWfsFeatureProperty);
+      if (featurePropertyName == null) {
+        LOGGER.debug(
+            "{} could not be mapped to a feature property. Its query clause will be dropped.",
+            propertyName);
+        return null;
+      }
 
-      LOGGER.debug("{} is being mapped to {}.", propertyName, featurePropertyName);
+      LOGGER.debug("{} maps to the feature property {}.", propertyName, featurePropertyName);
       returnFilter.setComparisonOps(
           createPropertyIsFilter(featurePropertyName, literal, propertyIsType));
     }
@@ -948,8 +977,14 @@ public class WfsFilterDelegate extends SimpleFilterDelegate<FilterType> {
     } else {
       final String featurePropertyName =
           mapQueryPropertyToFeatureProperty(propertyName, this::isWfsGeospatialFeatureProperty);
+      if (featurePropertyName == null) {
+        LOGGER.debug(
+            "{} could not be mapped to a feature property. Its query clause will be dropped.",
+            propertyName);
+        return null;
+      }
 
-      LOGGER.debug("{} is being mapped to {}.", propertyName, featurePropertyName);
+      LOGGER.debug("{} maps to the feature property {}.", propertyName, featurePropertyName);
       returnFilter.setSpatialOps(
           createSpatialOpType(spatialOpType, featurePropertyName, wkt, distance));
     }
