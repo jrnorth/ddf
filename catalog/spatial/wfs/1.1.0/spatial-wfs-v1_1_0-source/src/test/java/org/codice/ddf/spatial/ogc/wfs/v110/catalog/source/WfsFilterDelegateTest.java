@@ -1067,12 +1067,16 @@ public class WfsFilterDelegateTest {
     delegate.propertyIsBetween(MOCK_PROPERTY, LITERAL, null);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testPropertyIsLikeStringStringBoolean() {
     mockProps.add(MOCK_PROPERTY);
     when(featureMetacardType.getTextualProperties()).thenReturn(mockProps);
     WfsFilterDelegate delegate = createDelegate();
-    delegate.propertyIsLike(PROPERTY_NAME, LITERAL, true);
+    FilterType filter = delegate.propertyIsLike(PROPERTY_NAME, LITERAL, true);
+    assertThat(
+        "The filter should have been null because 'PropertyName' does not map to a WFS feature property.",
+        filter,
+        is(nullValue()));
   }
 
   @Test
@@ -1598,17 +1602,23 @@ public class WfsFilterDelegateTest {
     assertXMLEqual(propertyIsEqualToXmlLiteral, marshal(filter));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testPropertyIsFilterCannotMapToFeatureProperty() {
     final WfsFilterDelegate delegate =
         new WfsFilterDelegate(
             featureMetacardType, metacardMapper, emptyList(), new LatLonCoordinateStrategy());
-    delegate.propertyIsEqualTo(Core.TITLE, LITERAL, true);
+    final FilterType filter = delegate.propertyIsEqualTo(Core.TITLE, LITERAL, true);
+    assertThat(
+        "The filter should have been null because 'title' does not map to a WFS feature property.",
+        filter,
+        is(nullValue()));
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testPropertyIsFilterFeaturePropertyIsNotQueryable() {
+    whenProperties();
     doReturn(MOCK_PROPERTY).when(metacardMapper).getFeatureProperty(Core.TITLE);
+    doReturn(false).when(featureMetacardType).isQueryable(MOCK_PROPERTY);
 
     final WfsFilterDelegate delegate =
         new WfsFilterDelegate(
@@ -1631,17 +1641,25 @@ public class WfsFilterDelegateTest {
     assertXMLEqual(propertyBetweenXmlDate, marshal(filter));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testPropertyIsBetweenFilterCannotMapToFeatureProperty() {
+    whenProperties();
+
     final WfsFilterDelegate delegate =
         new WfsFilterDelegate(
             featureMetacardType, metacardMapper, emptyList(), new LatLonCoordinateStrategy());
-    delegate.propertyIsBetween(Core.CREATED, date, endDate);
+    final FilterType filter = delegate.propertyIsBetween(Core.CREATED, date, endDate);
+    assertThat(
+        "The filter should have been null because 'created' does not map to a WFS feature property.",
+        filter,
+        is(nullValue()));
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testPropertyIsBetweenFilterFeaturePropertyIsNotQueryable() {
+    whenProperties();
     doReturn(MOCK_PROPERTY).when(metacardMapper).getFeatureProperty(Core.CREATED);
+    doReturn(false).when(featureMetacardType).isQueryable(MOCK_PROPERTY);
 
     final WfsFilterDelegate delegate =
         new WfsFilterDelegate(
@@ -1669,11 +1687,15 @@ public class WfsFilterDelegateTest {
         is(singletonList(MOCK_GEOM)));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testGeospatialFilterCannotMapToFeatureProperty() {
     final WfsFilterDelegate delegate =
         setupFilterDelegate(SPATIAL_OPERATORS.DWITHIN.getValue(), new LatLonCoordinateStrategy());
-    delegate.dwithin(Core.LOCATION, POINT, DISTANCE);
+    final FilterType filter = delegate.dwithin(Core.LOCATION, POINT, DISTANCE);
+    assertThat(
+        "The filter should have been null because 'location' does not map to a WFS feature property.",
+        filter,
+        is(nullValue()));
   }
 
   @Test(expected = IllegalArgumentException.class)
