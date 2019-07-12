@@ -1170,6 +1170,7 @@ public class WfsFilterDelegateTest {
     mockProps.add(MOCK_PROPERTY);
 
     when(featureMetacardType.getProperties()).thenReturn(mockProps);
+    when(featureMetacardType.isQueryable(MOCK_PROPERTY)).thenReturn(false);
 
     WfsFilterDelegate delegate = createDelegate();
 
@@ -1182,6 +1183,8 @@ public class WfsFilterDelegateTest {
     mockProps.add(MOCK_PROPERTY_2);
 
     when(featureMetacardType.getProperties()).thenReturn(mockProps);
+    when(featureMetacardType.isQueryable(MOCK_PROPERTY)).thenReturn(false);
+    when(featureMetacardType.isQueryable(MOCK_PROPERTY_2)).thenReturn(false);
 
     WfsFilterDelegate delegate = createDelegate();
 
