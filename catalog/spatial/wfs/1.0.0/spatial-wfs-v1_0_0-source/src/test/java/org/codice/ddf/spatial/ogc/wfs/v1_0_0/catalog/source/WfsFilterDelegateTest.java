@@ -1475,6 +1475,7 @@ public class WfsFilterDelegateTest {
     mockTextProps.add(MOCK_PROPERTY);
 
     when(featureMetacardType.getProperties()).thenReturn(mockTextProps);
+    when(featureMetacardType.isQueryable(MOCK_PROPERTY)).thenReturn(false);
 
     WfsFilterDelegate delegate =
         new WfsFilterDelegate(featureMetacardType, SUPPORTED_GEO, SRS_NAME);
@@ -1489,6 +1490,8 @@ public class WfsFilterDelegateTest {
     mockTextProps.add(MOCK_PROPERTY_2);
 
     when(featureMetacardType.getProperties()).thenReturn(mockTextProps);
+    when(featureMetacardType.isQueryable(MOCK_PROPERTY)).thenReturn(false);
+    when(featureMetacardType.isQueryable(MOCK_PROPERTY_2)).thenReturn(false);
     WfsFilterDelegate delegate =
         new WfsFilterDelegate(featureMetacardType, SUPPORTED_GEO, SRS_NAME);
 
@@ -1810,6 +1813,8 @@ public class WfsFilterDelegateTest {
     gmlProps.add(MOCK_GEOM);
     gmlProps.add(MOCK_GEOM2);
     when(featureMetacardType.getGmlProperties()).thenReturn(gmlProps);
+    when(featureMetacardType.isQueryable(MOCK_GEOM)).thenReturn(false);
+    when(featureMetacardType.isQueryable(MOCK_GEOM2)).thenReturn(false);
 
     List<String> supportedGeo = Arrays.asList(SPATIAL_OPERATORS.Intersect.toString());
     WfsFilterDelegate delegate = new WfsFilterDelegate(featureMetacardType, supportedGeo, SRS_NAME);
