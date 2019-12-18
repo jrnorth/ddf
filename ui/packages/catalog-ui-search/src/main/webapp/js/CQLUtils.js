@@ -232,6 +232,7 @@ function generateFilter(type, property, value, metacardDefinitions) {
   if (!metacardDefinitions) {
     metacardDefinitions = require('../component/singletons/metacard-definitions.js')
   }
+  console.log(metacardDefinitions.metacardTypes)
   if (metacardDefinitions.metacardTypes[property] === undefined) {
     return null
   }

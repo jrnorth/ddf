@@ -19,25 +19,19 @@ const $ = require('jquery')
 const template = require('./query-basic.hbs')
 const CustomElements = require('../../js/CustomElements.js')
 const store = require('../../js/store.js')
-const IconHelper = require('../../js/IconHelper.js')
 const PropertyView = require('../property/property.view.js')
 const Property = require('../property/property.js')
 const properties = require('../../js/properties.js')
 const cql = require('../../js/cql.js')
 const metacardDefinitions = require('../singletons/metacard-definitions.js')
-const sources = require('../singletons/sources-instance.js')
 const CQLUtils = require('../../js/CQLUtils.js')
 const QuerySettingsView = require('../query-settings/query-settings.view.js')
 const QueryTimeView = require('../query-time/query-time.view.js')
 import { getFilterErrors } from '../../react-component/utils/validation'
-import fetch from '../../react-component/utils/fetch'
 
-function isNested(filter) {
-  let nested = false
-  filter.filters.forEach(subfilter => {
-    nested = nested || subfilter.filters
-  })
-  return nested
+function isNotNested(filter) {
+  const hasNoChildFilters = subfilter => !subfilter.filters
+  return filter.filters.every(hasNoChildFilters)
 }
 
 function getMatchTypeAttribute() {
@@ -46,45 +40,13 @@ function getMatchTypeAttribute() {
     : 'datatype'
 }
 
-async function getMatchTypeEnums() {
-  const attr = getMatchTypeAttribute()
-  const query = {
-    src: 'GSR',
-    count: 0,
-    cql: "anyText ILIKE '*'",
-    facets: [attr],
-  }
-
-  const res = await fetch('./internal/cql', {
-    method: 'POST',
-    body: JSON.stringify(query),
-  })
-
-  if (!res.ok) {
-    throw new Error(res.statusText)
-  }
-
-  const json = await res.json()
-  const facets = json.facets[attr] || []
-  return facets
-    .sort((a, b) => b.count - a.count)
-    .map(facet => ({
-      label: facet.value,
-      value: facet.value,
-      class: 'icon ' + IconHelper.getClassByName(facet.value),
-    }))
-}
-
 function isTypeLimiter(filter) {
-  let typesFound = {}
-  filter.filters.forEach(subfilter => {
-    typesFound[CQLUtils.getProperty(subfilter)] = true
-  })
-  typesFound = Object.keys(typesFound)
+  const typesFound = _.uniq(filter.filters.map(CQLUtils.getProperty))
+  console.log(`typesFound: ${typesFound}`)
   return (
     typesFound.length === 2 &&
-    typesFound.indexOf('metadata-content-type') >= 0 &&
-    typesFound.indexOf(getMatchTypeAttribute()) >= 0
+    typesFound.includes('metadata-content-type') &&
+    typesFound.includes(getMatchTypeAttribute())
   )
 }
 
@@ -168,9 +130,9 @@ function translateFilterToBasicMap(filter) {
         ) {
           propertyValueMap[CQLUtils.getProperty(filter)].push(filter)
         }
-      } else if (!isNested(filter) && isAnyDate(filter)) {
+      } else if (isNotNested(filter) && isAnyDate(filter)) {
         handleAnyDateFilter(propertyValueMap, filter)
-      } else if (!isNested(filter) && isTypeLimiter(filter)) {
+      } else if (isNotNested(filter) && isTypeLimiter(filter)) {
         propertyValueMap[CQLUtils.getProperty(filter.filters[0])] =
           propertyValueMap[CQLUtils.getProperty(filter.filters[0])] || []
         filter.filters.forEach(subfilter => {
@@ -270,34 +232,45 @@ module.exports = Marionette.LayoutView.extend({
     )
   },
   setupTypeSpecific() {
-    let currentValue = []
+    const currentValue = []
     if (this.filter['metadata-content-type']) {
-      currentValue = _.uniq(
-        this.filter['metadata-content-type'].map(subfilter => subfilter.value)
+      currentValue.concat(
+        _.uniq(
+          this.filter['metadata-content-type'].map(subfilter => subfilter.value)
+        )
+      )
+    }
+    const matchTypeAttribute = getMatchTypeAttribute()
+    if (this.filter[matchTypeAttribute]) {
+      currentValue.concat(
+        _.uniq(
+          this.filter[matchTypeAttribute].map(subfilter => subfilter.value)
+        )
       )
     }
 
-    getMatchTypeEnums()
-      .then(enums => {
-        console.log('Enums: ' + enums)
-        this.basicTypeSpecific.show(
-          new PropertyView({
-            model: new Property({
-              enumFiltering: true,
-              showValidationIssues: false,
-              enumMulti: true,
-              enum: enums,
-              value: [currentValue],
-              id: 'Types',
-            }),
-          })
-        )
+    console.log(`filter: ${this.filter}`)
+    console.log(`currentValue: ${currentValue}`)
+
+    this.basicTypeSpecific.show(
+      new PropertyView({
+        model: new Property({
+          enumFiltering: true,
+          showValidationIssues: false,
+          enumMulti: true,
+          enum: metacardDefinitions.matchTypes,
+          value: [currentValue],
+          id: 'Types',
+        }),
       })
-      .catch(error => console.log(error))
+    )
   },
   setupType() {
     let currentValue = 'any'
-    if (this.filter['metadata-content-type']) {
+    if (
+      this.filter['metadata-content-type'] ||
+      this.filter[getMatchTypeAttribute()]
+    ) {
       currentValue = 'specific'
     }
     this.basicType.show(
@@ -442,6 +415,9 @@ module.exports = Marionette.LayoutView.extend({
 
     const filter = this.constructFilter()
     const generatedCQL = CQLUtils.transformFilterToCQL(filter)
+    console.log('save()')
+    console.log(filter)
+    console.log(generatedCQL)
     this.model.set({
       filterTree: filter,
       cql: generatedCQL,
@@ -477,28 +453,28 @@ module.exports = Marionette.LayoutView.extend({
     }
 
     const types = this.basicType.currentView.model.getValue()[0]
-    const typesSpecific = this.basicTypeSpecific.currentView.model.getValue()[0]
-    if (types === 'specific' && typesSpecific.length !== 0) {
+    const specificTypes = this.basicTypeSpecific.currentView.model.getValue()[0]
+    if (types === 'specific' && specificTypes.length !== 0) {
+      console.log(`specificTypes: ${specificTypes}`)
       const typeFilter = {
         type: 'OR',
-        filters: typesSpecific
-          .map(specificType =>
+        filters: specificTypes
+          .map(specificType => [
             CQLUtils.generateFilter(
               'ILIKE',
               'metadata-content-type',
               specificType
-            )
-          )
-          .concat(
-            typesSpecific.map(specificType =>
-              CQLUtils.generateFilter(
-                'ILIKE',
-                getMatchTypeAttribute(),
-                specificType
-              )
-            )
-          ),
+            ),
+            CQLUtils.generateFilter(
+              'ILIKE',
+              getMatchTypeAttribute(),
+              specificType
+            ),
+          ])
+          .flat()
+          .filter(f => f != null),
       }
+      console.log(typeFilter.filters)
       filters.push(typeFilter)
     }
 
