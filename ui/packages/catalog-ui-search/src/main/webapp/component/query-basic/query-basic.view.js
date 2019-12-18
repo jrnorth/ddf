@@ -47,14 +47,14 @@ function getMatchTypeAttribute() {
 }
 
 const getMatchTypes = memoize(async () => {
-  const attr = properties.basicSearchMatchType
+  const matchTypeAttr = getMatchTypeAttribute()
   const json = await query({
     count: 0,
     cql: "anyText ILIKE '*'",
-    facets: [attr],
+    facets: [matchTypeAttr],
   })
 
-  const facets = json.facets[attr] || []
+  const facets = json.facets[matchTypeAttr] || []
   return facets
     .sort((a, b) => b.count - a.count)
     .map(facet => ({
