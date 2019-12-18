@@ -67,12 +67,20 @@ const NoMatchTypesView = Marionette.ItemView.extend({
 
 function isTypeLimiter(filter) {
   const typesFound = _.uniq(filter.filters.map(CQLUtils.getProperty))
-  console.log(`typesFound: ${typesFound}`)
-  return (
-    typesFound.length === 2 &&
-    typesFound.includes('metadata-content-type') &&
-    typesFound.includes(getMatchTypeAttribute())
-  )
+  console.log('typesFound:', typesFound)
+  const metadataContentTypeSupported = !!metacardDefinitions.metacardTypes[
+    'metadata-content-type'
+  ]
+  console.log('metadataContentTypeSupported:', metadataContentTypeSupported)
+  if (metadataContentTypeSupported) {
+    return (
+      typesFound.length === 2 &&
+      typesFound.includes('metadata-content-type') &&
+      typesFound.includes(getMatchTypeAttribute())
+    )
+  } else {
+    return typesFound.length === 1 && typesFound[0] === getMatchTypeAttribute()
+  }
 }
 
 // strip extra quotes
@@ -158,6 +166,7 @@ function translateFilterToBasicMap(filter) {
       } else if (isNotNested(filter) && isAnyDate(filter)) {
         handleAnyDateFilter(propertyValueMap, filter)
       } else if (isNotNested(filter) && isTypeLimiter(filter)) {
+        console.log('isTypeLimiter')
         propertyValueMap[CQLUtils.getProperty(filter.filters[0])] =
           propertyValueMap[CQLUtils.getProperty(filter.filters[0])] || []
         filter.filters.forEach(subfilter => {
@@ -261,17 +270,17 @@ module.exports = Marionette.LayoutView.extend({
     if (this.filter['metadata-content-type']) {
       this.filter['metadata-content-type']
         .map(subfilter => subfilter.value)
-        .forEach(currentValue.add)
+        .forEach(value => currentValue.add(value))
     }
     const matchTypeAttribute = getMatchTypeAttribute()
     if (this.filter[matchTypeAttribute]) {
       this.filter[matchTypeAttribute]
         .map(subfilter => subfilter.value)
-        .forEach(currentValue.add)
+        .forEach(value => currentValue.add(value))
     }
 
-    console.log(this.filter)
-    console.log(currentValue)
+    console.log('Filter:', this.filter)
+    console.log('currentValue:', currentValue)
 
     getMatchTypes()
       .then(enums => this.showBasicTypeSpecific(enums, [[...currentValue]]))
