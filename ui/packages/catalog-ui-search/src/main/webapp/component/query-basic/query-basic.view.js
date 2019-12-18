@@ -32,9 +32,12 @@ const QueryTimeView = require('../query-time/query-time.view.js')
 import { getFilterErrors } from '../../react-component/utils/validation'
 import query from '../../react-component/utils/query'
 
-function isNotNested(filter) {
-  const hasNoChildFilters = subfilter => !subfilter.filters
-  return filter.filters.every(hasNoChildFilters)
+function isNested(filter) {
+  let nested = false
+  filter.filters.forEach(subfilter => {
+    nested = nested || subfilter.filters
+  })
+  return nested
 }
 
 function getMatchTypeAttribute() {
@@ -163,10 +166,9 @@ function translateFilterToBasicMap(filter) {
         ) {
           propertyValueMap[CQLUtils.getProperty(filter)].push(filter)
         }
-      } else if (isNotNested(filter) && isAnyDate(filter)) {
+      } else if (!isNested(filter) && isAnyDate(filter)) {
         handleAnyDateFilter(propertyValueMap, filter)
-      } else if (isNotNested(filter) && isTypeLimiter(filter)) {
-        console.log('isTypeLimiter')
+      } else if (!isNested(filter) && isTypeLimiter(filter)) {
         propertyValueMap[CQLUtils.getProperty(filter.filters[0])] =
           propertyValueMap[CQLUtils.getProperty(filter.filters[0])] || []
         filter.filters.forEach(subfilter => {
