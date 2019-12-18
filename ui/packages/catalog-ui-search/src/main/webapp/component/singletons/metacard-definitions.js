@@ -18,8 +18,6 @@ const Backbone = require('backbone')
 const _ = require('underscore')
 const properties = require('../../js/properties.js')
 const moment = require('moment')
-const IconHelper = require('../../js/IconHelper.js')
-import query from '../../react-component/utils/query'
 function transformEnumResponse(metacardTypes, response) {
   return _.reduce(
     response,
@@ -101,7 +99,6 @@ module.exports = new (Backbone.Model.extend({
     this.updateSortedMetacardTypes()
     this.getMetacardTypes()
     this.getDatatypeEnum()
-    this.getMatchTypes()
   },
   isHiddenTypeExceptThumbnail(id) {
     if (id === 'thumbnail') {
@@ -179,23 +176,6 @@ module.exports = new (Backbone.Model.extend({
       this.addMetacardDefinitions(metacardDefinitions)
     })
   },
-  async getMatchTypes() {
-    const attr = properties.basicSearchMatchType
-    const json = await query({
-      count: 0,
-      cql: "anyText ILIKE '*'",
-      facets: [attr],
-    })
-
-    const facets = json.facets[attr] || []
-    this.matchTypes = facets
-      .sort((a, b) => b.count - a.count)
-      .map(facet => ({
-        label: facet.value,
-        value: facet.value,
-        class: 'icon ' + IconHelper.getClassByName(facet.value),
-      }))
-  },
   attributeComparator(a, b) {
     const attrToCompareA = this.getLabel(a).toLowerCase()
     const attrToCompareB = this.getLabel(b).toLowerCase()
@@ -241,5 +221,4 @@ module.exports = new (Backbone.Model.extend({
   metacardTypes: _.extendOwn({}, metacardStartingTypes),
   validation: {},
   enums: properties.enums,
-  matchTypes: [],
 }))()

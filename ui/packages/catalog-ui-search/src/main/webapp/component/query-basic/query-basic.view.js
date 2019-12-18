@@ -15,10 +15,12 @@
 
 const Marionette = require('marionette')
 const _ = require('underscore')
+const memoize = require('lodash/memoize')
 const $ = require('jquery')
 const template = require('./query-basic.hbs')
 const CustomElements = require('../../js/CustomElements.js')
 const store = require('../../js/store.js')
+const IconHelper = require('../../js/IconHelper.js')
 const PropertyView = require('../property/property.view.js')
 const Property = require('../property/property.js')
 const properties = require('../../js/properties.js')
@@ -28,6 +30,7 @@ const CQLUtils = require('../../js/CQLUtils.js')
 const QuerySettingsView = require('../query-settings/query-settings.view.js')
 const QueryTimeView = require('../query-time/query-time.view.js')
 import { getFilterErrors } from '../../react-component/utils/validation'
+import query from '../../react-component/utils/query'
 
 function isNotNested(filter) {
   const hasNoChildFilters = subfilter => !subfilter.filters
@@ -39,6 +42,28 @@ function getMatchTypeAttribute() {
     ? properties.basicSearchMatchType
     : 'datatype'
 }
+
+const getMatchTypes = memoize(async () => {
+  const attr = properties.basicSearchMatchType
+  const json = await query({
+    count: 0,
+    cql: "anyText ILIKE '*'",
+    facets: [attr],
+  })
+
+  const facets = json.facets[attr] || []
+  return facets
+    .sort((a, b) => b.count - a.count)
+    .map(facet => ({
+      label: facet.value,
+      value: facet.value,
+      class: 'icon ' + IconHelper.getClassByName(facet.value),
+    }))
+})
+
+const NoMatchTypesView = Marionette.ItemView.extend({
+  template: `No types found for '${getMatchTypeAttribute()}'.`,
+})
 
 function isTypeLimiter(filter) {
   const typesFound = _.uniq(filter.filters.map(CQLUtils.getProperty))
@@ -232,38 +257,52 @@ module.exports = Marionette.LayoutView.extend({
     )
   },
   setupTypeSpecific() {
-    const currentValue = []
+    const currentValue = new Set()
     if (this.filter['metadata-content-type']) {
-      currentValue.concat(
-        _.uniq(
-          this.filter['metadata-content-type'].map(subfilter => subfilter.value)
-        )
-      )
+      this.filter['metadata-content-type']
+        .map(subfilter => subfilter.value)
+        .forEach(currentValue.add)
     }
     const matchTypeAttribute = getMatchTypeAttribute()
     if (this.filter[matchTypeAttribute]) {
-      currentValue.concat(
-        _.uniq(
-          this.filter[matchTypeAttribute].map(subfilter => subfilter.value)
-        )
-      )
+      this.filter[matchTypeAttribute]
+        .map(subfilter => subfilter.value)
+        .forEach(currentValue.add)
     }
 
-    console.log(`filter: ${this.filter}`)
-    console.log(`currentValue: ${currentValue}`)
+    console.log(this.filter)
+    console.log(currentValue)
 
-    this.basicTypeSpecific.show(
-      new PropertyView({
-        model: new Property({
-          enumFiltering: true,
-          showValidationIssues: false,
-          enumMulti: true,
-          enum: metacardDefinitions.matchTypes,
-          value: [currentValue],
-          id: 'Types',
-        }),
+    getMatchTypes()
+      .then(enums => this.showBasicTypeSpecific(enums, [[...currentValue]]))
+      .catch(error => {
+        console.log(error)
+        console.log('CATCH')
+        this.showBasicTypeSpecific()
       })
-    )
+  },
+  showBasicTypeSpecific(enums = [], currentValue = [[]]) {
+    console.log(enums)
+    console.log(currentValue)
+    if (this.basicTypeSpecific) {
+      if (enums && enums.length > 0) {
+        this.basicTypeSpecific.show(
+          new PropertyView({
+            model: new Property({
+              enumFiltering: true,
+              showValidationIssues: false,
+              enumMulti: true,
+              enum: enums,
+              value: currentValue,
+              id: 'Types',
+            }),
+          })
+        )
+        this.basicTypeSpecific.currentView.turnOnEditing()
+      } else {
+        this.basicTypeSpecific.show(new NoMatchTypesView())
+      }
+    }
   },
   setupType() {
     let currentValue = 'any'
