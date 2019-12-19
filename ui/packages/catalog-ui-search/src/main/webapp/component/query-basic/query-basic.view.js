@@ -55,7 +55,6 @@ const getMatchTypes = memoize(async () => {
     cql: "anyText ILIKE '*'",
     facets: [matchTypeAttr],
   })
-
   const facets = json.facets[matchTypeAttr] || []
   return facets
     .sort((a, b) => b.count - a.count)
