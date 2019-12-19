@@ -507,7 +507,7 @@ module.exports = Marionette.LayoutView.extend({
     const types = this.basicType.currentView.model.getValue()[0]
     const specificTypes = this.basicTypeSpecific.currentView.model.getValue()[0]
     if (types === 'specific' && specificTypes.length !== 0) {
-      console.log(`specificTypes: ${specificTypes}`)
+      const filterAttributeIsSupported = filter => filter !== null
       const typeFilter = {
         type: 'OR',
         filters: specificTypes
@@ -524,10 +524,11 @@ module.exports = Marionette.LayoutView.extend({
             ),
           ])
           .flat()
-          .filter(f => f != null),
+          .filter(filterAttributeIsSupported),
       }
-      console.log(typeFilter.filters)
-      filters.push(typeFilter)
+      if (typeFilter.filters.length > 0) {
+        filters.push(typeFilter)
+      }
     }
 
     if (filters.length === 0) {
