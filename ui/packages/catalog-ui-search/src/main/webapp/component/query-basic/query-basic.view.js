@@ -32,6 +32,8 @@ const QueryTimeView = require('../query-time/query-time.view.js')
 import { getFilterErrors } from '../../react-component/utils/validation'
 import query from '../../react-component/utils/query'
 
+const METADATA_CONTENT_TYPE = 'metadata-content-type'
+
 function isNested(filter) {
   let nested = false
   filter.filters.forEach(subfilter => {
@@ -72,13 +74,13 @@ function isTypeLimiter(filter) {
   const typesFound = _.uniq(filter.filters.map(CQLUtils.getProperty))
   console.log('typesFound:', typesFound)
   const metadataContentTypeSupported = !!metacardDefinitions.metacardTypes[
-    'metadata-content-type'
+    METADATA_CONTENT_TYPE
   ]
   console.log('metadataContentTypeSupported:', metadataContentTypeSupported)
   if (metadataContentTypeSupported) {
     return (
       typesFound.length === 2 &&
-      typesFound.includes('metadata-content-type') &&
+      typesFound.includes(METADATA_CONTENT_TYPE) &&
       typesFound.includes(getMatchTypeAttribute())
     )
   } else {
@@ -269,10 +271,10 @@ module.exports = Marionette.LayoutView.extend({
   },
   setupTypeSpecific() {
     const currentValue = new Set()
-    if (this.filter['metadata-content-type']) {
-      this.filter['metadata-content-type']
-        .map(subfilter => subfilter.value)
-        .forEach(value => currentValue.add(value))
+    if (this.filter[METADATA_CONTENT_TYPE]) {
+      this.filter[METADATA_CONTENT_TYPE].map(
+        subfilter => subfilter.value
+      ).forEach(value => currentValue.add(value))
     }
     const matchTypeAttribute = getMatchTypeAttribute()
     if (this.filter[matchTypeAttribute]) {
@@ -318,7 +320,7 @@ module.exports = Marionette.LayoutView.extend({
   setupType() {
     let currentValue = 'any'
     if (
-      this.filter['metadata-content-type'] ||
+      this.filter[METADATA_CONTENT_TYPE] ||
       this.filter[getMatchTypeAttribute()]
     ) {
       currentValue = 'specific'
@@ -512,7 +514,7 @@ module.exports = Marionette.LayoutView.extend({
           .map(specificType => [
             CQLUtils.generateFilter(
               'ILIKE',
-              'metadata-content-type',
+              METADATA_CONTENT_TYPE,
               specificType
             ),
             CQLUtils.generateFilter(
