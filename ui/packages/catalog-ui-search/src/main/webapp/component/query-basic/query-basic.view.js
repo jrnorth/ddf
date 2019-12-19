@@ -72,11 +72,9 @@ const NoMatchTypesView = Marionette.ItemView.extend({
 
 function isTypeLimiter(filter) {
   const typesFound = _.uniq(filter.filters.map(CQLUtils.getProperty))
-  console.log('typesFound:', typesFound)
   const metadataContentTypeSupported = !!metacardDefinitions.metacardTypes[
     METADATA_CONTENT_TYPE
   ]
-  console.log('metadataContentTypeSupported:', metadataContentTypeSupported)
   if (metadataContentTypeSupported) {
     return (
       typesFound.length === 2 &&
@@ -288,18 +286,11 @@ module.exports = Marionette.LayoutView.extend({
   },
   setupTypeSpecific() {
     const currentValue = this.getCurrentSpecificTypesValue()
-
     getMatchTypes()
       .then(enums => this.showBasicTypeSpecific(enums, [currentValue]))
-      .catch(error => {
-        console.log(error)
-        console.log('CATCH')
-        this.showBasicTypeSpecific()
-      })
+      .catch(error => this.showBasicTypeSpecific())
   },
   showBasicTypeSpecific(enums = [], currentValue = [[]]) {
-    console.log(enums)
-    console.log(currentValue)
     if (this.basicTypeSpecific) {
       if (enums && enums.length > 0) {
         this.basicTypeSpecific.show(
@@ -470,9 +461,6 @@ module.exports = Marionette.LayoutView.extend({
 
     const filter = this.constructFilter()
     const generatedCQL = CQLUtils.transformFilterToCQL(filter)
-    console.log('save()')
-    console.log(filter)
-    console.log(generatedCQL)
     this.model.set({
       filterTree: filter,
       cql: generatedCQL,
