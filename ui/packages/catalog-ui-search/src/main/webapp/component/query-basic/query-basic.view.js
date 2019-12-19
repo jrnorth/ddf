@@ -269,25 +269,28 @@ module.exports = Marionette.LayoutView.extend({
       })
     )
   },
+  getFilterValuesForAttribute(attribute) {
+    return this.filter[attribute]
+      ? this.filter[attribute].map(subfilter => subfilter.value)
+      : []
+  },
+  getCurrentSpecificTypesValue() {
+    const metadataContentTypeValuesInFilter = this.getFilterValuesForAttribute(
+      METADATA_CONTENT_TYPE
+    )
+    const matchTypeAttributeValuesInFilter = this.getFilterValuesForAttribute(
+      getMatchTypeAttribute()
+    )
+    const currentValue = metadataContentTypeValuesInFilter.concat(
+      matchTypeAttributeValuesInFilter
+    )
+    return _.uniq(currentValue)
+  },
   setupTypeSpecific() {
-    const currentValue = new Set()
-    if (this.filter[METADATA_CONTENT_TYPE]) {
-      this.filter[METADATA_CONTENT_TYPE].map(
-        subfilter => subfilter.value
-      ).forEach(value => currentValue.add(value))
-    }
-    const matchTypeAttribute = getMatchTypeAttribute()
-    if (this.filter[matchTypeAttribute]) {
-      this.filter[matchTypeAttribute]
-        .map(subfilter => subfilter.value)
-        .forEach(value => currentValue.add(value))
-    }
-
-    console.log('Filter:', this.filter)
-    console.log('currentValue:', currentValue)
+    const currentValue = this.getCurrentSpecificTypesValue()
 
     getMatchTypes()
-      .then(enums => this.showBasicTypeSpecific(enums, [[...currentValue]]))
+      .then(enums => this.showBasicTypeSpecific(enums, [currentValue]))
       .catch(error => {
         console.log(error)
         console.log('CATCH')
