@@ -554,6 +554,7 @@
         <module>confluence</module>
         <module>async</module>
         <module>migrate</module>
+      <module>grammar-parser-webapp</module>
     </modules>
     <build>
         <plugins>

@@ -1,0 +1,209 @@
+options {
+    IGNORE_CASE = true;
+    STATIC = false;
+}
+
+PARSER_BEGIN(Parser)
+package org.codice.grammarparser;
+
+import ddf.catalog.filter.FilterBuilder;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import org.opengis.filter.Filter;
+
+public class Parser {
+  private FilterBuilder filterBuilder;
+
+  public void setFilterBuilder(final FilterBuilder filterBuilder) {
+    this.filterBuilder = filterBuilder;
+  }
+
+  public Filter anyTextFilter(final String searchPhrase) {
+    return filterBuilder.attribute("anyText").is().like().text(searchPhrase);
+  }
+
+  public Filter anyGeoFilter(final String location) {
+    final String wkt = wkt(location);
+    return filterBuilder.attribute("anyGeo").is().intersecting().wkt(wkt);
+  }
+
+  public String wkt(final String location) {
+    return "POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))";
+  }
+}
+
+PARSER_END(Parser)
+
+SKIP : {
+  < SP: " " >
+}
+
+TOKEN : {
+  < NUM: (["0"-"9"])+ > |
+  < TIMEUNIT: ("minute"|"hour"|"day"|"week"|"month")("s")? > |
+  < IN: "in" > |
+  < FROM: "from" > |
+  < BETWEEN: "between" > |
+  < AND: "and" > |
+  < ORDINAL_SUFFIX: ("st"|"nd"|"rd"|"th") > |
+  < DATE: <NUM>(<SP>)*<ORDINAL_SUFFIX> > |
+  < MONTH: ("january"|"february"|"march"|"april"|"may"|"june"|"july"|"august"|"september"|"october"|
+            "november"|"december") > |
+  < MONTH_DATE: <MONTH>(<SP>)+(<DATE>|<NUM>) > |
+  < RELATIVE_TIME: <IN>(<SP>)+"the"(<SP>)+"last" >
+}
+TOKEN : {
+  < WORD: (["A"-"Z","a"-"z"])+ >
+}
+
+List<Filter> SearchExpression() :
+{
+  List<Filter> filters = new ArrayList<>();
+  String searchPhrase;
+  Filter f;
+}
+{
+  searchPhrase = SearchPhrase()
+  {
+    filters.add(anyTextFilter(searchPhrase));
+  }
+  (
+    f = TemporalExpression()
+    {
+      filters.add(f);
+    }
+    |
+    f = SpatialExpression()
+    {
+      filters.add(f);
+    }
+  )*
+  (<EOF> | "\n")
+  {
+    return filters;
+  }
+}
+
+String SearchPhrase() :
+{
+  Token word;
+  List<String> words = new ArrayList<>();
+}
+{
+  (
+    word = <WORD>
+    {
+      words.add(word.image);
+    }
+  )+
+  {
+    return String.join(" ", words);
+  }
+}
+
+Filter SpatialExpression() :
+{
+  String location;
+}
+{
+  <IN>
+  location = SearchPhrase()
+  {
+    return anyGeoFilter(location);
+  }
+}
+
+Filter TemporalExpression() :
+{
+  Filter f;
+}
+{
+  f = RelativeTimeExpression()
+  {
+    return f;
+  }
+  |
+  f = DurationExpression()
+  {
+    return f;
+  }
+}
+
+Filter RelativeTimeExpression() :
+{
+  int multiplier = 1;
+  Token t;
+}
+{
+  <RELATIVE_TIME>
+  [
+    t = <NUM>
+    {
+      multiplier = Integer.parseInt(t.image);
+    }
+  ]
+  t = <TIMEUNIT>
+  {
+  return Dates.relativeTimeFilter(t.image, multiplier);
+}
+}
+
+Filter DurationExpression() :
+{
+  Date from;
+  Date to;
+}
+{
+  <BETWEEN>
+  (from = MonthDateRangeStart() | from = MonthRangeStart())
+  <AND>
+  (to = MonthDateRangeEnd() | to = MonthRangeEnd())
+  {
+    return Dates.during(from, to);
+  }
+}
+
+Date MonthRangeStart() :
+{
+  Token t;
+}
+{
+  t = <MONTH>
+  {
+    return Dates.parseMonthAsRangeStart(t.image);
+  }
+}
+
+Date MonthRangeEnd() :
+{
+  Token t;
+}
+{
+  t = <MONTH>
+  {
+    return Dates.parseMonthAsRangeEnd(t.image);
+  }
+}
+
+Date MonthDateRangeStart() :
+{
+  Token t;
+}
+{
+  t = <MONTH_DATE>
+  {
+    return Dates.parseMonthDateAsRangeStart(t.image);
+  }
+}
+
+Date MonthDateRangeEnd() :
+{
+  Token t;
+}
+{
+  t = <MONTH_DATE>
+  {
+    return Dates.parseMonthDateAsRangeEnd(t.image);
+  }
+}

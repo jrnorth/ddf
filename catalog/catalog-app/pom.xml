@@ -714,5 +714,10 @@
             <artifactId>cache-plugin-defaultmetacardtags</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ddf.catalog</groupId>
+            <artifactId>grammar-parser-webapp</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>
