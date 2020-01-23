@@ -688,6 +688,8 @@
 
     <feature name="grammar-parser-webapp" version="${project.version}"
         description="An experimental grammar parser-based search app.">
+        <bundle>mvn:org.jetbrains.kotlin/kotlin-osgi-bundle/1.2.61</bundle>
+        <bundle>mvn:org.codice.thirdparty/javalin/2.5.0_1</bundle>
         <bundle>mvn:ddf.catalog/grammar-parser-webapp/${project.version}</bundle>
     </feature>
 

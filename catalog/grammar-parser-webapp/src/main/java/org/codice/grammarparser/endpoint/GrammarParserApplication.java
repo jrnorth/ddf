@@ -15,23 +15,26 @@ package org.codice.grammarparser.endpoint;
 
 import ddf.catalog.CatalogFramework;
 import ddf.catalog.filter.FilterBuilder;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
+import io.javalin.EmbeddedJavalin;
+import io.javalin.Javalin;
+import io.javalin.core.JavalinServlet;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
+import javax.servlet.http.HttpServletResponse;
 import org.codice.grammarparser.Dates;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Path("/")
-public class SearchEndpoint {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SearchEndpoint.class);
+@WebServlet(
+  urlPatterns = {GrammarParserApplication.PATH + "/*"},
+  name = "GrammarParserApplication"
+)
+public class GrammarParserApplication extends HttpServlet {
+  private static final Logger LOGGER = LoggerFactory.getLogger(GrammarParserApplication.class);
+
+  static final String PATH = "/search/catalog/internal/grammarparser";
 
   private final BundleContext bundleContext;
 
@@ -39,27 +42,25 @@ public class SearchEndpoint {
 
   private final FilterBuilder filterBuilder;
 
-  public SearchEndpoint(
+  private final JavalinServlet javalinServlet =
+      EmbeddedJavalin.create().disableStartupBanner().contextPath(PATH).createServlet();
+
+  public GrammarParserApplication(
       final BundleContext bundleContext,
       final CatalogFramework catalogFramework,
       final FilterBuilder filterBuilder) {
-    LOGGER.warn("SearchEndpoint constructor");
     this.bundleContext = bundleContext;
     this.catalogFramework = catalogFramework;
     this.filterBuilder = filterBuilder;
     Dates.setFilterBuilder(filterBuilder);
+
+    final Javalin app = javalinServlet.getJavalin();
+    // probably won't work since this is a bundle?
+    app.enableStaticFiles("/");
   }
 
-  @GET
-  @Path("/index")
-  public Response indexPage(@Context UriInfo uriInfo, @Context HttpServletRequest httpRequest) {
-    LOGGER.error("foobar");
-    final URL indexHtmlUrl = bundleContext.getBundle().getEntry("/index.html");
-    try (final InputStream entityStream = indexHtmlUrl.openStream()) {
-      return Response.ok(entityStream, "text/html").build();
-    } catch (IOException e) {
-      LOGGER.warn("Error serving index.html", e);
-      return Response.serverError().build();
-    }
+  @Override
+  public void service(final HttpServletRequest request, final HttpServletResponse response) {
+    javalinServlet.service(request, response);
   }
 }
